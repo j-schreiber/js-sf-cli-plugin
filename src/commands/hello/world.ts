@@ -21,6 +21,7 @@ export default class World extends SfCommand<HelloWorldResult> {
       description: messages.getMessage('flags.name.description'),
       default: 'World',
     }),
+    'target-org': Flags.requiredOrg(),
   };
 
   public async run(): Promise<HelloWorldResult> {
