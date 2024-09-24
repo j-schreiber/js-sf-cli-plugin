@@ -19,6 +19,16 @@ export default class IndexBuild extends SfCommand<IndexBuildResult> {
       char: 'o',
       required: true,
     }),
+    'rebuild-cache': Flags.boolean({
+      summary: messages.getMessage('flags.rebuild-cache.summary'),
+      char: 'r',
+    }),
+    plan: Flags.file({
+      summary: messages.getMessage('flags.plan.summary'),
+      char: 'p',
+      required: true,
+      exists: true,
+    }),
   };
 
   public async run(): Promise<IndexBuildResult> {
