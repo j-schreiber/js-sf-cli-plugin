@@ -1,5 +1,6 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
+import MigrationPlanLoader from '../../../common/migrationPlanLoader.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'sfdami.index.build');
@@ -33,7 +34,11 @@ export default class IndexBuild extends SfCommand<IndexBuildResult> {
 
   public async run(): Promise<IndexBuildResult> {
     const { flags } = await this.parse(IndexBuild);
-    this.log(flags['target-org'].getOrgId());
+    const plan = MigrationPlanLoader.loadPlan(flags.plan);
+    this.log(`${plan.getName()}`);
+    plan.getObjects().forEach((planObject) => {
+      this.log(`${planObject.getName()}`);
+    });
     return {
       isSuccess: true,
     };

@@ -6,7 +6,9 @@
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
     "@salesforce/dev-scripts": "^10.2.10",
-    "@salesforce/sf-plugins-core": "^11.3.10"
+    "@salesforce/sf-plugins-core": "^11.3.10",
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@oclif/plugin-command-snapshot": "^5.1.9",
