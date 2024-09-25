@@ -47,6 +47,14 @@
     "topics": {
       "hello": {
         "description": "Commands to say hello."
+      },
+      "sfdami": {
+        "description": "description for sfdami",
+        "subtopics": {
+          "plan": {
+            "description": "description for sfdami.plan"
+          }
+        }
       }
     },
     "flexibleTaxonomy": true

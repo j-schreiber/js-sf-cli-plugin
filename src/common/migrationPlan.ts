@@ -1,18 +1,31 @@
 import { MigrationPlanData } from '../types/migrationPlanData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
+import ValidationResult from './validationResult.js';
 
 export default class MigrationPlan {
+  private objects: MigrationPlanObject[] = [];
+
   public constructor(public data: MigrationPlanData) {}
 
   public getObjects(): MigrationPlanObject[] {
-    const objects: MigrationPlanObject[] = [];
     this.data.objects.forEach((objectData) => {
-      objects.push(new MigrationPlanObject(objectData));
+      this.objects.push(new MigrationPlanObject(objectData));
     });
-    return objects;
+    return this.objects;
   }
 
   public getName(): string {
     return `My name is: ${this.data.name}`;
+  }
+
+  public selfCheck(): ValidationResult {
+    const res: ValidationResult = new ValidationResult();
+    res.infos.push(`Found ${this.objects.length} objects.`);
+    this.getObjects().forEach((planObject) => {
+      if (!planObject.selfCheck()) {
+        res.errors.push(`Error validating plan object ${this.data.name}`);
+      }
+    });
+    return res;
   }
 }
