@@ -47,7 +47,7 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
       this.log('Plan successfully initialised.');
     } else {
       planValResult.errors.forEach((errMsg) => {
-        this.logToStderr(errMsg);
+        this.error(errMsg);
       });
     }
   }

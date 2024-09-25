@@ -1,0 +1,4 @@
+name: Test Plan
+objects:
+  # account does not have query or file
+  - objectName: Account

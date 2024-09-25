@@ -8,4 +8,3 @@ objects:
     queryFile: soql/orders.sql
   - objectName: Opportunity
     queryString: SELECT Id FROM Opportunity LIMIT 10
-  - objectName: Case

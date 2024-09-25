@@ -23,7 +23,7 @@ export default class MigrationPlan {
     res.infos.push(`Found ${this.objects.length} objects.`);
     this.getObjects().forEach((planObject) => {
       if (!planObject.selfCheck()) {
-        res.errors.push(`Error validating plan object ${this.data.name}`);
+        res.errors.push(`Error validating plan object ${this.data.name} at ${planObject.data.objectName}`);
       }
     });
     return res;

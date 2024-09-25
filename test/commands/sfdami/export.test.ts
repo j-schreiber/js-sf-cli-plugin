@@ -1,6 +1,7 @@
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
+import { SfError } from '@salesforce/core';
 import SfdamiExport from '../../../src/commands/sfdami/export.js';
 
 describe('sfdami plan export', () => {
@@ -32,5 +33,22 @@ describe('sfdami plan export', () => {
     // sfCommandStubs.log returns each call to this.log(...) as array
     expect(sfCommandStubs).to.be.ok;
     expect(result['source-org-id']).equals(testOrg.orgId);
+  });
+
+  it('runs command with invalid plan file => exits error', async () => {
+    // Arrange
+    await $$.stubAuths(testOrg);
+
+    // Act
+    try {
+      // shouldThrow appears to throw an SfError
+      await SfdamiExport.run(['--source-org', testOrg.username, '--plan', 'test/data/invalid-plan.yaml']);
+      expect.fail('Should throw exception');
+    } catch (err) {
+      if (!(err instanceof SfError)) {
+        expect.fail('Expected SfError to be thrown');
+      }
+      expect(err.exitCode).to.equal(2);
+    }
   });
 });
