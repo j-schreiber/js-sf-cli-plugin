@@ -1,21 +1,26 @@
+import { Connection } from '@salesforce/core';
 import { MigrationPlanData } from '../types/migrationPlanData.js';
+import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import ValidationResult from './validationResult.js';
+
+// const msgs: Messages = Messages.loadMessages('sfdami', 'sfdami.export');
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
 
-  public constructor(public data: MigrationPlanData) {}
-
-  public getObjects(): MigrationPlanObject[] {
+  public constructor(public data: MigrationPlanData) {
     this.data.objects.forEach((objectData) => {
       this.objects.push(new MigrationPlanObject(objectData));
     });
-    return this.objects;
   }
 
   public getName(): string {
     return `My name is: ${this.data.name}`;
+  }
+
+  public getObjects(): MigrationPlanObject[] {
+    return this.objects;
   }
 
   public selfCheck(): ValidationResult {
@@ -27,5 +32,15 @@ export default class MigrationPlan {
       }
     });
     return res;
+  }
+
+  public async retrieveRecords(con: Connection): Promise<MigrationPlanObjectQueryResult[]> {
+    const results: MigrationPlanObjectQueryResult[] = [];
+    for (const planObject of this.getObjects()) {
+      // eslint-disable-next-line no-await-in-loop
+      const objectResults = await planObject.retrieveRecords(con);
+      results.push(objectResults);
+    }
+    return results;
   }
 }

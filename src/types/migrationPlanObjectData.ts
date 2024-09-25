@@ -3,3 +3,10 @@ export type MigrationPlanObjectData = {
   queryFile?: string;
   queryString?: string;
 };
+
+export type MigrationPlanObjectQueryResult = {
+  isSuccess: boolean;
+  queryString: string;
+  totalSize: number;
+  files?: string[];
+};
