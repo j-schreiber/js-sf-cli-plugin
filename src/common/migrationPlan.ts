@@ -1,10 +1,9 @@
-import { Connection } from '@salesforce/core';
+import fs from 'node:fs';
+import { Org } from '@salesforce/core';
 import { MigrationPlanData } from '../types/migrationPlanData.js';
 import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import ValidationResult from './validationResult.js';
-
-// const msgs: Messages = Messages.loadMessages('sfdami', 'sfdami.export');
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
@@ -34,11 +33,13 @@ export default class MigrationPlan {
     return res;
   }
 
-  public async retrieveRecords(con: Connection): Promise<MigrationPlanObjectQueryResult[]> {
+  public async retrieveRecords(org: Org): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
+    const exportPath: string = `./.sfdami/${org.getOrgId()}/exports`;
+    fs.mkdirSync(exportPath, { recursive: true });
     for (const planObject of this.getObjects()) {
       // eslint-disable-next-line no-await-in-loop
-      const objectResults = await planObject.retrieveRecords(con);
+      const objectResults = await planObject.retrieveRecords(org, exportPath);
       results.push(objectResults);
     }
     return results;

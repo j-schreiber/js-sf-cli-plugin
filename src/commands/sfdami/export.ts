@@ -1,5 +1,5 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
-import { Connection, Messages } from '@salesforce/core';
+import { Messages, Org } from '@salesforce/core';
 import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
 import ValidationResult from '../../common/validationResult.js';
 import MigrationPlan from '../../common/migrationPlan.js';
@@ -35,7 +35,7 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = MigrationPlanLoader.loadPlan(flags['plan']);
     this.validatePlan(plan);
-    await this.retrieveRecords(plan, flags['source-org'].getConnection('60.0'));
+    await this.retrieveRecords(plan, flags['source-org']);
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
@@ -53,8 +53,8 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     }
   }
 
-  private async retrieveRecords(plan: MigrationPlan, con: Connection): Promise<void> {
+  private async retrieveRecords(plan: MigrationPlan, org: Org): Promise<void> {
     this.log('Starting record retrieval...');
-    await plan.retrieveRecords(con);
+    await plan.retrieveRecords(org);
   }
 }

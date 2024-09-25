@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { Connection } from '@salesforce/core';
+import { Org } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 
 export default class MigrationPlanObject {
@@ -21,15 +21,16 @@ export default class MigrationPlanObject {
     return true;
   }
 
-  public async retrieveRecords(con: Connection): Promise<MigrationPlanObjectQueryResult> {
-    // TODO: this is where we batch, if we receive to many records
+  public async retrieveRecords(org: Org, exportPath: string): Promise<MigrationPlanObjectQueryResult> {
+    // TODO: this is where we batch, if we receive too many records
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
-    const queryResult = await con.autoFetchQuery(this.getQueryString());
+    const queryResult = await org.getConnection().autoFetchQuery(this.getQueryString());
+    const fileName: string = this.writeResultsToFile(queryResult.records, exportPath);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
       queryString: this.getQueryString(),
-      totalSize: queryResult.totalSize,
-      files: ['test-file.json'],
+      totalSize: queryResult.records.length,
+      files: [fileName],
     };
     process.stdout.write(`Successfully retrieved ${result.totalSize} records.\n`);
     return result;
@@ -44,6 +45,12 @@ export default class MigrationPlanObject {
   }
 
   //        PRIVATE
+
+  private writeResultsToFile(queryRecords: unknown, exportPath: string): string {
+    const fileName = `${this.data.objectName}.json`;
+    fs.writeFileSync(`${exportPath}/${fileName}`, JSON.stringify({ records: queryRecords }, null, 2));
+    return fileName;
+  }
 
   private loadQueryStringFromFile(): string {
     const queryString = fs.readFileSync(this.data.queryFile as string, 'utf8');
