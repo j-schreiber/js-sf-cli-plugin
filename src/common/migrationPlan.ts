@@ -15,7 +15,7 @@ export default class MigrationPlan {
   }
 
   public getName(): string {
-    return `My name is: ${this.data.name}`;
+    return this.data.name;
   }
 
   public getObjects(): MigrationPlanObject[] {

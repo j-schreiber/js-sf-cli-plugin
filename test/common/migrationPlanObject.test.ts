@@ -13,7 +13,9 @@ describe('migration plan object', () => {
     expect(testObj.selfCheck()).to.be.true;
     // the file is auto-formatted! Its critical to match exact file formatting for asserts
     // actual validation (syntax, runtime schema, etc) will be performed by the target org
-    expect(testObj.getQueryString()).to.equal('SELECT\n  Id,\n  Name,\n  BillingStreet\nFROM\n  Account');
+    expect(testObj.getQueryString()).to.equal(
+      'SELECT\n  Id,\n  Name,\n  BillingStreet\nFROM\n  Account\nLIMIT\n  9500'
+    );
   });
 
   it('is initialised with query string => returns direct input string', async () => {

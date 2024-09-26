@@ -25,6 +25,7 @@ export default class MigrationPlanObject {
     // TODO: Find a way to use standard CLI logger
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
+    // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
     const queryResult = await org.getConnection().query(this.getQueryString());
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
@@ -36,9 +37,9 @@ export default class MigrationPlanObject {
     let nextRecordsUrl = queryResult.nextRecordsUrl;
     let incrementer = 1;
     result.files.push(this.writeResultsToFile(queryResult.records, exportPath, incrementer));
+    process.stdout.write(`Retrieved ${queryResult.records.length} records.\n`);
     while (!isDone) {
       incrementer++;
-      process.stdout.write('Fetching more...\n');
       // eslint-disable-next-line no-await-in-loop
       const moreResults = await org.getConnection().queryMore(nextRecordsUrl as string);
       isDone = moreResults.done;
@@ -47,7 +48,7 @@ export default class MigrationPlanObject {
       result.totalSize += moreResults.records.length;
       process.stdout.write(`Retrieved ${moreResults.records.length} records.\n`);
     }
-    process.stdout.write(`Successfully retrieved total of ${result.totalSize} records.\n`);
+    process.stdout.write(`Completed query with total of ${result.totalSize} records.\n`);
     return result;
   }
 
