@@ -22,17 +22,31 @@ export default class MigrationPlanObject {
   }
 
   public async retrieveRecords(org: Org, exportPath: string): Promise<MigrationPlanObjectQueryResult> {
-    // TODO: this is where we batch, if we receive too many records
+    // TODO: Find a way to use standard CLI logger
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
     const queryResult = await org.getConnection().autoFetchQuery(this.getQueryString());
-    const fileName: string = this.writeResultsToFile(queryResult.records, exportPath);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
       queryString: this.getQueryString(),
       totalSize: queryResult.records.length,
-      files: [fileName],
+      files: [],
     };
-    process.stdout.write(`Successfully retrieved ${result.totalSize} records.\n`);
+    let isDone = queryResult.done;
+    let nextRecordsUrl = queryResult.nextRecordsUrl;
+    let incrementer = 1;
+    result.files.push(this.writeResultsToFile(queryResult.records, exportPath, incrementer));
+    while (!isDone) {
+      incrementer++;
+      process.stdout.write('Fetching more...\n');
+      // eslint-disable-next-line no-await-in-loop
+      const moreResults = await org.getConnection().queryMore(nextRecordsUrl as string);
+      isDone = moreResults.done;
+      nextRecordsUrl = moreResults.nextRecordsUrl;
+      result.files.push(this.writeResultsToFile(moreResults.records, exportPath, incrementer));
+      result.totalSize += moreResults.records.length;
+      process.stdout.write(`Retrieved ${moreResults.records.length} records.\n`);
+    }
+    process.stdout.write(`Successfully retrieved total of ${result.totalSize} records.\n`);
     return result;
   }
 
@@ -46,10 +60,11 @@ export default class MigrationPlanObject {
 
   //        PRIVATE
 
-  private writeResultsToFile(queryRecords: unknown, exportPath: string): string {
-    const fileName = `${this.data.objectName}.json`;
-    fs.writeFileSync(`${exportPath}/${fileName}`, JSON.stringify({ records: queryRecords }, null, 2));
-    return fileName;
+  private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
+    fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
+    const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
+    fs.writeFileSync(fullFilePath, JSON.stringify({ records: queryRecords }, null, 2));
+    return fullFilePath;
   }
 
   private loadQueryStringFromFile(): string {

@@ -8,5 +8,5 @@ export type MigrationPlanObjectQueryResult = {
   isSuccess: boolean;
   queryString: string;
   totalSize: number;
-  files?: string[];
+  files: string[];
 };
