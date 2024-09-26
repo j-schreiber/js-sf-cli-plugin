@@ -4,3 +4,5 @@ SELECT
   BillingStreet
 FROM
   Account
+LIMIT
+  5000

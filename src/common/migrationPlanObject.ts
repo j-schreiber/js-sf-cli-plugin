@@ -24,7 +24,8 @@ export default class MigrationPlanObject {
   public async retrieveRecords(org: Org, exportPath: string): Promise<MigrationPlanObjectQueryResult> {
     // TODO: Find a way to use standard CLI logger
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
-    const queryResult = await org.getConnection().autoFetchQuery(this.getQueryString());
+    fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
+    const queryResult = await org.getConnection().query(this.getQueryString());
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
       queryString: this.getQueryString(),
@@ -61,7 +62,6 @@ export default class MigrationPlanObject {
   //        PRIVATE
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
-    fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
     fs.writeFileSync(fullFilePath, JSON.stringify({ records: queryRecords }, null, 2));
     return fullFilePath;

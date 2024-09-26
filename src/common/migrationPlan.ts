@@ -36,6 +36,7 @@ export default class MigrationPlan {
   public async retrieveRecords(org: Org): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
     const exportPath: string = `./.sfdami/${org.getOrgId()}/exports`;
+    fs.rmSync(exportPath, { recursive: true, force: true });
     fs.mkdirSync(exportPath, { recursive: true });
     for (const planObject of this.getObjects()) {
       // eslint-disable-next-line no-await-in-loop
