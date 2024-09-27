@@ -8,7 +8,7 @@
     "@salesforce/sf-plugins-core": "^10.0.0"
   },
   "devDependencies": {
-    "@oclif/plugin-command-snapshot": "^5.1.9",
+    "@oclif/plugin-command-snapshot": "^5.2.16",
     "@salesforce/cli-plugins-testkit": "^5.3.10",
     "@salesforce/dev-scripts": "^10",
     "eslint-plugin-sf-plugin": "^1.18.6",
