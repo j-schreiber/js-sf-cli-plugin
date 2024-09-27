@@ -34,7 +34,7 @@ export default class IndexBuild extends SfCommand<IndexBuildResult> {
 
   public async run(): Promise<IndexBuildResult> {
     const { flags } = await this.parse(IndexBuild);
-    const plan = MigrationPlanLoader.loadPlan(flags.plan, flags['target-org']);
+    const plan = await MigrationPlanLoader.loadPlan(flags.plan, flags['target-org']);
     this.log(`${plan.getName()}`);
     return {
       isSuccess: true,

@@ -50,6 +50,8 @@ describe('sfdami plan export', () => {
       if (!(err instanceof SfError)) {
         expect.fail('Expected SfError to be thrown');
       }
+      // haven't figured out yet, what determins the exit code
+      // 1 appears to be sub-level errors, two is explicit SfCommand-level errors?
       expect(err.exitCode).to.equal(2);
     }
   });

@@ -33,7 +33,7 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
 
   public async run(): Promise<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
-    const plan = MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
+    const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
     this.validatePlan(plan);
     await this.executePlan(plan);
     return {

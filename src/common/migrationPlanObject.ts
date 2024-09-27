@@ -1,11 +1,16 @@
 import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
-import { Connection, Org } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('sfdami', 'exportplan');
+
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
+  private queryString?: string;
+  private queryIsValid?: boolean;
 
   public constructor(private data: MigrationPlanObjectData, private conn: Connection) {}
 
@@ -15,20 +20,33 @@ export default class MigrationPlanObject {
     return this.data.objectName;
   }
 
-  public selfCheck(): boolean {
-    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) === 1) {
-      return true;
-    }
-    return false;
+  public async load(): Promise<MigrationPlanObject> {
+    await this.describeObject();
+    await this.getQueryString();
+    this.queryIsValid = await this.checkQuery();
+    return this;
   }
 
-  public async retrieveRecords(org: Org, exportPath: string): Promise<MigrationPlanObjectQueryResult> {
+  public selfCheck(): boolean {
+    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
+      throw messages.createError('too-many-query-sources-defined');
+    }
+    if (!this.queryString) {
+      throw messages.createError('no-query-defined-for-object', [this.data.objectName]);
+    }
+    if (!this.queryIsValid) {
+      throw new Error(`Invalid query syntax: ${this.queryString}`);
+    }
+    return true;
+  }
+
+  public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
     // TODO: Find a way to use standard CLI logger
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
     const queryString = await this.getQueryString();
-    const queryResult = await org.getConnection().query(queryString);
+    const queryResult = await this.conn.query(queryString);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
       queryString,
@@ -43,7 +61,7 @@ export default class MigrationPlanObject {
     while (!isDone) {
       incrementer++;
       // eslint-disable-next-line no-await-in-loop
-      const moreResults = await org.getConnection().queryMore(nextRecordsUrl as string);
+      const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
       isDone = moreResults.done;
       nextRecordsUrl = moreResults.nextRecordsUrl;
       result.files.push(this.writeResultsToFile(moreResults.records, exportPath, incrementer));
@@ -63,19 +81,41 @@ export default class MigrationPlanObject {
   }
 
   public async getQueryString(): Promise<string> {
-    if (this.hasQueryString()) {
-      return String(this.data.queryString);
-    } else if (this.hasValidFile()) {
-      return this.loadQueryStringFromFile();
-    } else if (this.hasQueryConstructor()) {
-      const query = await this.buildQuery();
-      return query;
-    } else {
-      throw new Error(`No query defined for: ${this.data.objectName}`);
+    if (this.queryString) {
+      return this.queryString;
     }
+    if (this.hasQueryString()) {
+      this.queryString = String(this.data.queryString);
+    } else if (this.hasValidFile()) {
+      this.queryString = this.loadQueryStringFromFile();
+    } else if (this.hasQueryConstructor()) {
+      this.queryString = await this.buildQuery();
+    }
+    return this.queryString!;
   }
 
   //        PRIVATE
+
+  public async checkQuery(): Promise<boolean> {
+    if (!this.queryString) {
+      return false;
+    }
+    try {
+      await this.conn.query(this.buildValidatorQuery());
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  private buildValidatorQuery(): string {
+    const rawQuery: string = this.queryString!;
+    if (rawQuery.includes(' LIMIT ')) {
+      return rawQuery.replace('(LIMIT) [0-9]+', 'LIMIT 1');
+    } else {
+      return `${rawQuery} LIMIT 1`;
+    }
+  }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;

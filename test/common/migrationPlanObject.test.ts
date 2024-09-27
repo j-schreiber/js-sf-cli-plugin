@@ -1,8 +1,14 @@
+import fs from 'node:fs';
 import { expect } from 'chai';
 import sinon from 'sinon';
+import { isString, type AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
+
+const TooManyQuerySourcesDefined: string =
+  'More than one query provided. queryString OR queryFile or queryObject are allowed.';
+const NoQueryDefinedForAccount: string = 'No query defined for: Account';
 
 const mockOrderDescribeResult: Partial<DescribeSObjectResult> = {
   custom: false,
@@ -26,9 +32,11 @@ describe('migration plan object', () => {
   afterEach(async () => {
     $$.SANDBOX.restore();
     sinon.restore();
+    // better to stub the describeAPI entirely
+    fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
   });
 
-  it('is initialised with query file => returns string from file', async () => {
+  it('is has only query file => returns string from file', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -37,6 +45,8 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
+    await testObj.load();
+    sinon.stub(MigrationPlanObject.prototype, 'checkQuery').resolves(true);
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
@@ -47,7 +57,7 @@ describe('migration plan object', () => {
     );
   });
 
-  it('is initialised with query string => returns direct input string', async () => {
+  it('is has only query string => returns direct input string', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -56,13 +66,14 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
+    await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
     expect(await testObj.getQueryString()).to.equal('SELECT Id FROM Account');
   });
 
-  it('is initialised without query or query file => is not valid', async () => {
+  it('is has no query defined => is not valid', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -70,14 +81,13 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-
-    // Act
-    expect(testObj.selfCheck()).to.not.be.true;
+    await testObj.load();
 
     // Assert
+    expect(() => testObj.selfCheck()).to.throw(NoQueryDefinedForAccount);
   });
 
-  it('is initialised with query and query file => is not valid', async () => {
+  it('is has query and query file => is not valid', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -87,14 +97,13 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-
-    // Act
-    expect(testObj.selfCheck()).to.not.be.true;
+    await testObj.load();
 
     // Assert
+    expect(() => testObj.selfCheck()).to.throw(TooManyQuerySourcesDefined);
   });
 
-  it('is initialised with full query object with "all" fields => creates SOQL from describe', async () => {
+  it('is has full query object with "all" fields => creates SOQL from describe', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -107,6 +116,7 @@ describe('migration plan object', () => {
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
       .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+    await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
@@ -115,7 +125,7 @@ describe('migration plan object', () => {
     );
   });
 
-  it('is initialised with query object without filter => creates SOQL without WHERE', async () => {
+  it('is has query object without filter => creates SOQL without WHERE', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -128,13 +138,14 @@ describe('migration plan object', () => {
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
       .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+    await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
     expect(await testObj.getQueryString()).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
   });
 
-  it('is initialised with query object with limit => creates SOQL with LIMIT', async () => {
+  it('is has query object with limit => creates SOQL with LIMIT', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -147,11 +158,62 @@ describe('migration plan object', () => {
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
       .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+    await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
     expect(await testObj.getQueryString()).to.equal(
       'SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order LIMIT 1000'
+    );
+  });
+
+  it('has invalid query string => validates query syntax in self check', async () => {
+    // Arrange
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      if (isString(request) && request.includes('query?q=SELECT%20Id%2CInvalidField__x%20FROM%20Account%20LIMIT%201')) {
+        return Promise.resolve({ status: 0, records: [] });
+      }
+      return Promise.resolve({});
+    };
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryString: 'SELECT Id,InvalidField__x FROM Account',
+      },
+      await testOrg.getConnection()
+    );
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+    await testObj.load();
+
+    // Assert
+    expect(() => testObj.selfCheck()).to.throw('Invalid query syntax: SELECT Id,InvalidField__x FROM Account');
+  });
+
+  it('has invalid query string with LIMIT => validates query syntax in self check', async () => {
+    // Arrange
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      if (isString(request) && request.includes('query?q=SELECT%20Id%2CInvalidField__x%20FROM%20Account%20LIMIT%201')) {
+        return Promise.resolve({ status: 0, records: [] });
+      }
+      return Promise.reject('Unexpected query was executed');
+    };
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryString: 'SELECT Id,InvalidField__x FROM Account LIMIT 100',
+      },
+      await testOrg.getConnection()
+    );
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+    await testObj.load();
+
+    // Assert
+    expect(() => testObj.selfCheck()).to.throw(
+      'Invalid query syntax: SELECT Id,InvalidField__x FROM Account LIMIT 100'
     );
   });
 });

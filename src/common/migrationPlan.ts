@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { Org } from '@salesforce/core';
 import { MigrationPlanData } from '../types/migrationPlanData.js';
@@ -18,6 +19,13 @@ export default class MigrationPlan {
     return this.data.name;
   }
 
+  public async load(): Promise<MigrationPlan> {
+    for (const planObject of this.getObjects()) {
+      await planObject.load();
+    }
+    return this;
+  }
+
   public getObjects(): MigrationPlanObject[] {
     return this.objects;
   }
@@ -25,11 +33,13 @@ export default class MigrationPlan {
   public selfCheck(): ValidationResult {
     const res: ValidationResult = new ValidationResult();
     res.infos.push(`Found ${this.objects.length} objects.`);
-    this.getObjects().forEach((planObject) => {
-      if (!planObject.selfCheck()) {
-        res.errors.push(`Error validating plan object ${this.data.name} at ${planObject.getObjectName()}`);
+    for (const planObject of this.getObjects()) {
+      try {
+        planObject.selfCheck();
+      } catch (err) {
+        res.errors.push(`Error validating plan object ${planObject.getObjectName()}: ${String(err)}`);
       }
-    });
+    }
     return res;
   }
 
@@ -39,8 +49,7 @@ export default class MigrationPlan {
     fs.rmSync(exportPath, { recursive: true, force: true });
     fs.mkdirSync(exportPath, { recursive: true });
     for (const planObject of this.getObjects()) {
-      // eslint-disable-next-line no-await-in-loop
-      const objectResults = await planObject.retrieveRecords(this.org, exportPath);
+      const objectResults = await planObject.retrieveRecords(exportPath);
       results.push(objectResults);
     }
     return results;
