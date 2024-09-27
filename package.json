@@ -3,6 +3,7 @@
   "description": "Salesforce data migration utility",
   "version": "1.0.0",
   "dependencies": {
+    "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
     "@salesforce/dev-scripts": "^10.2.10",

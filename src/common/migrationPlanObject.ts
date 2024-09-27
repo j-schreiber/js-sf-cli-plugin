@@ -1,24 +1,25 @@
 import fs from 'node:fs';
-import { Org } from '@salesforce/core';
+import { DescribeSObjectResult } from '@jsforce/jsforce-node';
+import { Connection, Org } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
+import DescribeApi from './metadata/describeApi.js';
 
 export default class MigrationPlanObject {
-  public constructor(public data: MigrationPlanObjectData) {}
+  private describeResult?: DescribeSObjectResult;
+
+  public constructor(private data: MigrationPlanObjectData, private conn: Connection) {}
 
   //      PUBLIC API
 
-  public getName(): string {
-    return `My object's name is: ${this.data.objectName}`;
+  public getObjectName(): string {
+    return this.data.objectName;
   }
 
   public selfCheck(): boolean {
-    if (this.hasValidFile() && this.hasQueryString()) {
-      return false;
+    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) === 1) {
+      return true;
     }
-    if (!this.hasValidFile() && !this.hasQueryString()) {
-      return false;
-    }
-    return true;
+    return false;
   }
 
   public async retrieveRecords(org: Org, exportPath: string): Promise<MigrationPlanObjectQueryResult> {
@@ -26,10 +27,11 @@ export default class MigrationPlanObject {
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryResult = await org.getConnection().query(this.getQueryString());
+    const queryString = await this.getQueryString();
+    const queryResult = await org.getConnection().query(queryString);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
-      queryString: this.getQueryString(),
+      queryString,
       totalSize: queryResult.records.length,
       files: [],
     };
@@ -52,11 +54,24 @@ export default class MigrationPlanObject {
     return result;
   }
 
-  public getQueryString(): string {
+  public async describeObject(): Promise<DescribeSObjectResult> {
+    if (!this.describeResult) {
+      const descApi: DescribeApi = new DescribeApi(this.conn);
+      this.describeResult = await descApi.describeSObject(this.data.objectName);
+    }
+    return this.describeResult;
+  }
+
+  public async getQueryString(): Promise<string> {
     if (this.hasQueryString()) {
       return String(this.data.queryString);
-    } else {
+    } else if (this.hasValidFile()) {
       return this.loadQueryStringFromFile();
+    } else if (this.hasQueryConstructor()) {
+      const query = await this.buildQuery();
+      return query;
+    } else {
+      throw new Error(`No query defined for: ${this.data.objectName}`);
     }
   }
 
@@ -83,5 +98,17 @@ export default class MigrationPlanObject {
     } else {
       return false;
     }
+  }
+
+  private hasQueryConstructor(): boolean {
+    return Boolean(this.data.query && this.data.query.fetchAllFields);
+  }
+
+  private async buildQuery(): Promise<string> {
+    const fields: string[] = [];
+    const whereFilter = this.data.query?.filter ? ` WHERE ${this.data.query.filter}` : '';
+    const limitClause = this.data.query?.limit ? ` LIMIT ${this.data.query.limit}` : '';
+    (await this.describeObject()).fields.forEach((field) => fields.push(field.name));
+    return `SELECT ${fields.join(',')} FROM ${this.data.objectName}${whereFilter}${limitClause}`;
   }
 }

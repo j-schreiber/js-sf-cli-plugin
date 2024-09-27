@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
@@ -17,6 +18,7 @@ describe('sfdami plan export', () => {
 
   afterEach(() => {
     $$.restore();
+    fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
   });
 
   it('runs command with required params => exits OK', async () => {
