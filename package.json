@@ -67,6 +67,7 @@
     "compile": "wireit",
     "docs": "sf-docs",
     "format": "wireit",
+    "pretty-quick-staged": "node_modules/.bin/pretty-quick --staged",
     "link-check": "wireit",
     "lint": "wireit",
     "postinstall": "yarn husky install",
