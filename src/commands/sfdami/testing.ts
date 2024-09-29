@@ -4,9 +4,9 @@
 // import { EventEmitter } from 'node:events';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import SubclassTesting from '../../common/utils/subclassTesting.js';
-import { eventBus } from '../../common/comms/eventBus.js';
 import { Config } from '@oclif/core';
+import SubclassTesting, { ObjectStatus, PlanObjectEvent } from '../../common/utils/subclassTesting.js';
+import { eventBus } from '../../common/comms/eventBus.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'testing');
@@ -31,31 +31,29 @@ export default class Testing extends SfCommand<TestingResult> {
   public constructor(argv: string[], config: Config) {
     // Call the parent constructor with the required arguments
     super(argv, config);
-    eventBus.on('customEvent', (message: string) => this.handleExportEvents(message));
+    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handlePlanEvents(payload));
   }
 
   public async run(): Promise<TestingResult> {
     const { flags } = await this.parse(Testing);
-    for (let i = 0; i < flags.iterations; i++) {
-      console.log(`Calling subclass in iteration: ${i}`);
-      await SubclassTesting.sleepAndLog(i, 1000);
+    const objects: string[] = ['Account', 'Contact', 'Order', 'Asset', 'Site__c'];
+    for (const name of objects) {
+      await SubclassTesting.simulateObjectExecution(flags.iterations, name);
     }
     return {
       path: 'src/commands/testing.ts',
     };
   }
 
-  private handleExportEvents(message: string): void {
-    console.log(`Handling event: ${message}`);
-    this.log(`Received event: ${message}`);
+  private handlePlanEvents(payload: PlanObjectEvent): void {
+    if (payload.status === ObjectStatus.Started) {
+      this.spinner.start(`Exporting ${payload.objectName}`, 'Status msg');
+    }
+    if (payload.status === ObjectStatus.InProgress) {
+      this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
+    }
+    if (payload.status === ObjectStatus.Completed) {
+      this.spinner.stop(`Completed ${payload.objectName} successfully!`);
+    }
   }
-
-  // private runIt(iteration: number, sleepTime: number): Promise<void> {
-  //   this.log(`Sleeping in ${iteration}. Iteration.`);
-  //   return new Promise<void>((resolve) => {
-  //     setTimeout(() => {
-  //       resolve();
-  //     }, sleepTime);
-  //   });
-  // }
 }
