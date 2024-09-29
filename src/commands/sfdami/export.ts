@@ -29,13 +29,17 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
       required: true,
       exists: true,
     }),
+    'output-dir': Flags.directory({
+      summary: messages.getMessage('flags.output-dir.summary'),
+      char: 'd',
+    }),
   };
 
   public async run(): Promise<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
     this.validatePlan(plan);
-    await this.executePlan(plan);
+    await this.executePlan(plan, flags['output-dir']);
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
@@ -53,8 +57,8 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     }
   }
 
-  private async executePlan(plan: MigrationPlan): Promise<void> {
+  private async executePlan(plan: MigrationPlan, outputDir?: string): Promise<void> {
     this.log('Executing plan ...');
-    await plan.execute();
+    await plan.execute(outputDir);
   }
 }

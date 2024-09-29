@@ -3,23 +3,14 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { isString, type AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
-import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
+import { MockOrderDescribeResult } from '../data/describes/mockOrderDescribeResult.js';
+import { MockAccountDescribeResult } from '../data/describes/mockAccountDescribeResult.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
 const NoQueryDefinedForAccount: string = 'No query defined for: Account';
-
-const mockOrderDescribeResult: Partial<DescribeSObjectResult> = {
-  custom: false,
-  createable: true,
-  fields: [
-    { name: 'Id' } as Field,
-    { name: 'OrderNumber' } as Field,
-    { name: 'AccountId' } as Field,
-    { name: 'BillToContactId' } as Field,
-  ],
-};
 
 describe('migration plan object', () => {
   const $$ = new TestContext();
@@ -50,11 +41,8 @@ describe('migration plan object', () => {
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
-    // the file is auto-formatted! Its critical to match exact file formatting for asserts
-    // actual validation (syntax, runtime schema, etc) will be performed by the target org
-    expect(await testObj.getQueryString()).to.equal(
-      'SELECT\n  Id,\n  Name,\n  BillingStreet\nFROM\n  Account\nLIMIT\n  9500'
-    );
+    // the file is auto-formatted! Query builder replaces all formatting with single whitespace
+    expect(await testObj.resolveQueryString()).to.equal('SELECT Id, Name, BillingStreet FROM Account LIMIT 9500');
   });
 
   it('is has only query string => returns direct input string', async () => {
@@ -70,7 +58,7 @@ describe('migration plan object', () => {
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
-    expect(await testObj.getQueryString()).to.equal('SELECT Id FROM Account');
+    expect(await testObj.resolveQueryString()).to.equal('SELECT Id FROM Account');
   });
 
   it('is has no query defined => is not valid', async () => {
@@ -115,12 +103,12 @@ describe('migration plan object', () => {
     // mock describe result in cache
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
-    expect(await testObj.getQueryString()).to.equal(
+    expect(await testObj.resolveQueryString()).to.equal(
       "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE Account.CurrencyIsoCode = 'EUR' LIMIT 10000"
     );
   });
@@ -137,12 +125,12 @@ describe('migration plan object', () => {
     // mock describe result in cache
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
-    expect(await testObj.getQueryString()).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
+    expect(await testObj.resolveQueryString()).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
   });
 
   it('is has query object with limit => creates SOQL with LIMIT', async () => {
@@ -157,12 +145,12 @@ describe('migration plan object', () => {
     // mock describe result in cache
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     await testObj.load();
 
     // Assert
     expect(testObj.selfCheck()).to.be.true;
-    expect(await testObj.getQueryString()).to.equal(
+    expect(await testObj.resolveQueryString()).to.equal(
       'SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order LIMIT 1000'
     );
   });
@@ -170,6 +158,7 @@ describe('migration plan object', () => {
   it('has invalid query string => validates query syntax in self check', async () => {
     // Arrange
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      expect(request).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
       if (isString(request) && request.includes('query?q=SELECT%20Id%2CInvalidField__x%20FROM%20Account%20LIMIT%201')) {
         return Promise.resolve({ status: 0, records: [] });
       }
@@ -184,7 +173,7 @@ describe('migration plan object', () => {
     );
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     await testObj.load();
 
     // Assert
@@ -194,6 +183,7 @@ describe('migration plan object', () => {
   it('has invalid query string with LIMIT => validates query syntax in self check', async () => {
     // Arrange
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      expect(request).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
       if (isString(request) && request.includes('query?q=SELECT%20Id%2CInvalidField__x%20FROM%20Account%20LIMIT%201')) {
         return Promise.resolve({ status: 0, records: [] });
       }
@@ -208,12 +198,43 @@ describe('migration plan object', () => {
     );
     sinon
       .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(mockOrderDescribeResult as DescribeSObjectResult);
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     await testObj.load();
 
     // Assert
     expect(() => testObj.selfCheck()).to.throw(
       'Invalid query syntax: SELECT Id,InvalidField__x FROM Account LIMIT 100'
     );
+  });
+
+  it('has complex query from file => validates query syntax in self check', async () => {
+    // Arrange
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      console.log(request);
+      // console.log(request);
+      // if (
+      //   isString(request) &&
+      //   request.includes(
+      //     'query?q=SELECT%0A%20%20Id%2C%0A%20%20Name%2C%0A%20%20BillingStreet%0AFROM%0A%20%20Account%0ALIMIT%201'
+      //   )
+      // ) {
+      // }
+      return Promise.resolve({ status: 0, records: [] });
+      // return Promise.reject('Unexpected query was executed');
+    };
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryFile: 'test/data/soql/accounts.sql',
+      },
+      await testOrg.getConnection()
+    );
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(MockAccountDescribeResult as DescribeSObjectResult);
+    await testObj.load();
+
+    // Assert
+    expect(testObj.selfCheck()).to.be.true;
   });
 });

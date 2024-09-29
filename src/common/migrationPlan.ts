@@ -15,6 +15,18 @@ export default class MigrationPlan {
     });
   }
 
+  private static prepareOutputDir(userInput?: string): string {
+    let exportPath;
+    if (userInput) {
+      exportPath = `${userInput}/exports`;
+    } else {
+      exportPath = 'exports';
+    }
+    fs.rmSync(exportPath, { recursive: true, force: true });
+    fs.mkdirSync(exportPath, { recursive: true });
+    return exportPath;
+  }
+
   public getName(): string {
     return this.data.name;
   }
@@ -43,11 +55,9 @@ export default class MigrationPlan {
     return res;
   }
 
-  public async execute(): Promise<MigrationPlanObjectQueryResult[]> {
+  public async execute(outputDir?: string): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
-    const exportPath: string = `./.sfdami/${this.org.getUsername() as string}/exports`;
-    fs.rmSync(exportPath, { recursive: true, force: true });
-    fs.mkdirSync(exportPath, { recursive: true });
+    const exportPath: string = MigrationPlan.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
       const objectResults = await planObject.retrieveRecords(exportPath);
       results.push(objectResults);

@@ -3,6 +3,7 @@ import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { Connection, Messages } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
+import QueryBuilder from './utils/queryBuilder.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'exportplan');
@@ -22,7 +23,7 @@ export default class MigrationPlanObject {
 
   public async load(): Promise<MigrationPlanObject> {
     await this.describeObject();
-    await this.getQueryString();
+    this.queryString = await this.resolveQueryString();
     this.queryIsValid = await this.checkQuery();
     return this;
   }
@@ -45,11 +46,10 @@ export default class MigrationPlanObject {
     process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryString = await this.getQueryString();
-    const queryResult = await this.conn.query(queryString);
+    const queryResult = await this.conn.query(this.queryString!);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
-      queryString,
+      queryString: this.queryString!,
       totalSize: queryResult.records.length,
       files: [],
     };
@@ -80,18 +80,21 @@ export default class MigrationPlanObject {
     return this.describeResult;
   }
 
-  public async getQueryString(): Promise<string> {
-    if (this.queryString) {
-      return this.queryString;
-    }
+  public async resolveQueryString(): Promise<string | undefined> {
     if (this.hasQueryString()) {
-      this.queryString = String(this.data.queryString);
+      return String(this.data.queryString);
     } else if (this.hasValidFile()) {
-      this.queryString = this.loadQueryStringFromFile();
+      return QueryBuilder.loadFromFile(this.data.queryFile);
     } else if (this.hasQueryConstructor()) {
-      this.queryString = await this.buildQuery();
+      const qb = new QueryBuilder(await this.describeObject())
+        .setLimit(this.data.query?.limit)
+        .setWhere(this.data.query?.filter);
+      if (this.data.query?.fetchAllFields) {
+        qb.addAllFields();
+      }
+      return qb.toSOQL();
     }
-    return this.queryString!;
+    return undefined;
   }
 
   //        PRIVATE
@@ -110,8 +113,8 @@ export default class MigrationPlanObject {
 
   private buildValidatorQuery(): string {
     const rawQuery: string = this.queryString!;
-    if (rawQuery.includes(' LIMIT ')) {
-      return rawQuery.replace('(LIMIT) [0-9]+', 'LIMIT 1');
+    if (rawQuery.includes('LIMIT')) {
+      return rawQuery.replace(new RegExp('(LIMIT)(\\s)*[0-9]+'), 'LIMIT 1');
     } else {
       return `${rawQuery} LIMIT 1`;
     }
@@ -123,32 +126,20 @@ export default class MigrationPlanObject {
     return fullFilePath;
   }
 
-  private loadQueryStringFromFile(): string {
-    const queryString = fs.readFileSync(this.data.queryFile as string, 'utf8');
-    return queryString.trim();
-  }
-
   private hasQueryString(): boolean {
     return Boolean(this.data.queryString && this.data.queryString.trim() !== '');
   }
 
   private hasValidFile(): boolean {
-    if (this.data.queryFile && this.data.queryFile.trim() !== '') {
-      return this.loadQueryStringFromFile() !== '' ? true : false;
-    } else {
+    try {
+      QueryBuilder.loadFromFile(this.data.queryFile);
+      return true;
+    } catch (err) {
       return false;
     }
   }
 
   private hasQueryConstructor(): boolean {
     return Boolean(this.data.query && this.data.query.fetchAllFields);
-  }
-
-  private async buildQuery(): Promise<string> {
-    const fields: string[] = [];
-    const whereFilter = this.data.query?.filter ? ` WHERE ${this.data.query.filter}` : '';
-    const limitClause = this.data.query?.limit ? ` LIMIT ${this.data.query.limit}` : '';
-    (await this.describeObject()).fields.forEach((field) => fields.push(field.name));
-    return `SELECT ${fields.join(',')} FROM ${this.data.objectName}${whereFilter}${limitClause}`;
   }
 }
