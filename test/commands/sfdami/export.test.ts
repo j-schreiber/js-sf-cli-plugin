@@ -22,8 +22,10 @@ describe('sfdami plan export', () => {
     $$.restore();
     // cached describes
     fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
-    // file exports
+    // file exports with explicit path
     fs.rmSync(TEST_PATH, { recursive: true, force: true });
+    // default export
+    fs.rmSync('exports', { recursive: true, force: true });
   });
 
   it('runs command with required params => exits OK', async () => {

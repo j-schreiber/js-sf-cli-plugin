@@ -4,6 +4,8 @@ import { Connection, Messages } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
+import { eventBus } from './comms/eventBus.js';
+import { ObjectStatus, PlanObjectEvent } from './comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'exportplan');
@@ -31,11 +33,11 @@ export default class MigrationPlanObject {
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
-    // TODO: Find a way to use standard CLI logger
-    process.stdout.write(`Starting retrieval of ${this.data.objectName}\n`);
+    this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
     const queryResult = await this.conn.query(this.queryString!);
+    const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
       queryString: this.queryString!,
@@ -45,19 +47,18 @@ export default class MigrationPlanObject {
     let isDone = queryResult.done;
     let nextRecordsUrl = queryResult.nextRecordsUrl;
     let incrementer = 1;
+    this.emitQueryProgress(incrementer, totalBatches);
     result.files.push(this.writeResultsToFile(queryResult.records, exportPath, incrementer));
-    process.stdout.write(`Retrieved ${queryResult.records.length} records.\n`);
     while (!isDone) {
       incrementer++;
+      this.emitQueryProgress(incrementer, totalBatches);
       // eslint-disable-next-line no-await-in-loop
       const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
       isDone = moreResults.done;
       nextRecordsUrl = moreResults.nextRecordsUrl;
       result.files.push(this.writeResultsToFile(moreResults.records, exportPath, incrementer));
       result.totalSize += moreResults.records.length;
-      process.stdout.write(`Retrieved ${moreResults.records.length} records.\n`);
     }
-    process.stdout.write(`Completed query with total of ${result.totalSize} records.\n`);
     return result;
   }
 
@@ -113,5 +114,14 @@ export default class MigrationPlanObject {
     if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
       throw messages.createError('too-many-query-sources-defined');
     }
+  }
+
+  private emitQueryProgress(currentCompleted: number, totalNumber?: number): void {
+    eventBus.emit('planObjectEvent', {
+      status: ObjectStatus.InProgress,
+      totalBatches: totalNumber,
+      batchesCompleted: currentCompleted,
+      objectName: this.getObjectName(),
+    } as PlanObjectEvent);
   }
 }

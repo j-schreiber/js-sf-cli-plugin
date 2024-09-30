@@ -1,8 +1,11 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
+import { Config } from '@oclif/core';
 import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
 import ValidationResult from '../../common/validationResult.js';
 import MigrationPlan from '../../common/migrationPlan.js';
+import { eventBus } from '../../common/comms/eventBus.js';
+import { PlanObjectEvent, ObjectStatus } from '../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'sfdami.export');
@@ -35,16 +38,24 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     }),
   };
 
+  public constructor(argv: string[], config: Config) {
+    // Call the parent constructor with the required arguments
+    super(argv, config);
+    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handlePlanEvents(payload));
+  }
+
   public async run(): Promise<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
     this.validatePlan(plan);
-    await this.executePlan(plan, flags['output-dir']);
+    await plan.execute(flags['output-dir']);
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
     };
   }
+
+  //    PRIVATE ZONE
 
   private validatePlan(plan: MigrationPlan): void {
     const planValResult: ValidationResult = plan.selfCheck();
@@ -57,8 +68,15 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     }
   }
 
-  private async executePlan(plan: MigrationPlan, outputDir?: string): Promise<void> {
-    this.log('Executing plan ...');
-    await plan.execute(outputDir);
+  private handlePlanEvents(payload: PlanObjectEvent): void {
+    if (payload.status === ObjectStatus.Started) {
+      this.spinner.start(`Exporting ${payload.objectName}`, 'Status msg');
+    }
+    if (payload.status === ObjectStatus.InProgress) {
+      this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
+    }
+    if (payload.status === ObjectStatus.Completed) {
+      this.spinner.stop(`Retrieved ${payload.totalRecords} records in ${payload.files.length} files.`);
+    }
   }
 }

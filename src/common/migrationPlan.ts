@@ -5,6 +5,8 @@ import { MigrationPlanData } from '../types/migrationPlanData.js';
 import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import ValidationResult from './validationResult.js';
+import { eventBus } from './comms/eventBus.js';
+import { PlanObjectEvent, ObjectStatus } from './comms/processingEvents.js';
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
@@ -13,18 +15,6 @@ export default class MigrationPlan {
     this.data.objects.forEach((objectData) => {
       this.objects.push(new MigrationPlanObject(objectData, org.getConnection()));
     });
-  }
-
-  private static prepareOutputDir(userInput?: string): string {
-    let exportPath;
-    if (userInput) {
-      exportPath = `${userInput}/exports`;
-    } else {
-      exportPath = 'exports';
-    }
-    fs.rmSync(exportPath, { recursive: true, force: true });
-    fs.mkdirSync(exportPath, { recursive: true });
-    return exportPath;
   }
 
   public getName(): string {
@@ -45,23 +35,42 @@ export default class MigrationPlan {
   public selfCheck(): ValidationResult {
     const res: ValidationResult = new ValidationResult();
     res.infos.push(`Found ${this.objects.length} objects.`);
-    // for (const planObject of this.getObjects()) {
-    //   try {
-    //     planObject.selfCheck();
-    //   } catch (err) {
-    //     res.errors.push(`Error validating plan object ${planObject.getObjectName()}: ${String(err)}`);
-    //   }
-    // }
     return res;
   }
 
   public async execute(outputDir?: string): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
-    const exportPath: string = MigrationPlan.prepareOutputDir(outputDir);
+    const exportPath: string = this.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
+      eventBus.emit('planObjectEvent', {
+        status: ObjectStatus.Started,
+        totalBatches: 10,
+        batchesCompleted: 0,
+        objectName: planObject.getObjectName(),
+      } as PlanObjectEvent);
       const objectResults = await planObject.retrieveRecords(exportPath);
+      eventBus.emit('planObjectEvent', {
+        status: ObjectStatus.Completed,
+        totalBatches: 10,
+        batchesCompleted: 10,
+        totalRecords: objectResults.totalSize,
+        files: objectResults.files,
+        objectName: planObject.getObjectName(),
+      } as PlanObjectEvent);
       results.push(objectResults);
     }
     return results;
+  }
+
+  private prepareOutputDir(userInput?: string): string {
+    let exportPath;
+    if (userInput) {
+      exportPath = userInput;
+    } else {
+      exportPath = `exports/${this.getName().toLocaleLowerCase().replaceAll(' ', '-')}`;
+    }
+    fs.rmSync(exportPath, { recursive: true, force: true });
+    fs.mkdirSync(exportPath, { recursive: true });
+    return exportPath;
   }
 }
