@@ -1,13 +1,47 @@
 name: US Export Test Plan
 objects:
+  - objectName: User
+    queryFile: test/data/soql/users.sql
+  - objectName: ClientProfile__c
+    query:
+      fetchAllFields: true
+      filter: MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: Lead
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: Campaign
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
   - objectName: Account
     query:
       fetchAllFields: true
       filter: ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: AccountTeamMember
+    query:
+      fetchAllFields: true
+      filter: Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
   - objectName: Contact
     query:
       fetchAllFields: true
       filter: Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: CampaignMember
+    query:
+      fetchAllFields: true
+      filter: LeadOrContactOwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: Product2
+    query:
+      fetchAllFields: true
+      filter: CurrencyIsoCode = 'USD'
+  - objectName: Pricebook2
+    query:
+      fetchAllFields: true
+      filter: CurrencyIsoCode = 'USD' OR IsStandard = TRUE
+  - objectName: PricebookEntry
+    query:
+      fetchAllFields: true
+      filter: CurrencyIsoCode = 'USD'
   - objectName: Case
     query:
       fetchAllFields: true
@@ -16,6 +50,10 @@ objects:
     query:
       fetchAllFields: true
       filter: Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: ContactPointAddress
+    query:
+      fetchAllFields: true
+      filter: ParentId IN (SELECT Id FROM Account WHERE ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC')
   - objectName: OrderItem
     query:
       fetchAllFields: true
@@ -47,7 +85,7 @@ objects:
   - objectName: Site__c
     query:
       fetchAllFields: true
-      filter: Account__r.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+      filter: Account__r.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC' OR CurrencyIsoCode IN ('USD', 'CAD')
   - objectName: Asset
     query:
       fetchAllFields: true
@@ -56,15 +94,59 @@ objects:
     query:
       fetchAllFields: true
       filter: Site__r.Account__r.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
-  - objectName: Product2
+  - objectName: WorkType
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: WorkStepTemplate
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: WorkPlanTemplate
     query:
       fetchAllFields: true
       filter: CurrencyIsoCode = 'USD'
-  - objectName: Pricebook2
-    query:
-      fetchAllFields: true
-      filter: CurrencyIsoCode = 'USD' OR IsStandard = TRUE
-  - objectName: PricebookEntry
+  - objectName: WorkPlanTemplateEntry
     query:
       fetchAllFields: true
       filter: CurrencyIsoCode = 'USD'
+  - objectName: WorkOrderTemplate__c
+    query:
+      fetchAllFields: true
+      filter: CurrencyIsoCode = 'USD'
+  - objectName: WorkOrderTemplateProduct__c
+    query:
+      fetchAllFields: true
+      filter: CurrencyIsoCode = 'USD'
+  - objectName: WorkPlanSelectionRule
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: WorkOrder
+    query:
+      fetchAllFields: true
+      filter: Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: WorkOrderLineItem
+    query:
+      fetchAllFields: true
+      filter: WorkOrder.Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: WorkPlan
+    query:
+      fetchAllFields: true
+      filter: WorkOrder.Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: WorkStep
+    query:
+      fetchAllFields: true
+      filter: WorkOrder.Account.ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC'
+  - objectName: Task
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: Event
+    query:
+      fetchAllFields: true
+      filter: OwnerId IN (SELECT Id FROM User WHERE CompanyName = 'The Mobility House LLC')
+  - objectName: EmailMessage
+    query:
+      fetchAllFields: true
+      filter: RelatedToId IN (SELECT Id FROM Account WHERE ClientProfile__r.MetadataRecord__c = 'TMH_US_LLC')

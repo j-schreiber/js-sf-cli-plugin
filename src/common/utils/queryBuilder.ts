@@ -32,11 +32,8 @@ export default class QueryBuilder {
       await conn.query(this.makeValidatorQuery(queryString));
       return true;
     } catch (err) {
-      if (err instanceof QueryError) {
-        throw new Error(`Invalid query syntax: ${queryString} (${err.errorCode}: ${err.data.message})`);
-      } else {
-        throw new Error(`Unknown error validating query: ${queryString}`);
-      }
+      const queryApiErr: QueryError = err as QueryError;
+      throw new Error(`Invalid query syntax: ${queryString} (${queryApiErr.errorCode}: ${queryApiErr.data.message})`);
     }
   }
 
