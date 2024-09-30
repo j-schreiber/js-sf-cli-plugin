@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
+import { Connection } from '@salesforce/core';
+import { QueryError } from '../../types/sfStandardApiTypes.js';
 
 export default class QueryBuilder {
   private selectFields: Set<string> = new Set<string>();
   private limit?: number;
   private filter?: string;
 
-  public constructor(public describeResult: DescribeSObjectResult) {
+  public constructor(private describeResult: DescribeSObjectResult) {
     this.selectFields.add('Id');
   }
 
@@ -19,6 +21,22 @@ export default class QueryBuilder {
       return queryString.trim().replace(/\s+/g, ' ');
     } else {
       throw new Error(`Cannot load query. ${filePath} does not exist.`);
+    }
+  }
+
+  public static async assertQuerySyntax(conn: Connection, queryString?: string): Promise<boolean> {
+    if (queryString === undefined || queryString.trim().length === 0) {
+      throw new Error('Query cannot be empty!');
+    }
+    try {
+      await conn.query(this.makeValidatorQuery(queryString));
+      return true;
+    } catch (err) {
+      if (err instanceof QueryError) {
+        throw new Error(`Invalid query syntax: ${queryString} (${err.errorCode}: ${err.data.message})`);
+      } else {
+        throw new Error(`Unknown error validating query: ${queryString}`);
+      }
     }
   }
 
@@ -51,4 +69,6 @@ export default class QueryBuilder {
     const limitClause = this.limit ? ` LIMIT ${this.limit}` : '';
     return `SELECT ${[...this.selectFields].join(',')} FROM ${this.describeResult.name}${whereFilter}${limitClause}`;
   }
+
+  //    PRIVATE
 }

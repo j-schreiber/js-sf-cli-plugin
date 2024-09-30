@@ -10,8 +10,8 @@ const messages = Messages.loadMessages('sfdami', 'exportplan');
 
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
+  private queryBuilder?: QueryBuilder;
   private queryString?: string;
-  private queryIsValid?: boolean;
 
   public constructor(private data: MigrationPlanObjectData, private conn: Connection) {}
 
@@ -22,23 +22,12 @@ export default class MigrationPlanObject {
   }
 
   public async load(): Promise<MigrationPlanObject> {
-    await this.describeObject();
-    this.queryString = await this.resolveQueryString();
-    this.queryIsValid = await this.checkQuery();
+    this.describeResult = await this.describeObject();
+    this.assertQueryDefinitions();
+    this.queryBuilder = new QueryBuilder(this.describeResult);
+    this.queryString = this.resolveQueryString();
+    await QueryBuilder.assertQuerySyntax(this.conn, this.queryString);
     return this;
-  }
-
-  public selfCheck(): boolean {
-    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
-      throw messages.createError('too-many-query-sources-defined');
-    }
-    if (!this.queryString) {
-      throw messages.createError('no-query-defined-for-object', [this.data.objectName]);
-    }
-    if (!this.queryIsValid) {
-      throw new Error(`Invalid query syntax: ${this.queryString}`);
-    }
-    return true;
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
@@ -80,45 +69,22 @@ export default class MigrationPlanObject {
     return this.describeResult;
   }
 
-  public async resolveQueryString(): Promise<string | undefined> {
+  public resolveQueryString(): string {
     if (this.hasQueryString()) {
       return String(this.data.queryString);
     } else if (this.hasValidFile()) {
       return QueryBuilder.loadFromFile(this.data.queryFile);
     } else if (this.hasQueryConstructor()) {
-      const qb = new QueryBuilder(await this.describeObject())
-        .setLimit(this.data.query?.limit)
-        .setWhere(this.data.query?.filter);
+      this.queryBuilder!.setLimit(this.data.query?.limit).setWhere(this.data.query?.filter);
       if (this.data.query?.fetchAllFields) {
-        qb.addAllFields();
+        this.queryBuilder!.addAllFields();
       }
-      return qb.toSOQL();
+      return this.queryBuilder!.toSOQL();
     }
-    return undefined;
+    throw new Error(`No query defined for: ${this.getObjectName()}`);
   }
 
   //        PRIVATE
-
-  public async checkQuery(): Promise<boolean> {
-    if (!this.queryString) {
-      return false;
-    }
-    try {
-      await this.conn.query(this.buildValidatorQuery());
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
-  private buildValidatorQuery(): string {
-    const rawQuery: string = this.queryString!;
-    if (rawQuery.includes('LIMIT')) {
-      return rawQuery.replace(new RegExp('(LIMIT)(\\s)*[0-9]+'), 'LIMIT 1');
-    } else {
-      return `${rawQuery} LIMIT 1`;
-    }
-  }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
@@ -141,5 +107,11 @@ export default class MigrationPlanObject {
 
   private hasQueryConstructor(): boolean {
     return Boolean(this.data.query && this.data.query.fetchAllFields);
+  }
+
+  private assertQueryDefinitions(): void {
+    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
+      throw messages.createError('too-many-query-sources-defined');
+    }
   }
 }

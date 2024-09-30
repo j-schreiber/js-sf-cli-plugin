@@ -55,7 +55,7 @@ describe('query builder', () => {
     );
   });
 
-  it('to SOQL > add all fields => builds string with all fields', async () => {
+  it('to SOQL > add all fields => builds with all fields from describe', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(mockAccountDescribeResult as DescribeSObjectResult);
 

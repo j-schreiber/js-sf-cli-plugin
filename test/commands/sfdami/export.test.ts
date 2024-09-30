@@ -5,6 +5,8 @@ import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import SfdamiExport from '../../../src/commands/sfdami/export.js';
 
+const TEST_PATH = 'exports/export-test-ts';
+
 describe('sfdami plan export', () => {
   const $$ = new TestContext();
   let testOrg = new MockTestOrgData();
@@ -18,7 +20,10 @@ describe('sfdami plan export', () => {
 
   afterEach(() => {
     $$.restore();
+    // cached describes
     fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
+    // file exports
+    fs.rmSync(TEST_PATH, { recursive: true, force: true });
   });
 
   it('runs command with required params => exits OK', async () => {
@@ -26,7 +31,14 @@ describe('sfdami plan export', () => {
     await $$.stubAuths(testOrg);
 
     // Act
-    const result = await SfdamiExport.run(['--source-org', testOrg.username, '--plan', 'test/data/test-plan.yaml']);
+    const result = await SfdamiExport.run([
+      '--source-org',
+      testOrg.username,
+      '--plan',
+      'test/data/test-plan.yaml',
+      '--output-dir',
+      TEST_PATH,
+    ]);
 
     // Assert
     expect(result).to.be.ok;
@@ -51,8 +63,8 @@ describe('sfdami plan export', () => {
         expect.fail('Expected SfError to be thrown');
       }
       // haven't figured out yet, what determins the exit code
-      // 1 appears to be sub-level errors, two is explicit SfCommand-level errors?
-      expect(err.exitCode).to.equal(2);
+      // 1 appears to be sub-level errors, 2 is explicit SfCommand-level errors?
+      expect(err.exitCode).to.equal(1);
     }
   });
 });

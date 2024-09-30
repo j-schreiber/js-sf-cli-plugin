@@ -45,13 +45,13 @@ export default class MigrationPlan {
   public selfCheck(): ValidationResult {
     const res: ValidationResult = new ValidationResult();
     res.infos.push(`Found ${this.objects.length} objects.`);
-    for (const planObject of this.getObjects()) {
-      try {
-        planObject.selfCheck();
-      } catch (err) {
-        res.errors.push(`Error validating plan object ${planObject.getObjectName()}: ${String(err)}`);
-      }
-    }
+    // for (const planObject of this.getObjects()) {
+    //   try {
+    //     planObject.selfCheck();
+    //   } catch (err) {
+    //     res.errors.push(`Error validating plan object ${planObject.getObjectName()}: ${String(err)}`);
+    //   }
+    // }
     return res;
   }
 
