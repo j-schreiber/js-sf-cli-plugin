@@ -5,7 +5,7 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { Config } from '@oclif/core';
-import SubclassTesting, { ObjectStatus, PlanObjectEvent } from '../../common/utils/subclassTesting.js';
+import SubclassTesting, { ProcessingStatus, PlanObjectEvent } from '../../common/utils/subclassTesting.js';
 import { eventBus } from '../../common/comms/eventBus.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -46,13 +46,13 @@ export default class Testing extends SfCommand<TestingResult> {
   }
 
   private handlePlanEvents(payload: PlanObjectEvent): void {
-    if (payload.status === ObjectStatus.Started) {
+    if (payload.status === ProcessingStatus.Started) {
       this.spinner.start(`Exporting ${payload.objectName}`, 'Status msg');
     }
-    if (payload.status === ObjectStatus.InProgress) {
+    if (payload.status === ProcessingStatus.InProgress) {
       this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
     }
-    if (payload.status === ObjectStatus.Completed) {
+    if (payload.status === ProcessingStatus.Completed) {
       this.spinner.stop(`Completed ${payload.objectName} successfully!`);
     }
   }

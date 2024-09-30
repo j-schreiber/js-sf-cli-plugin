@@ -5,7 +5,7 @@ import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
 import ValidationResult from '../../common/validationResult.js';
 import MigrationPlan from '../../common/migrationPlan.js';
 import { eventBus } from '../../common/comms/eventBus.js';
-import { PlanObjectEvent, ObjectStatus } from '../../common/comms/processingEvents.js';
+import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'sfdami.export');
@@ -41,7 +41,10 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
   public constructor(argv: string[], config: Config) {
     // Call the parent constructor with the required arguments
     super(argv, config);
-    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handlePlanEvents(payload));
+    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handleRecordRetrieveEvents(payload));
+    eventBus.on('planValidationEvent', (payload: PlanObjectValidationEvent) =>
+      this.handlePlanValidationEvents(payload)
+    );
   }
 
   public async run(): Promise<SfdamiExportResult> {
@@ -68,15 +71,27 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     }
   }
 
-  private handlePlanEvents(payload: PlanObjectEvent): void {
-    if (payload.status === ObjectStatus.Started) {
-      this.spinner.start(`Exporting ${payload.objectName}`, 'Status msg');
+  private handleRecordRetrieveEvents(payload: PlanObjectEvent): void {
+    if (payload.status === ProcessingStatus.Started) {
+      this.spinner.start(`Exporting ${payload.objectName}`);
     }
-    if (payload.status === ObjectStatus.InProgress) {
+    if (payload.status === ProcessingStatus.InProgress) {
       this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
     }
-    if (payload.status === ObjectStatus.Completed) {
+    if (payload.status === ProcessingStatus.Completed) {
       this.spinner.stop(`Retrieved ${payload.totalRecords} records in ${payload.files.length} files.`);
+    }
+  }
+
+  private handlePlanValidationEvents(payload: PlanObjectValidationEvent): void {
+    if (payload.status === ProcessingStatus.Started) {
+      this.spinner.start(`Validating ${payload.planName}`);
+    }
+    if (payload.status === ProcessingStatus.InProgress) {
+      this.spinner.status = payload.objectName;
+    }
+    if (payload.status === ProcessingStatus.Completed) {
+      this.spinner.stop('Success!');
     }
   }
 }

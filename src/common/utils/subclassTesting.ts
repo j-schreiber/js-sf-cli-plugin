@@ -6,7 +6,7 @@ export type TestQueryResult = {
   totalSize: number;
 };
 
-export enum ObjectStatus {
+export enum ProcessingStatus {
   Started,
   Completed,
   InProgress,
@@ -14,7 +14,7 @@ export enum ObjectStatus {
 
 export type PlanObjectEvent = {
   message: string;
-  status: ObjectStatus;
+  status: ProcessingStatus;
   objectName: string;
   totalBatches: number;
   batchesCompleted: number;
@@ -25,7 +25,7 @@ export default class SubclassTesting {
   public static async simulateObjectExecution(iteration: number, objectName: string): Promise<void> {
     eventBus.emit('planObjectEvent', {
       message: `Total batches to retrieve: ${iteration}`,
-      status: ObjectStatus.Started,
+      status: ProcessingStatus.Started,
       totalBatches: iteration,
       batchesCompleted: 0,
       objectName,
@@ -33,7 +33,7 @@ export default class SubclassTesting {
     const result = await this.simulateRecordQuery(iteration);
     eventBus.emit('planObjectEvent', {
       message: `Total records retrieved: ${result.totalSize}`,
-      status: ObjectStatus.Completed,
+      status: ProcessingStatus.Completed,
       totalBatches: iteration,
       batchesCompleted: iteration,
       objectName,
@@ -44,7 +44,7 @@ export default class SubclassTesting {
     for (let i = 0; i < batchCount; i++) {
       eventBus.emit('planObjectEvent', {
         message: 'Retrieved 1000 records.',
-        status: ObjectStatus.InProgress,
+        status: ProcessingStatus.InProgress,
         batchesCompleted: i,
         totalBatches: batchCount,
       });

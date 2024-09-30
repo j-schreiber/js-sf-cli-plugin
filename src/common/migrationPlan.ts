@@ -6,7 +6,7 @@ import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData
 import MigrationPlanObject from './migrationPlanObject.js';
 import ValidationResult from './validationResult.js';
 import { eventBus } from './comms/eventBus.js';
-import { PlanObjectEvent, ObjectStatus } from './comms/processingEvents.js';
+import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
@@ -22,9 +22,21 @@ export default class MigrationPlan {
   }
 
   public async load(): Promise<MigrationPlan> {
+    eventBus.emit('planValidationEvent', {
+      status: ProcessingStatus.Started,
+      planName: this.getName(),
+    } as PlanObjectValidationEvent);
     for (const planObject of this.getObjects()) {
+      eventBus.emit('planValidationEvent', {
+        status: ProcessingStatus.InProgress,
+        objectName: planObject.getObjectName(),
+      } as PlanObjectValidationEvent);
       await planObject.load();
     }
+    eventBus.emit('planValidationEvent', {
+      status: ProcessingStatus.Completed,
+      planName: this.getName(),
+    } as PlanObjectValidationEvent);
     return this;
   }
 
@@ -43,14 +55,14 @@ export default class MigrationPlan {
     const exportPath: string = this.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
       eventBus.emit('planObjectEvent', {
-        status: ObjectStatus.Started,
+        status: ProcessingStatus.Started,
         totalBatches: 10,
         batchesCompleted: 0,
         objectName: planObject.getObjectName(),
       } as PlanObjectEvent);
       const objectResults = await planObject.retrieveRecords(exportPath);
       eventBus.emit('planObjectEvent', {
-        status: ObjectStatus.Completed,
+        status: ProcessingStatus.Completed,
         totalBatches: 10,
         batchesCompleted: 10,
         totalRecords: objectResults.totalSize,

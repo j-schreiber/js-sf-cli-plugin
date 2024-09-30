@@ -1,4 +1,4 @@
-export enum ObjectStatus {
+export enum ProcessingStatus {
   Started,
   InProgress,
   Completed,
@@ -6,10 +6,16 @@ export enum ObjectStatus {
 
 export type PlanObjectEvent = {
   message?: string;
-  status: ObjectStatus;
+  status: ProcessingStatus;
   objectName: string;
   totalBatches: number;
   batchesCompleted: number;
   totalRecords: number;
   files: string[];
+};
+
+export type PlanObjectValidationEvent = {
+  status: ProcessingStatus;
+  objectName: string;
+  planName: string;
 };

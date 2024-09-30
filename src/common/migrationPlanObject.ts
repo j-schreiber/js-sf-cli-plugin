@@ -5,7 +5,7 @@ import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../type
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
-import { ObjectStatus, PlanObjectEvent } from './comms/processingEvents.js';
+import { ProcessingStatus, PlanObjectEvent } from './comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'exportplan');
@@ -118,7 +118,7 @@ export default class MigrationPlanObject {
 
   private emitQueryProgress(currentCompleted: number, totalNumber?: number): void {
     eventBus.emit('planObjectEvent', {
-      status: ObjectStatus.InProgress,
+      status: ProcessingStatus.InProgress,
       totalBatches: totalNumber,
       batchesCompleted: currentCompleted,
       objectName: this.getObjectName(),
