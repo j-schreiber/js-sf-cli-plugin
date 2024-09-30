@@ -36,6 +36,10 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
       summary: messages.getMessage('flags.output-dir.summary'),
       char: 'd',
     }),
+    'validate-only': Flags.boolean({
+      summary: messages.getMessage('flags.validate-only.summary'),
+      char: 'v',
+    }),
   };
 
   public constructor(argv: string[], config: Config) {
@@ -51,7 +55,9 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
     this.validatePlan(plan);
-    await plan.execute(flags['output-dir']);
+    if (!flags['validate-only']) {
+      await plan.execute(flags['output-dir']);
+    }
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],

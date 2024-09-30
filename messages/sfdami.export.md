@@ -24,3 +24,7 @@ Output directory to export all fields.
 # examples
 
 - <%= config.bin %> <%= command.id %>
+
+# flags.validate-only.summary
+
+Does not retrieve records. Only validates the plan.
