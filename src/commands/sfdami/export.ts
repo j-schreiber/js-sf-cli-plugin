@@ -2,8 +2,6 @@ import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { Config } from '@oclif/core';
 import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
-import ValidationResult from '../../common/validationResult.js';
-import MigrationPlan from '../../common/migrationPlan.js';
 import { eventBus } from '../../common/comms/eventBus.js';
 import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
 
@@ -54,7 +52,6 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
   public async run(): Promise<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
-    this.validatePlan(plan);
     if (!flags['validate-only']) {
       await plan.execute(flags['output-dir']);
     }
@@ -65,17 +62,6 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
   }
 
   //    PRIVATE ZONE
-
-  private validatePlan(plan: MigrationPlan): void {
-    const planValResult: ValidationResult = plan.selfCheck();
-    if (planValResult.isValid()) {
-      this.log('Plan successfully initialised.');
-    } else {
-      planValResult.errors.forEach((errMsg) => {
-        this.error(errMsg);
-      });
-    }
-  }
 
   private handleRecordRetrieveEvents(payload: PlanObjectEvent): void {
     if (payload.status === ProcessingStatus.Started) {
@@ -91,11 +77,9 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
 
   private handlePlanValidationEvents(payload: PlanObjectValidationEvent): void {
     if (payload.status === ProcessingStatus.Started) {
-      this.spinner.start(`Validating ${payload.planName}`);
+      this.spinner.start(`Validating ${payload.planName}`, payload.message);
     }
-    if (payload.status === ProcessingStatus.InProgress) {
-      this.spinner.status = payload.objectName;
-    }
+    this.spinner.status = payload.message;
     if (payload.status === ProcessingStatus.Completed) {
       this.spinner.stop('Success!');
     }

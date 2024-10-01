@@ -4,7 +4,6 @@ import { Org } from '@salesforce/core';
 import { MigrationPlanData } from '../types/migrationPlanData.js';
 import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
-import ValidationResult from './validationResult.js';
 import { eventBus } from './comms/eventBus.js';
 import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
 
@@ -25,29 +24,25 @@ export default class MigrationPlan {
     eventBus.emit('planValidationEvent', {
       status: ProcessingStatus.Started,
       planName: this.getName(),
+      message: `Initialized plan with ${this.objects.length} objects.`,
     } as PlanObjectValidationEvent);
     for (const planObject of this.getObjects()) {
       eventBus.emit('planValidationEvent', {
         status: ProcessingStatus.InProgress,
-        objectName: planObject.getObjectName(),
+        message: planObject.getObjectName(),
       } as PlanObjectValidationEvent);
       await planObject.load();
     }
     eventBus.emit('planValidationEvent', {
       status: ProcessingStatus.Completed,
       planName: this.getName(),
+      message: 'Successfully completed validation.',
     } as PlanObjectValidationEvent);
     return this;
   }
 
   public getObjects(): MigrationPlanObject[] {
     return this.objects;
-  }
-
-  public selfCheck(): ValidationResult {
-    const res: ValidationResult = new ValidationResult();
-    res.infos.push(`Found ${this.objects.length} objects.`);
-    return res;
   }
 
   public async execute(outputDir?: string): Promise<MigrationPlanObjectQueryResult[]> {

@@ -18,4 +18,5 @@ export type PlanObjectValidationEvent = {
   status: ProcessingStatus;
   objectName: string;
   planName: string;
+  message?: string;
 };
