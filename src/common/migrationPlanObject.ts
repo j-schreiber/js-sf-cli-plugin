@@ -65,7 +65,11 @@ export default class MigrationPlanObject {
   public async describeObject(): Promise<DescribeSObjectResult> {
     if (!this.describeResult) {
       const descApi: DescribeApi = new DescribeApi(this.conn);
-      this.describeResult = await descApi.describeSObject(this.data.objectName);
+      try {
+        this.describeResult = await descApi.describeSObject(this.data.objectName);
+      } catch (err) {
+        throw new Error(`Failed to fetch describe for ${this.getObjectName()}: ${String(err)}`);
+      }
     }
     return this.describeResult;
   }
