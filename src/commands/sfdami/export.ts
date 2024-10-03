@@ -1,8 +1,9 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
+import { Config } from '@oclif/core';
 import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
-import ValidationResult from '../../common/validationResult.js';
-import MigrationPlan from '../../common/migrationPlan.js';
+import { eventBus } from '../../common/comms/eventBus.js';
+import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('sfdami', 'sfdami.export');
@@ -29,32 +30,58 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
       required: true,
       exists: true,
     }),
+    'output-dir': Flags.directory({
+      summary: messages.getMessage('flags.output-dir.summary'),
+      char: 'd',
+    }),
+    'validate-only': Flags.boolean({
+      summary: messages.getMessage('flags.validate-only.summary'),
+      char: 'v',
+    }),
   };
+
+  public constructor(argv: string[], config: Config) {
+    // Call the parent constructor with the required arguments
+    super(argv, config);
+    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handleRecordRetrieveEvents(payload));
+    eventBus.on('planValidationEvent', (payload: PlanObjectValidationEvent) =>
+      this.handlePlanValidationEvents(payload)
+    );
+  }
 
   public async run(): Promise<SfdamiExportResult> {
     const { flags } = await this.parse(SfdamiExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
-    this.validatePlan(plan);
-    await this.executePlan(plan);
+    if (!flags['validate-only']) {
+      await plan.execute(flags['output-dir']);
+    }
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
     };
   }
 
-  private validatePlan(plan: MigrationPlan): void {
-    const planValResult: ValidationResult = plan.selfCheck();
-    if (planValResult.isValid()) {
-      this.log('Plan successfully initialised.');
-    } else {
-      planValResult.errors.forEach((errMsg) => {
-        this.error(errMsg);
-      });
+  //    PRIVATE ZONE
+
+  private handleRecordRetrieveEvents(payload: PlanObjectEvent): void {
+    if (payload.status === ProcessingStatus.Started) {
+      this.spinner.start(`Exporting ${payload.objectName}`);
+    }
+    if (payload.status === ProcessingStatus.InProgress) {
+      this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
+    }
+    if (payload.status === ProcessingStatus.Completed) {
+      this.spinner.stop(`Retrieved ${payload.totalRecords} records in ${payload.files.length} files.`);
     }
   }
 
-  private async executePlan(plan: MigrationPlan): Promise<void> {
-    this.log('Executing plan ...');
-    await plan.execute();
+  private handlePlanValidationEvents(payload: PlanObjectValidationEvent): void {
+    if (payload.status === ProcessingStatus.Started) {
+      this.spinner.start(`Validating ${payload.planName}`, payload.message);
+    }
+    this.spinner.status = payload.message;
+    if (payload.status === ProcessingStatus.Completed) {
+      this.spinner.stop('Success!');
+    }
   }
 }

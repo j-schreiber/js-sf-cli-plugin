@@ -17,6 +17,14 @@ The source org from where data is exported.
 
 Path to the plan file that defines the export.
 
+# flags.output-dir.summary
+
+Output directory to export all fields.
+
 # examples
 
 - <%= config.bin %> <%= command.id %>
+
+# flags.validate-only.summary
+
+Does not retrieve records. Only validates the plan.

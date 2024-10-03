@@ -1,6 +1,7 @@
 # -- CLEAN
 tmp/
 .sfdami
+exports/
 
 # use yarn by default, so ignore npm
 package-lock.json
