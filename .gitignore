@@ -1,5 +1,8 @@
 # -- CLEAN
 tmp/
+.sfdami
+exports/
+
 # use yarn by default, so ignore npm
 package-lock.json
 
@@ -9,7 +12,6 @@ package-lock.json
 # debug logs
 npm-error.log
 yarn-error.log
-
 
 # compile source
 lib
@@ -29,7 +31,6 @@ docs
 *.tgz
 *.sig
 package.json.bak.
-
 
 npm-shrinkwrap.json
 oclif.manifest.json

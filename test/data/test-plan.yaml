@@ -1,0 +1,12 @@
+name: Test Plan
+objects:
+  - objectName: Account
+    queryFile: test/data/soql/accounts.sql
+  - objectName: Contact
+    # queryFile: soql/contacts.sql
+    queryString: SELECT Id,AccountId FROM Contact LIMIT 6000
+  - objectName: Order
+    # queryFile: soql/orders.sql
+    queryString: SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100
+  - objectName: Opportunity
+    queryString: SELECT Id,AccountId FROM Opportunity LIMIT 10
