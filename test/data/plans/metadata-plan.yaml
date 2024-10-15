@@ -1,0 +1,11 @@
+name: Metadata Test Plan
+objects:
+  - objectName: Package2Member
+    isToolingObject: true
+    queryFile: test/data/soql/package-members.sql
+  - objectName: CustomObject
+    isToolingObject: true
+    queryString: SELECT Id,DeveloperName FROM CustomObject
+  - objectName: CustomField
+    isToolingObject: true
+    queryString: SELECT Id,DeveloperName,TableEnumOrId,ManageableState FROM CustomField

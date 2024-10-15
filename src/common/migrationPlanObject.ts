@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { DescribeSObjectResult } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
 import { Connection, Messages } from '@salesforce/core';
 import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
@@ -28,7 +28,7 @@ export default class MigrationPlanObject {
     this.assertQueryDefinitions();
     this.queryBuilder = new QueryBuilder(this.describeResult);
     this.queryString = this.resolveQueryString();
-    await QueryBuilder.assertQuerySyntax(this.conn, this.queryString);
+    await this.queryBuilder.assertSyntax(this.conn, this.queryString);
     return this;
   }
 
@@ -36,7 +36,7 @@ export default class MigrationPlanObject {
     this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryResult = await this.conn.query(this.queryString!);
+    const queryResult = await this.runQuery(this.queryString!);
     const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
@@ -66,7 +66,7 @@ export default class MigrationPlanObject {
     if (!this.describeResult) {
       const descApi: DescribeApi = new DescribeApi(this.conn);
       try {
-        this.describeResult = await descApi.describeSObject(this.data.objectName);
+        this.describeResult = await descApi.describeSObject(this.data.objectName, this.data.isToolingObject);
       } catch (err) {
         throw new Error(`Failed to fetch describe for ${this.getObjectName()}: ${String(err)}`);
       }
@@ -95,6 +95,16 @@ export default class MigrationPlanObject {
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
     fs.writeFileSync(fullFilePath, JSON.stringify({ records: queryRecords }, null, 2));
     return fullFilePath;
+  }
+
+  private async runQuery(queryString: string): Promise<QueryResult<Record>> {
+    let result;
+    if (this.data.isToolingObject) {
+      result = await this.conn.tooling.query(queryString);
+    } else {
+      result = await this.conn.query(queryString);
+    }
+    return result;
   }
 
   private hasQueryString(): boolean {
