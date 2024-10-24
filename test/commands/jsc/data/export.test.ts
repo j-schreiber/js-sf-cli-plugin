@@ -8,10 +8,11 @@ import { SfError } from '@salesforce/core';
 import JscDataExport from '../../../../src/commands/jsc/data/export.js';
 import { MockAnyObjectResult } from '../../../data/describes/mockDescribeResults.js';
 import { GenericSuccess } from '../../../data/api/queryResults.js';
+import { LOCAL_CACHE_DIR } from '../../../../src/common/constants.js';
 
 const TEST_PATH = 'exports/export-test-ts';
 
-describe('sfdami plan export', () => {
+describe('jsc plan export', () => {
   const $$ = new TestContext();
   let testOrg = new MockTestOrgData();
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
@@ -27,7 +28,7 @@ describe('sfdami plan export', () => {
   afterEach(() => {
     $$.restore();
     // cached describes
-    fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
+    fs.rmSync(`./${LOCAL_CACHE_DIR}/${testOrg.username}`, { recursive: true, force: true });
     // file exports with explicit path
     fs.rmSync(TEST_PATH, { recursive: true, force: true });
     // default export

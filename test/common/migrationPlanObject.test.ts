@@ -7,6 +7,7 @@ import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
 import { MockAccountDescribeResult, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
 import { GenericSuccess, InvalidFieldInQuery } from '../data/api/queryResults.js';
+import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
@@ -24,7 +25,7 @@ describe('migration plan object', () => {
     $$.SANDBOX.restore();
     sinon.restore();
     // better to stub the describeAPI entirely
-    fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
+    fs.rmSync(`./${LOCAL_CACHE_DIR}/${testOrg.username}`, { recursive: true, force: true });
   });
 
   it('has only query file => returns string from file', async () => {
