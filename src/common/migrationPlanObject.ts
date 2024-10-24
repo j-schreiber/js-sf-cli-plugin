@@ -8,7 +8,7 @@ import { eventBus } from './comms/eventBus.js';
 import { ProcessingStatus, PlanObjectEvent } from './comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('sfdami', 'exportplan');
+const messages = Messages.loadMessages('jsc', 'exportplan');
 
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;

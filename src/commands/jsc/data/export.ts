@@ -10,7 +10,7 @@ import {
 } from '../../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('sfdami', 'sfdami.export');
+const messages = Messages.loadMessages('jsc', 'jsc.data.export');
 
 export type JscDataExportResult = {
   'source-org-id': string;
