@@ -6,8 +6,8 @@ import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
 import { MockAccountDescribeResult, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
-import { InvalidFieldInQuery } from '../data/api/queryResults.js';
-import QueryBuilder from '../../src/common/utils/queryBuilder.js';
+import { GenericSuccess, InvalidFieldInQuery } from '../data/api/queryResults.js';
+import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
@@ -25,7 +25,7 @@ describe('migration plan object', () => {
     $$.SANDBOX.restore();
     sinon.restore();
     // better to stub the describeAPI entirely
-    fs.rmSync(`./.sfdami/${testOrg.username}`, { recursive: true, force: true });
+    fs.rmSync(`./${LOCAL_CACHE_DIR}/${testOrg.username}`, { recursive: true, force: true });
   });
 
   it('has only query file => returns string from file', async () => {
@@ -37,7 +37,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    sinon.stub(QueryBuilder, 'assertQuerySyntax').resolves(true);
 
     // Assert
     // the file is auto-formatted! Query builder replaces all formatting with single whitespace
@@ -197,7 +196,7 @@ describe('migration plan object', () => {
       const url = (request as { url: string }).url;
       expect(url).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
       if (url.includes('query?q=SELECT%20Id%2CInvalidField__x%20FROM%20Account%20LIMIT%201')) {
-        return Promise.resolve({ status: 0, records: [] });
+        return Promise.resolve(GenericSuccess);
       }
       return Promise.reject('Unexpected query was executed');
     };
@@ -227,7 +226,7 @@ describe('migration plan object', () => {
       const url = (request as { url: string }).url;
       expect(url).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
       if (url.includes('query?q=SELECT%20Id%2C%20Name%2C%20BillingStreet%20FROM%20Account%20LIMIT%201')) {
-        return Promise.resolve({ status: 0, records: [] });
+        return Promise.resolve(GenericSuccess);
       }
       return Promise.reject('Unexpected query was executed');
     };

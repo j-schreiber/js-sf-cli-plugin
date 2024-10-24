@@ -1,19 +1,23 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { Config } from '@oclif/core';
-import MigrationPlanLoader from '../../common/migrationPlanLoader.js';
-import { eventBus } from '../../common/comms/eventBus.js';
-import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
+import MigrationPlanLoader from '../../../common/migrationPlanLoader.js';
+import { eventBus } from '../../../common/comms/eventBus.js';
+import {
+  PlanObjectEvent,
+  PlanObjectValidationEvent,
+  ProcessingStatus,
+} from '../../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('sfdami', 'sfdami.export');
+const messages = Messages.loadMessages('jsc', 'jsc.data.export');
 
-export type SfdamiExportResult = {
+export type JscDataExportResult = {
   'source-org-id': string;
   plan: string;
 };
 
-export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
+export default class JscDataExport extends SfCommand<JscDataExportResult> {
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
@@ -49,8 +53,8 @@ export default class SfdamiExport extends SfCommand<SfdamiExportResult> {
     );
   }
 
-  public async run(): Promise<SfdamiExportResult> {
-    const { flags } = await this.parse(SfdamiExport);
+  public async run(): Promise<JscDataExportResult> {
+    const { flags } = await this.parse(JscDataExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
     if (!flags['validate-only']) {
       await plan.execute(flags['output-dir']);

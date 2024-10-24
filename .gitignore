@@ -1,6 +1,6 @@
 # -- CLEAN
 tmp/
-.sfdami
+.jsc
 exports/
 
 # use yarn by default, so ignore npm

@@ -1,32 +1,11 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
+import { type AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
-import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import QueryBuilder from '../../src/common/utils/queryBuilder.js';
-
-// const mockOrderDescribeResult: Partial<DescribeSObjectResult> = {
-//   custom: false,
-//   createable: true,
-//   name: 'Order',
-//   fields: [
-//     { name: 'Id' } as Field,
-//     { name: 'OrderNumber' } as Field,
-//     { name: 'AccountId' } as Field,
-//     { name: 'BillToContactId' } as Field,
-//   ],
-// };
-
-const mockAccountDescribeResult: Partial<DescribeSObjectResult> = {
-  custom: false,
-  createable: true,
-  name: 'Account',
-  fields: [
-    { name: 'Id' } as Field,
-    { name: 'Name' } as Field,
-    { name: 'AccountNumber' } as Field,
-    { name: 'BillingStreet' } as Field,
-  ],
-};
+import { GenericRejection, GenericSuccess } from '../data/api/queryResults.js';
+import { MockAccountDescribeResult, MockPackageMemberDescribeResult } from '../data/describes/mockDescribeResults.js';
 
 describe('query builder', () => {
   const $$ = new TestContext();
@@ -57,12 +36,31 @@ describe('query builder', () => {
 
   it('to SOQL > add all fields => builds with all fields from describe', async () => {
     // Arrange
-    const testBuilder = new QueryBuilder(mockAccountDescribeResult as DescribeSObjectResult);
+    const testBuilder = new QueryBuilder(MockAccountDescribeResult as DescribeSObjectResult);
 
     // Act
     testBuilder.addAllFields();
 
     // Assert
     expect(testBuilder.toSOQL()).to.equal('SELECT Id,Name,AccountNumber,BillingStreet FROM Account');
+  });
+
+  it('assert query syntax > is tooling object > runs against tooling API', async () => {
+    // Arrange
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      const url = (request as { url: string }).url;
+      if (url.includes('/tooling/')) {
+        return Promise.resolve(GenericSuccess);
+      } else {
+        return Promise.reject(GenericRejection);
+      }
+    };
+    const testBuilder = new QueryBuilder(MockPackageMemberDescribeResult as DescribeSObjectResult);
+
+    // Act
+    const isValid = await testBuilder.assertSyntax(await testOrg.getConnection(), 'SELECT Id FROM Package2Member');
+
+    // Assert
+    expect(isValid).to.be.true;
   });
 });

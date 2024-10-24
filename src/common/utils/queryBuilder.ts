@@ -24,25 +24,29 @@ export default class QueryBuilder {
     }
   }
 
-  public static async assertQuerySyntax(conn: Connection, queryString?: string): Promise<boolean> {
-    if (queryString === undefined || queryString.trim().length === 0) {
-      throw new Error('Query cannot be empty!');
-    }
-    try {
-      await conn.query(this.makeValidatorQuery(queryString));
-      return true;
-    } catch (err) {
-      const queryApiErr: QueryError = err as QueryError;
-      throw new Error(`Invalid query syntax: ${queryString} (${queryApiErr.errorCode}: ${queryApiErr.data.message})`);
-    }
-  }
-
   public static makeValidatorQuery(rawQuery: string): string {
     if (rawQuery.includes('LIMIT')) {
       const cleanedQuery = rawQuery.replace(/\s+/g, ' ');
       return cleanedQuery.replace(/(LIMIT)(\s)*[0-9]+$/, 'LIMIT 1');
     } else {
       return `${rawQuery} LIMIT 1`;
+    }
+  }
+
+  public async assertSyntax(conn: Connection, queryString?: string): Promise<boolean> {
+    if (queryString === undefined || queryString.trim().length === 0) {
+      throw new Error('Query cannot be empty!');
+    }
+    try {
+      if (this.isToolingObject()) {
+        await conn.tooling.query(QueryBuilder.makeValidatorQuery(queryString));
+      } else {
+        await conn.query(QueryBuilder.makeValidatorQuery(queryString));
+      }
+      return true;
+    } catch (err) {
+      const queryApiErr: QueryError = err as QueryError;
+      throw new Error(`Invalid query syntax: ${queryString} (${queryApiErr.errorCode}: ${queryApiErr.data?.message})`);
     }
   }
 
@@ -68,4 +72,8 @@ export default class QueryBuilder {
   }
 
   //    PRIVATE
+
+  private isToolingObject(): boolean {
+    return this.describeResult.urls.sobject.includes('/tooling/sobjects/');
+  }
 }

@@ -4,10 +4,11 @@ import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
 import DescribeApi from '../../src/common/metadata/describeApi.js';
+import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
 
 const testUsername = 'describe-api-test@lietzau-consulting.de';
 const expectedAccountDescribe = JSON.parse(fs.readFileSync('test/data/describes/Account.json', 'utf8')) as AnyJson;
-const cacheDir = `./.sfdami/${testUsername}/describes`;
+const cacheDir = `./${LOCAL_CACHE_DIR}/${testUsername}/describes`;
 
 describe('describe api', () => {
   const $$ = new TestContext();
@@ -21,7 +22,7 @@ describe('describe api', () => {
 
   afterEach(async () => {
     $$.SANDBOX.restore();
-    fs.rmSync(`./.sfdami/${testUsername}`, { recursive: true, force: true });
+    fs.rmSync(`./${LOCAL_CACHE_DIR}/${testUsername}`, { recursive: true, force: true });
   });
 
   it('no describe results cached for sobject > calls sobject describe', async () => {

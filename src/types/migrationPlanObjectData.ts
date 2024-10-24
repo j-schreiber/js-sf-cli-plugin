@@ -2,6 +2,7 @@ export type MigrationPlanObjectData = {
   objectName: string;
   queryFile?: string;
   queryString?: string;
+  isToolingObject?: boolean;
   query?: { fetchAllFields?: boolean; filter?: string; limit?: number };
 };
 

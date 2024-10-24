@@ -7,3 +7,13 @@ export const InvalidFieldInQuery = {
   errorCode: 'INVALID_FIELD',
   name: 'INVALID_FIELD',
 };
+
+export const GenericRejection = {
+  errorCode: 'UNEXPECTED_REJECT_WRONG_REQUEST',
+  name: 'GENERIC_REJECTION',
+};
+
+export const GenericSuccess = {
+  status: 0,
+  records: [],
+};

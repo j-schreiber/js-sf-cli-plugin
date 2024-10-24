@@ -1,20 +1,19 @@
 {
-  "name": "sfdami",
-  "description": "Salesforce data migration utility",
-  "version": "1.0.0",
+  "name": "jsc",
+  "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
+  "version": "0.1.0",
   "dependencies": {
     "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
-    "@salesforce/dev-scripts": "^10.2.10",
-    "@salesforce/kit": "^3.2.3",
-    "@salesforce/sf-plugins-core": "^11.3.10",
-    "@types/js-yaml": "^4.0.9",
+    "@salesforce/sf-plugins-core": "^12.0.8",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@oclif/plugin-command-snapshot": "^5.1.9",
     "@salesforce/cli-plugins-testkit": "^5.3.10",
+    "@salesforce/dev-scripts": "^10.2.10",
+    "@types/js-yaml": "^4.0.9",
     "eslint-plugin-sf-plugin": "^1.18.6",
     "oclif": "^4.14.0",
     "ts-node": "^10.9.2",
