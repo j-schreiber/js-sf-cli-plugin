@@ -8,4 +8,4 @@ objects:
     queryString: SELECT Id,DeveloperName FROM CustomObject
   - objectName: CustomField
     isToolingObject: true
-    queryString: SELECT Id,DeveloperName,TableEnumOrId,ManageableState FROM CustomField
+    queryFile: test/data/soql/custom-fields.sql

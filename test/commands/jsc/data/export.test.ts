@@ -1,10 +1,13 @@
 import fs from 'node:fs';
 import Sinon from 'sinon';
+import { type AnyJson } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
-import SfdamiExport from '../../../src/commands/sfdami/export.js';
+import JscDataExport from '../../../../src/commands/jsc/data/export.js';
+import { MockAnyObjectResult } from '../../../data/describes/mockDescribeResults.js';
+import { GenericSuccess } from '../../../data/api/queryResults.js';
 
 const TEST_PATH = 'exports/export-test-ts';
 
@@ -34,13 +37,19 @@ describe('sfdami plan export', () => {
   it('runs command with required params => exits OK', async () => {
     // Arrange
     await $$.stubAuths(testOrg);
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      if (request?.toString().endsWith('/describe')) {
+        return Promise.resolve(MockAnyObjectResult as AnyJson);
+      }
+      return Promise.resolve(GenericSuccess);
+    };
 
     // Act
-    const result = await SfdamiExport.run([
+    const result = await JscDataExport.run([
       '--source-org',
       testOrg.username,
       '--plan',
-      'test/data/test-plan.yaml',
+      'test/data/plans/test-plan.yaml',
       '--output-dir',
       TEST_PATH,
     ]);
@@ -63,11 +72,11 @@ describe('sfdami plan export', () => {
 
     // Act
     try {
-      await SfdamiExport.run([
+      await JscDataExport.run([
         '--source-org',
         testOrg.username,
         '--plan',
-        'test/data/invalid-plan.yaml',
+        'test/data/plans/invalid-plan.yaml',
         '--output-dir',
         TEST_PATH,
       ]);
