@@ -1,14 +1,16 @@
-import fs from 'node:fs';
-import yaml from 'js-yaml';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import { ReleaseManifest } from '../../../types/releaseManifest.js';
+import { ArtifactDeployResult } from '../../../release-manifest/manifestRolloutResult.js';
+import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
+import ReleaseManifest from '../../../release-manifest/releaseManifest.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'jsc.manifest.rollout');
 
 export type RolloutResult = {
-  path: string;
+  targetOrgUsername?: string;
+  devhubOrgUsername?: string;
+  deployedArtifacts: ArtifactDeployResult[];
 };
 
 export default class Rollout extends SfCommand<RolloutResult> {
@@ -17,48 +19,35 @@ export default class Rollout extends SfCommand<RolloutResult> {
   public static readonly examples = messages.getMessages('examples');
 
   public static readonly flags = {
-    name: Flags.string({
-      summary: messages.getMessage('flags.name.summary'),
-      description: messages.getMessage('flags.name.description'),
-      char: 'n',
-      required: false,
-    }),
-    manifest: Flags.file({
-      summary: messages.getMessage('flags.manifest.summary'),
+    'manifest-file': Flags.file({
+      summary: messages.getMessage('flags.manifest-file.summary'),
       char: 'm',
       required: true,
       exists: true,
+    }),
+    'target-org': Flags.requiredOrg({
+      summary: messages.getMessage('flags.target-org.summary'),
+      char: 't',
+      required: true,
+    }),
+    'devhub-org': Flags.requiredOrg({
+      summary: messages.getMessage('flags.devhub-org.summary'),
+      char: 'o',
+      required: true,
     }),
   };
 
   public async run(): Promise<RolloutResult> {
     const { flags } = await this.parse(Rollout);
-    const yamlContent: ReleaseManifest = yaml.load(fs.readFileSync(flags.manifest, 'utf8')) as ReleaseManifest;
-    const packages = new Map(Object.entries(yamlContent.packages));
-    packages.forEach((packageData, packageName) => {
-      this.log(`>>> ${packageName}`);
-      this.log(`Version: ${packageData.version}`);
-      this.log(`Type: ${packageData.type}`);
-      this.log(`Skip if Installed: ${packageData.skip_if_installed}`);
-      this.log(`Package Id: ${packageData.package_id}`);
-      this.log(`Has overrides: ${packageData.overrides !== undefined}`);
-      if (packageData.overrides !== undefined) {
-        if (typeof packageData.overrides === 'string') {
-          this.log(`Deploy path ${packageData.overrides} to all envs`);
-        } else {
-          const overrides = new Map(Object.entries(packageData.overrides));
-          overrides.forEach((sourcePath, localEnv) => {
-            this.log(`Deploy path ${sourcePath} to ${localEnv}`);
-          });
-        }
-      }
-    });
-    const envs = new Map(Object.entries(yamlContent.environments));
-    envs.forEach((envUsername, localEnvName) => {
-      this.log(`Use ${localEnvName} for ${envUsername}`);
-    });
+    const manifest = new ReleaseManifest(
+      ReleaseManifestLoader.load(flags['manifest-file']),
+      flags['devhub-org'].getConnection('60.0')
+    );
+    const deployResult = await manifest.rollout(flags['target-org'].getConnection('60.0'));
     return {
-      path: 'src/commands/rollout.ts',
+      targetOrgUsername: flags['target-org'].getUsername(),
+      devhubOrgUsername: flags['devhub-org'].getUsername(),
+      deployedArtifacts: deployResult,
     };
   }
 }

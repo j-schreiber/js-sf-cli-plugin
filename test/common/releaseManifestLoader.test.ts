@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import ReleaseManifestLoader from '../../src/common/releaseManifestLoader.js';
+import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
 
 describe('release manifest loader', () => {
-  it('parse valid yaml > loads successfully', () => {
+  it('parse complex manifest > loads successfully', () => {
     // Arrange
-    const orgManifest = ReleaseManifestLoader.loadManifest('test/data/manifests/test.yaml');
+    const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml');
 
     // Assert
     expect(Object.keys(orgManifest.environments!).length).to.equal(3);
@@ -22,5 +22,15 @@ describe('release manifest loader', () => {
       'pims',
       'pims_overrides',
     ]);
+  });
+
+  it('parse minimal manifest > loads successfully', () => {
+    // Arrange
+    const orgManifest = ReleaseManifestLoader.load('test/data/manifests/minimal.yaml');
+
+    // Assert
+    expect(orgManifest.environments).is.undefined;
+    const artifactsMap = new Map(Object.entries(orgManifest.artifacts));
+    expect(Array.from(artifactsMap.keys())).to.deep.equal(['basic_happy_soup']);
   });
 });

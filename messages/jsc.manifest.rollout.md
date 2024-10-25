@@ -6,17 +6,17 @@ Summary of a command.
 
 More information about a command. Don't repeat the summary.
 
-# flags.name.summary
-
-Description of a flag.
-
-# flags.manifest.summary
+# flags.manifest-file.summary
 
 Manifest file
 
-# flags.name.description
+# flags.target-org.summary
 
-More information about a flag. Don't repeat the summary.
+Target org (sandbox, production, etc) where manifest is deployed/rolled out
+
+# flags.devhub-org.summary
+
+Devhub that owns the packages
 
 # examples
 

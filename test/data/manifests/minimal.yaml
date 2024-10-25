@@ -1,0 +1,4 @@
+artifacts:
+  basic_happy_soup:
+    type: Unpackaged
+    path: src/unpackaged/my-happy-soup
