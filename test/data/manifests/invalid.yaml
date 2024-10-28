@@ -1,4 +1,4 @@
 not_artifacts_key:
   basic_happy_soup:
     type: Unpackaged
-    path: src/unpackaged/my-happy-soup
+    path: test/data/mock-src/unpackaged/my-happy-soup

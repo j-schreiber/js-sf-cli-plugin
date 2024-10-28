@@ -5,7 +5,7 @@ environments:
 artifacts:
   org_shape_settings:
     type: Unpackaged
-    path: src/unpackaged/org-shape
+    path: test/data/mock-src/unpackaged/org-shape
   apex_utils:
     type: UnlockedPackage
     package_id: 0Ho67000000oLkyCAE
@@ -24,12 +24,12 @@ artifacts:
   core_crm_overrides:
     type: Unpackaged
     path:
-      dev: src/unpackaged/package-overrides/core-crm/dev
-      qa: src/unpackaged/package-overrides/core-crm/dev
-      prod: src/unpackaged/package-overrides/core-crm/prod
+      dev: test/data/mock-src/package-overrides/core-crm/dev
+      qa: test/data/mock-src/package-overrides/core-crm/dev
+      prod: test/data/mock-src/package-overrides/core-crm/prod
   core_crm_extensions:
     type: Unpackaged
-    path: src/unpackaged/package-extensions/core-crm
+    path: test/data/mock-src/package-extensions/core-crm
   pims:
     type: UnlockedPackage
     installation_key: PIMS_INSTALLATION_KEY
@@ -37,6 +37,6 @@ artifacts:
     version: 2.9.0
   pims_overrides:
     type: Unpackaged
-    path: src/package-overrides/pims
+    path: test/data/mock-src/package-overrides/pims
 options:
   skip_if_installed: true

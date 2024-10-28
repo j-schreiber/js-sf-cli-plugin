@@ -4,5 +4,5 @@ artifacts:
   basic_happy_soup:
     type: Unpackaged
     path:
-      staging: src/unpackaged/qa
-      prod: src/unpackaged/prod-only
+      staging: test/data/mock-src/unpackaged/qa
+      prod: test/data/mock-src/unpackaged/prod-only

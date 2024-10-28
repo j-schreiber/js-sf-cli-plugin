@@ -1,8 +1,31 @@
+import fs from 'node:fs';
 import { expect } from 'chai';
 import { ZodError } from 'zod';
 import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
 
+// exhaustive list of all "valid" source paths that are used in test manifests
+const testSourcePaths = [
+  'test/data/mock-src/package-overrides/core-crm/dev',
+  'test/data/mock-src/package-overrides/core-crm/prod',
+  'test/data/mock-src/package-overrides/pims',
+  'test/data/mock-src/package-extensions/core-crm',
+  'test/data/mock-src/unpackaged/org-shape',
+  'test/data/mock-src/unpackaged/qa',
+  'test/data/mock-src/unpackaged/prod-only',
+  'test/data/mock-src/unpackaged/my-happy-soup',
+];
+
 describe('release manifest loader', () => {
+  beforeEach(async () => {
+    testSourcePaths.forEach((path) => {
+      fs.mkdirSync(path, { recursive: true });
+    });
+  });
+
+  afterEach(async () => {
+    fs.rmSync('test/data/mock-src', { recursive: true });
+  });
+
   it('parse complex manifest > loads successfully', () => {
     // Arrange
     const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml');
@@ -39,6 +62,26 @@ describe('release manifest loader', () => {
     expect(orgManifest.getEnvironmentName('admin@example.com.qa')).to.be.undefined;
     const artifactsMap = new Map(Object.entries(orgManifest.data.artifacts));
     expect(Array.from(artifactsMap.keys())).to.deep.equal(['basic_happy_soup']);
+  });
+
+  it('loads manifest with simple path-directory does not exist > throws error', () => {
+    // Arrange
+    fs.rmdirSync('test/data/mock-src/unpackaged/my-happy-soup');
+
+    // Assert
+    expect(() => ReleaseManifestLoader.load('test/data/manifests/minimal.yaml')).to.throw(
+      'Error parsing artifact "basic_happy_soup": test/data/mock-src/unpackaged/my-happy-soup does not exist.'
+    );
+  });
+
+  it('loads manifest with complex path-directory does not exist > throws error', () => {
+    // Arrange
+    fs.rmdirSync('test/data/mock-src/package-overrides/pims');
+
+    // Assert
+    expect(() => ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml')).to.throw(
+      'Error parsing artifact "pims_overrides": test/data/mock-src/package-overrides/pims does not exist.'
+    );
   });
 
   it('loads manifest with missing environments > throws exception', () => {
