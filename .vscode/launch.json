@@ -23,8 +23,7 @@
       },
       "sourceMaps": true,
       "smartStep": true,
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "Compile tests"
+      "internalConsoleOptions": "openOnSessionStart"
     },
     {
       "type": "node",
@@ -38,8 +37,7 @@
       },
       "sourceMaps": true,
       "smartStep": true,
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "Compile tests"
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }

@@ -8,7 +8,7 @@ describe('release manifest loader', () => {
 
     // Assert
     expect(Object.keys(orgManifest.environments!).length).to.equal(3);
-    expect(orgManifest.environments!.dev).to.equal('admin@example.com.dev');
+    expect(orgManifest.environments!.dev).to.equal('admin-salesforce@mobilityhouse.com.dev');
     expect(orgManifest.environments!.qa).to.equal('admin@example.com.qa');
     expect(orgManifest.environments!.prod).to.equal('admin@example.com');
     const artifactsMap = new Map(Object.entries(orgManifest.artifacts));
