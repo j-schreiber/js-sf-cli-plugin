@@ -1,0 +1,4 @@
+not_artifacts_key:
+  basic_happy_soup:
+    type: Unpackaged
+    path: src/unpackaged/my-happy-soup

@@ -21,15 +21,18 @@ const ManifestOptions = z.object({
   skip_if_installed: z.boolean().default(true),
   requires_promoted_versions: z.boolean().default(true),
   strict_environments: z.boolean().default(false),
+  pipefail: z.boolean().default(true),
 });
 
 const ZArtifact = z.discriminatedUnion('type', [ZUnlockedPackage, ZUnpackagedSource]);
 
-export const ZReleaseManifest = z.object({
-  environments: ZEnvironments.optional(),
-  artifacts: z.record(ZArtifact),
-  options: ManifestOptions.optional(),
-});
+export const ZReleaseManifest = z
+  .object({
+    environments: ZEnvironments.optional(),
+    artifacts: z.record(ZArtifact, { required_error: 'At least one artifact is required' }),
+    options: ManifestOptions.optional(),
+  })
+  .strict();
 
 export type ReleaseManifest = {
   packages: Packages;
