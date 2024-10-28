@@ -1,7 +1,9 @@
 import { ZReleaseManifestType } from '../types/releaseManifest.js';
+import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
 
 export default class OrgManifest {
   private environmentsMap = new Map<string, string>();
+  private deployJobs = new Array<ArtifactDeployJob>();
 
   public constructor(public data: ZReleaseManifestType) {
     if (this.data.environments) {
@@ -9,9 +11,16 @@ export default class OrgManifest {
         this.environmentsMap.set(value, key);
       });
     }
+    for (const [artifactName, artifact] of Object.entries(this.data.artifacts)) {
+      this.deployJobs.push(new ArtifactDeployJob(artifactName, artifact));
+    }
   }
 
   public getEnvironmentName(targetUsername: string): string | undefined {
     return this.environmentsMap.get(targetUsername);
+  }
+
+  public getDeployJobs(): ArtifactDeployJob[] {
+    return this.deployJobs;
   }
 }

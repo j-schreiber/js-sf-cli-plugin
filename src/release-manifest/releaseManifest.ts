@@ -33,6 +33,10 @@ export default class ReleaseManifest {
   public async rollout(targetOrgConn: Connection): Promise<ArtifactDeployResult[]> {
     const deployResults: ArtifactDeployResult[] = [];
     for (const [artifactName, artifact] of this.getArtifacts()) {
+      // initialise ManifestArtifactStep? ArtifactsItem?
+      // fully build, all queries and validation is done
+      // then call standardised interface to complete
+      // on error the entire plan fails and aborts
       const artDeployResult: ArtifactDeployResult = {
         name: artifactName,
       };

@@ -2,18 +2,21 @@
 
 import { z } from 'zod';
 
+export const DeployStrategies = z.enum(['SourceDeploy', 'PackageInstall']);
+export const ArtifactTypes = z.enum(['UnlockedPackage', 'Unpackaged']);
+
 const ZEnvironments = z.record(z.string());
 
 const ZUnlockedPackage = z.object({
-  type: z.literal('UnlockedPackage'),
+  type: z.literal(ArtifactTypes.Enum.UnlockedPackage),
   package_id: z.string(),
   installation_key: z.string().optional(),
   skip_if_installed: z.boolean().optional(),
-  version: z.string(), // must be major.minor.patch
+  version: z.string().regex(/[0-9]+.[0-9]+.[0-9]+/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
 });
 
 const ZUnpackagedSource = z.object({
-  type: z.literal('Unpackaged'),
+  type: z.literal(ArtifactTypes.Enum.Unpackaged),
   path: z.string().or(z.record(z.string())),
 });
 
@@ -61,3 +64,5 @@ export type PackageDefinitionOverrides = {
 
 export type ZReleaseManifestType = z.infer<typeof ZReleaseManifest>;
 export type ZArtifactType = z.infer<typeof ZArtifact>;
+export type ZUnlockedPackageArtifact = z.infer<typeof ZUnlockedPackage>;
+export type ZUnpackagedSourceArtifact = z.infer<typeof ZUnpackagedSource>;
