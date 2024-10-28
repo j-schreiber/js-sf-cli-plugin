@@ -86,6 +86,7 @@
   },
   "wireit": {
     "build": {
+      "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}",
       "dependencies": [
         "compile",
         "lint"
