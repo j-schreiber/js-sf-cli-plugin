@@ -5,12 +5,17 @@ export type ManifestRolloutResult = {
 };
 
 export type ArtifactDeployResult = {
-  name: string;
-  deployStrategy?: string;
-  deployResult?: string;
-  version?: string;
-  versionId?: string;
-  installedVersion?: string;
-  installedVersionId?: string;
-  sourcePath?: string;
+  deployStrategy: string;
+  status: string;
+};
+
+export type SourceDeployResult = ArtifactDeployResult & {
+  sourcePath: string;
+};
+
+export type PackageInstallResult = ArtifactDeployResult & {
+  version: string;
+  versionId: string;
+  installedVersion: string;
+  installedVersionId: string;
 };

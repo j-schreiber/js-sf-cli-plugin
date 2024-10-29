@@ -1,8 +1,16 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable camelcase */
 import fs from 'node:fs';
 import { expect } from 'chai';
 import { ZodError } from 'zod';
+import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
+import { SfError } from '@salesforce/core';
+import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
-import { DeployStrategies } from '../../src/types/releaseManifest.js';
+import { ZPackageInstallResultType } from '../../src/types/releaseManifest.js';
+import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
 
 // exhaustive list of all "valid" source paths that are used in test manifests
 const testSourcePaths = [
@@ -17,13 +25,23 @@ const testSourcePaths = [
 ];
 
 describe('org manifest', () => {
+  const $$ = new TestContext();
+  const mockDevHubOrg = new MockTestOrgData();
+  const mockTargetOrg = new MockTestOrgData();
+
   beforeEach(async () => {
+    mockDevHubOrg.username = 'devhub-admin@example.com';
+    mockTargetOrg.username = 'admin@example.com.qa';
+    mockDevHubOrg.isDevHub = true;
+    await $$.stubAuths(mockDevHubOrg, mockTargetOrg);
+
     testSourcePaths.forEach((path) => {
       fs.mkdirSync(path, { recursive: true });
     });
   });
 
   afterEach(async () => {
+    $$.SANDBOX.restore();
     fs.rmSync('test/data/mock-src', { recursive: true });
   });
 
@@ -118,7 +136,7 @@ describe('org manifest', () => {
     });
   });
 
-  describe('functionality', () => {
+  describe('manifest functionality', () => {
     it('loads full manifest > all artifacts loaded as deploy jobs', () => {
       // Act
       const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml');
@@ -131,13 +149,43 @@ describe('org manifest', () => {
       });
       expect(jobs[0].name).to.equal('org_shape_settings');
       expect(jobs[0].getType()).to.equal('Unpackaged');
-      expect(jobs[0].getSteps()[0].deployStrategy).to.equal(DeployStrategies.Enum.SourceDeploy);
       expect(jobs[1].name).to.equal('apex_utils');
       expect(jobs[1].getType()).to.equal('UnlockedPackage');
-      expect(jobs[1].getSteps()[0].deployStrategy).to.equal(DeployStrategies.Enum.PackageInstall);
       expect(jobs[2].name).to.equal('lwc_utils');
       expect(jobs[2].getType()).to.equal('UnlockedPackage');
-      expect(jobs[2].getSteps()[0].deployStrategy).to.equal(DeployStrategies.Enum.PackageInstall);
+    });
+  });
+
+  describe('deploy jobs', () => {
+    it('package deploy job > resolves ids with devhub connection', async () => {
+      // Arrange
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+        const _request = ensureJsonMap(request);
+        if (request && ensureString(_request.url).includes("Package2Id%20%3D%20'0Ho0X0000000001AAA'")) {
+          return Promise.resolve({ records: [{ SubscriberPackageVersionId: '04t0X0000000000AAA' }] });
+        } else {
+          return Promise.reject(new SfError(`Unexpected request: ${_request.url}`));
+        }
+      };
+
+      // Act
+      const packageJob = new ArtifactDeployJob('test_package', {
+        type: 'UnlockedPackage',
+        package_id: '0Ho0X0000000001AAA',
+        version: '1.2.3',
+      });
+      const steps = await packageJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.deployStrategy).to.equal('PackageInstall');
+      expect(installStep.status).to.equal('Pending');
+      expect(installStep.version).to.equal('1.2.3');
+      expect(installStep.versionId).to.equal('04t0X0000000000AAA');
+      expect(installStep.installedVersionId).to.equal(undefined);
     });
   });
 });

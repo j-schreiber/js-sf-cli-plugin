@@ -2,8 +2,8 @@
 
 import { z } from 'zod';
 
-export const DeployStrategies = z.enum(['SourceDeploy', 'PackageInstall']);
-export const ArtifactTypes = z.enum(['UnlockedPackage', 'Unpackaged']);
+export const DeployStrategies = z.enum(['SourceDeploy', 'PackageInstall', 'CronJobSchedule']);
+export const ArtifactTypes = z.enum(['UnlockedPackage', 'Unpackaged', 'CronJob']);
 
 const ZEnvironments = z.record(z.string());
 
@@ -12,7 +12,7 @@ const ZUnlockedPackage = z.object({
   package_id: z.string(),
   installation_key: z.string().optional(),
   skip_if_installed: z.boolean().optional(),
-  version: z.string().regex(/[0-9]+.[0-9]+.[0-9]+/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
+  version: z.string().regex(/^([0-9]+\.[0-9]+\.[0-9]+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
 });
 
 const ZUnpackagedSource = z.object({
@@ -37,30 +37,38 @@ export const ZReleaseManifest = z
   })
   .strict();
 
-export type ReleaseManifest = {
-  packages: Packages;
-  environments: Environments;
-};
+const ArtifactDeployResult = z.object({
+  deployStrategy: z.string(),
+  status: z.enum(['Success', 'Pending', 'Failed']),
+});
 
-export type Environments = {
-  [name: string]: string;
-};
+const SourceDeployResult = ArtifactDeployResult.extend({
+  deployStrategy: z.literal(DeployStrategies.Enum.SourceDeploy),
+  sourcePath: z.string().optional(),
+});
 
-export type Packages = {
-  [name: string]: PackageDefinition;
-};
+const PackageInstallResult = ArtifactDeployResult.extend({
+  deployStrategy: z.literal(DeployStrategies.Enum.PackageInstall),
+  version: z.string(),
+  versionId: z.string().optional(),
+  installedVersion: z.string().optional(),
+  installedVersionId: z.string().optional(),
+});
 
-export type PackageDefinition = {
-  type: string;
-  package_id: string;
-  version: string;
-  skip_if_installed: boolean;
-  overrides?: PackageDefinitionOverrides | string;
-};
+const CronJobScheduleResult = ArtifactDeployResult.extend({
+  deployStrategy: z.literal(DeployStrategies.Enum.CronJobSchedule),
+  jobName: z.string(),
+});
 
-export type PackageDefinitionOverrides = {
-  [name: string]: string;
-};
+const ZArtifactDeployResult = z.discriminatedUnion('deployStrategy', [
+  SourceDeployResult,
+  PackageInstallResult,
+  CronJobScheduleResult,
+]);
+
+export type ZArtifactDeployResultType = z.infer<typeof ZArtifactDeployResult>;
+export type ZSourceDeployResultType = z.infer<typeof SourceDeployResult>;
+export type ZPackageInstallResultType = z.infer<typeof PackageInstallResult>;
 
 export type ZReleaseManifestType = z.infer<typeof ZReleaseManifest>;
 export type ZArtifactType = z.infer<typeof ZArtifact>;
