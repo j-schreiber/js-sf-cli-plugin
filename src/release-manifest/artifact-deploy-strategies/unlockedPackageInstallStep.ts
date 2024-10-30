@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable class-methods-use-this */
+import { isEmpty } from '@salesforce/kit';
 import { Connection, SfError } from '@salesforce/core';
 import { ZPackageInstallResultType } from '../../types/orgManifestOutputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ZManifestOptionsType, ZUnlockedPackageArtifact } from '../../types/orgManifestInputSchema.js';
+import { Package2Version, SubscriberPackageVersion } from '../../types/sfToolingApiTypes.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
@@ -22,27 +24,29 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     return this.internalState;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async deploy(targetOrg: Connection): Promise<ZPackageInstallResultType> {
     this.internalState.status = 'Success';
     return this.internalState;
   }
 
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZPackageInstallResultType> {
-    // verify package_id exists
-    // version resolves to valid subscriber package version id
     const versionDetails = await this.resolvePackageVersionId(
       this.artifact.version,
       this.artifact.package_id,
       devhubOrg
     );
+    this.assertInstallationKey(versionDetails);
     this.internalState.versionId = versionDetails.id;
-    const installedVersionDetails = await this.resolveInstalledVersionId(this.artifact.package_id, targetOrg);
+    const installedVersionDetails = await this.resolveInstalledVersionId(
+      versionDetails.subscriberPackageId!,
+      targetOrg
+    );
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
     this.internalState.skipped =
-      this.artifact.skip_if_installed && this.internalState.versionId === this.internalState.installedVersionId;
-    // package version requires installation key & is set
-    // installation key (env var) is not empty
+      this.internalState.shouldSkipIfInstalled &&
+      this.internalState.versionId === this.internalState.installedVersionId;
     return this.internalState;
   }
 
@@ -52,7 +56,17 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     devhubCon: Connection
   ): Promise<PackageVersionDetails> {
     const versionArray = packageVersionLiteral.split('.');
-    const queryString = `SELECT SubscriberPackageVersionId,SubscriberPackageVersion.IsBeta FROM Package2Version WHERE Package2Id = '${packageId}' AND MajorVersion = ${versionArray[0]} AND MinorVersion = ${versionArray[1]} AND PatchVersion = ${versionArray[2]} AND IsReleased = true LIMIT 1`;
+    const queryString = `SELECT 
+      SubscriberPackageVersionId,
+      Package2.SubscriberPackageId,
+      SubscriberPackageVersion.IsBeta,
+      SubscriberPackageVersion.IsPasswordProtected 
+      FROM Package2Version 
+      WHERE Package2Id = '${packageId}'
+        AND MajorVersion = ${versionArray[0]} 
+        AND MinorVersion = ${versionArray[1]} 
+        AND PatchVersion = ${versionArray[2]} 
+        AND IsReleased = true LIMIT 1`;
     const queryResult = await devhubCon.tooling.query(queryString);
     if (queryResult.records.length === 0) {
       throw new SfError(
@@ -60,11 +74,25 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
       );
     }
     const record = queryResult.records[0] as Package2Version;
-    return { id: record.SubscriberPackageVersionId };
+    return {
+      id: record.SubscriberPackageVersionId,
+      requiresInstallationKey: record.SubscriberPackageVersion.IsPasswordProtected,
+      subscriberPackageId: record.Package2.SubscriberPackageId,
+    };
   }
 
-  private async resolveInstalledVersionId(packageId: string, targetOrgCon: Connection): Promise<PackageVersionDetails> {
-    const queryString = `SELECT SubscriberPackageVersionId,SubscriberPackageVersion.MajorVersion,SubscriberPackageVersion.MinorVersion,SubscriberPackageVersion.PatchVersion FROM InstalledSubscriberPackage WHERE SubscriberPackageId = '${packageId}' LIMIT 1`;
+  private async resolveInstalledVersionId(
+    subscriberId: string,
+    targetOrgCon: Connection
+  ): Promise<PackageVersionDetails> {
+    const queryString = `SELECT
+      SubscriberPackageVersionId,
+      SubscriberPackageVersion.MajorVersion,
+      SubscriberPackageVersion.MinorVersion,
+      SubscriberPackageVersion.PatchVersion,
+      SubscriberPackageVersion.IsPasswordProtected
+      FROM InstalledSubscriberPackage
+      WHERE SubscriberPackageId = '${subscriberId}' LIMIT 1`;
     const queryResult = await targetOrgCon.tooling.query(queryString);
     if (queryResult.records.length === 0) {
       return { id: undefined };
@@ -72,27 +100,41 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     const record = queryResult.records[0] as Package2Version;
     return {
       id: record.SubscriberPackageVersionId,
-      versionName: this.mergeVersionName(record.SubscriberPackageVersion!),
+      versionName: this.mergeVersionName(record.SubscriberPackageVersion),
+      requiresInstallationKey: record.SubscriberPackageVersion.IsPasswordProtected,
     };
   }
 
-  private mergeVersionName(subscriberPackage: SubscriberPackageVersionType): string {
+  private mergeVersionName(subscriberPackage: SubscriberPackageVersion): string {
     return `${subscriberPackage.MajorVersion}.${subscriberPackage.MinorVersion}.${subscriberPackage.PatchVersion}`;
   }
+
+  private assertInstallationKey(versionDetails: PackageVersionDetails): void {
+    if (!versionDetails.requiresInstallationKey) {
+      this.internalState.useInstallationKey = false;
+      return;
+    }
+    if (versionDetails.requiresInstallationKey && isEmpty(this.artifact.installation_key)) {
+      throw new SfError(`The package version ${
+        this.artifact.version
+      } (${versionDetails.id!}) requires an installation key, \
+            but no key export was specified for the artifact. Specify the environment variable \
+            that holds the installation key in the property installation_key.`);
+    }
+    if (!isEmpty(this.artifact.installation_key) && isEmpty(process.env[this.artifact.installation_key!])) {
+      throw new SfError(
+        `Installation key set to ${this.artifact.installation_key!}, \
+          but the corresponding environment variable is not set.`
+      );
+    }
+    this.internalState.useInstallationKey = true;
+    this.internalState.installationKey = process.env[this.artifact.installation_key!];
+  }
 }
-
-type Package2Version = {
-  SubscriberPackageVersionId?: string;
-  SubscriberPackageVersion?: SubscriberPackageVersionType;
-};
-
-type SubscriberPackageVersionType = {
-  MajorVersion: string;
-  MinorVersion: string;
-  PatchVersion: string;
-};
 
 type PackageVersionDetails = {
   id?: string;
   versionName?: string;
+  requiresInstallationKey?: boolean;
+  subscriberPackageId?: string;
 };

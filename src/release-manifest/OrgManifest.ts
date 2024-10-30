@@ -1,4 +1,6 @@
+import { Connection } from '@salesforce/core';
 import { ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
+import { ZManifestDeployResultType } from '../types/orgManifestOutputSchema.js';
 import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
 
 export default class OrgManifest {
@@ -22,5 +24,14 @@ export default class OrgManifest {
 
   public getDeployJobs(): ArtifactDeployJob[] {
     return this.deployJobs;
+  }
+
+  public async rollout(targetOrg: Connection, devhubOrg: Connection): Promise<ZManifestDeployResultType> {
+    const result: ZManifestDeployResultType = {};
+    for (const element of this.getDeployJobs()) {
+      // eslint-disable-next-line no-await-in-loop
+      result[element.name] = await element.resolve(targetOrg, devhubOrg);
+    }
+    return result;
   }
 }

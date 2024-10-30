@@ -8,6 +8,8 @@ const ArtifactDeployResult = z.object({
   status: DeployStatus,
 });
 
+const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));
+
 const SourceDeployResult = ArtifactDeployResult.extend({
   deployStrategy: z.literal(DeployStrategies.Enum.SourceDeploy),
   sourcePath: z.string().optional(),
@@ -21,6 +23,8 @@ const PackageInstallResult = ArtifactDeployResult.extend({
   installedVersion: z.string().optional(),
   installedVersionId: z.string().optional(),
   skipped: z.boolean().optional(),
+  useInstallationKey: z.boolean().optional(),
+  installationKey: z.string().optional(),
 });
 
 const CronJobScheduleResult = ArtifactDeployResult.extend({
@@ -34,6 +38,7 @@ const ZArtifactDeployResult = z.discriminatedUnion('deployStrategy', [
   CronJobScheduleResult,
 ]);
 
+export type ZManifestDeployResultType = z.infer<typeof ManifestDeployResult>;
 export type ZArtifactDeployResultType = z.infer<typeof ZArtifactDeployResult>;
 export type ZSourceDeployResultType = z.infer<typeof SourceDeployResult>;
 export type ZPackageInstallResultType = z.infer<typeof PackageInstallResult>;

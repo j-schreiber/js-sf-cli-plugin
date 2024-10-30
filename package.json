@@ -6,6 +6,7 @@
     "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
+    "@salesforce/kit": "^3.2.3",
     "@salesforce/sf-plugins-core": "^12.0.8",
     "js-yaml": "^4.1.0",
     "zod": "^3.23.8"
@@ -86,11 +87,14 @@
   },
   "wireit": {
     "build": {
-      "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}",
       "dependencies": [
+        "clean-deps",
         "compile",
         "lint"
       ]
+    },
+    "clean-deps": {
+      "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"
     },
     "compile": {
       "command": "tsc -p . --pretty --incremental",

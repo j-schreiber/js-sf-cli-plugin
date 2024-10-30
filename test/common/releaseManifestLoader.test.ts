@@ -5,25 +5,26 @@
 import fs from 'node:fs';
 import { expect } from 'chai';
 import { ZodError } from 'zod';
+import { SfError } from '@salesforce/core';
+import { QueryResult } from '@jsforce/jsforce-node';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
-// import { SfError } from '@salesforce/core';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
 import { ZPackageInstallResultType } from '../../src/types/orgManifestOutputSchema.js';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
-import { SfError } from '@salesforce/core';
+import { InstalledSubscriberPackage, Package2Version } from '../../src/types/sfToolingApiTypes.js';
+import {
+  initSourceDirectories,
+  MockInstalledVersionQueryResult,
+  MockPackageVersionQueryResult,
+} from '../mock-utils/releaseManifestMockUtils.js';
 
-// exhaustive list of all "valid" source paths that are used in test manifests
-const testSourcePaths = [
-  'test/data/mock-src/package-overrides/core-crm/dev',
-  'test/data/mock-src/package-overrides/core-crm/prod',
-  'test/data/mock-src/package-overrides/pims',
-  'test/data/mock-src/package-extensions/core-crm',
-  'test/data/mock-src/unpackaged/org-shape',
-  'test/data/mock-src/unpackaged/qa',
-  'test/data/mock-src/unpackaged/prod-only',
-  'test/data/mock-src/unpackaged/my-happy-soup',
-];
+const DEFAULT_MANIFEST_OPTIONS = {
+  skip_if_installed: true,
+  requires_promoted_versions: true,
+  strict_environments: false,
+  pipefail: true,
+};
 
 describe('org manifest', () => {
   const $$ = new TestContext();
@@ -35,10 +36,7 @@ describe('org manifest', () => {
     mockTargetOrg.username = 'admin@example.com.qa';
     mockDevHubOrg.isDevHub = true;
     await $$.stubAuths(mockDevHubOrg, mockTargetOrg);
-
-    testSourcePaths.forEach((path) => {
-      fs.mkdirSync(path, { recursive: true });
-    });
+    initSourceDirectories();
   });
 
   afterEach(async () => {
@@ -183,11 +181,17 @@ describe('org manifest', () => {
   });
 
   describe('deploy jobs', () => {
+    let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
+    let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
+
+    beforeEach(() => {
+      DEFAULT_INSTALLED_PACKAGE_RESULT = MockInstalledVersionQueryResult;
+      DEFAULT_PACKAGE_VERSION = MockPackageVersionQueryResult;
+    });
+
     it('resolves package deploy job > loads version ids with devhub and target org connection', async () => {
       // Arrange
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
-      mockPackageInstallRequestQueries('0Ho0X0000000001AAA');
+      mockPackageInstallRequestQueries('0Ho0X0000000001AAA', '033000000000000AAA');
 
       // Act
       const packageJob = new ArtifactDeployJob(
@@ -198,8 +202,10 @@ describe('org manifest', () => {
           version: '1.2.3',
           skip_if_installed: false,
         },
-        { skip_if_installed: true, requires_promoted_versions: true, strict_environments: false, pipefail: true }
+        DEFAULT_MANIFEST_OPTIONS
       );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -211,14 +217,116 @@ describe('org manifest', () => {
       expect(installStep.versionId).to.equal('04t0X0000000001AAA');
       expect(installStep.installedVersionId).to.equal('04t0X0000000000AAA');
       expect(installStep.installedVersion).to.equal('1.2.2');
+      expect(installStep.useInstallationKey).to.equal(false);
+      expect(installStep.shouldSkipIfInstalled).to.equal(false);
+      expect(installStep.skipped).to.equal(false);
     });
 
-    it('resolves package deploy job > invalid package version > throws error', async () => {
+    it('resolves package deploy job > no installed version > loads version from devhub and prepares install', async () => {
+      // Arrange
+      // only return a subscriber version id for the devhub query
+      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+        if (isPackageVersionDevhubQuery(request, '0Ho0X0000000001AAA')) {
+          return Promise.resolve(DEFAULT_PACKAGE_VERSION);
+        } else {
+          return Promise.resolve({ records: [] });
+        }
+      };
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: '0Ho0X0000000001AAA',
+          version: '1.2.3',
+          skip_if_installed: true,
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await packageJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.status).to.equal('Pending');
+      expect(installStep.versionId).to.equal('04t0X0000000001AAA');
+      expect(installStep.shouldSkipIfInstalled).to.equal(true);
+      expect(installStep.skipped).to.equal(false);
+      expect(installStep.installedVersionId).to.equal(undefined);
+      expect(installStep.installedVersion).to.equal(undefined);
+    });
+
+    it('resolves package deploy job that explicitly sets true > same version already installed > prepares to skip', async () => {
+      // Arrange
+      // only return a subscriber version id for the devhub query
+      const packageId = '0Ho0X0000000001AAA';
+      const subscriberId = '033000000000000AAA';
+      const defaultPackageVersionId = DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId;
+      mockSameInstalledPackageVersions(packageId, subscriberId, defaultPackageVersionId);
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: packageId,
+          version: '1.2.2',
+          skip_if_installed: true,
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await packageJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.status).to.equal('Pending');
+      expect(installStep.versionId).to.equal(defaultPackageVersionId);
+      expect(installStep.shouldSkipIfInstalled).to.equal(true);
+      expect(installStep.skipped).to.equal(true);
+      expect(installStep.installedVersionId).to.equal(defaultPackageVersionId);
+    });
+
+    it('resolves package deploy job that implicitly skips from default options > same version already installed > prepares to skip', async () => {
+      // Arrange
+      // only return a subscriber version id for the devhub query
+      const packageId = '0Ho0X0000000001AAA';
+      const subscriberId = '033000000000000AAA';
+      const defaultPackageVersionId = DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId;
+      mockSameInstalledPackageVersions(packageId, subscriberId, defaultPackageVersionId);
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: packageId,
+          version: '1.2.2',
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await packageJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.shouldSkipIfInstalled).to.equal(true);
+      expect(installStep.skipped).to.equal(true);
+    });
+
+    it('resolves package deploy job > package has no released version > throws error', async () => {
       // Arrange
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
       // different id than the one in package job
-      mockPackageInstallRequestQueries('0Ho0X0000000000AAA');
+      mockPackageInstallRequestQueries('0Ho0X0000000000AAA', '033000000000000AAA');
 
       // Act
       const packageJob = new ArtifactDeployJob(
@@ -229,7 +337,7 @@ describe('org manifest', () => {
           version: '2.0.0',
           skip_if_installed: false,
         },
-        { skip_if_installed: true, requires_promoted_versions: true, strict_environments: false, pipefail: true }
+        DEFAULT_MANIFEST_OPTIONS
       );
 
       // Assert
@@ -245,33 +353,155 @@ describe('org manifest', () => {
         }
       }
     });
-  });
 
-  function mockPackageInstallRequestQueries(packageId: string) {
-    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-      const _request = ensureJsonMap(request);
-      if (
-        request &&
-        ensureString(_request.url).includes(`Package2Id%20%3D%20'${packageId}'`) &&
-        ensureString(_request.url).includes(mockDevHubOrg.instanceUrl)
-      ) {
-        return Promise.resolve({ records: [{ SubscriberPackageVersionId: '04t0X0000000001AAA' }] });
-      } else if (
-        request &&
-        ensureString(_request.url).includes(`SubscriberPackageId%20%3D%20'${packageId}'`) &&
-        ensureString(_request.url).includes(mockTargetOrg.instanceUrl)
-      ) {
-        return Promise.resolve({
-          records: [
-            {
-              SubscriberPackageVersionId: '04t0X0000000000AAA',
-              SubscriberPackageVersion: { MajorVersion: '1', MinorVersion: '2', PatchVersion: '2' },
-            },
-          ],
-        });
-      } else {
-        return Promise.resolve({ records: [] });
+    it('resolves package deploy job > requires installation key but none configured > throws error', async () => {
+      // Arrange
+      const packageId = '0Ho0X0000000001AAA';
+      mockPackageVersionWithInstallationKey(packageId);
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: packageId,
+          version: '2.0.0',
+          skip_if_installed: false,
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Assert
+      try {
+        await packageJob.resolve(targetConnection, devhubConnection);
+        expect.fail('Should throw an error, but resolved');
+      } catch (err) {
+        expect(err).to.be.instanceOf(SfError);
+        if (err instanceof SfError) {
+          expect(err.message).to.contain('2.0.0 (04t0X0000000001AAA)');
+          expect(err.message).to.contain('requires an installation key');
+        }
       }
-    };
-  }
+    });
+
+    it('resolves package deploy job > requires installation key but env is not set > throws error', async () => {
+      // Arrange
+      const packageId = '0Ho0X0000000001AAA';
+      mockPackageVersionWithInstallationKey(packageId);
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: packageId,
+          version: '2.0.0',
+          skip_if_installed: false,
+          installation_key: 'MY_INSTALLATION_KEY',
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Assert
+      try {
+        await packageJob.resolve(targetConnection, devhubConnection);
+        expect.fail('Should throw an error, but resolved');
+      } catch (err) {
+        expect(err).to.be.instanceOf(SfError);
+        if (err instanceof SfError) {
+          expect(err.message).to.contain('MY_INSTALLATION_KEY');
+        }
+      }
+    });
+
+    it('resolves package deploy job > requires installation that is set', async () => {
+      // Arrange
+      const packageId = '0Ho0X0000000001AAA';
+      mockPackageVersionWithInstallationKey(packageId);
+      process.env.MY_INSTALLATION_KEY = '123testkey';
+
+      // Act
+      const packageJob = new ArtifactDeployJob(
+        'test_package',
+        {
+          type: 'UnlockedPackage',
+          package_id: packageId,
+          version: '2.0.0',
+          skip_if_installed: false,
+          installation_key: 'MY_INSTALLATION_KEY',
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await packageJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.deployStrategy).to.equal('PackageInstall');
+      expect(installStep.useInstallationKey).to.equal(true);
+      expect(installStep.installationKey).to.equal('123testkey');
+    });
+
+    function mockSameInstalledPackageVersions(packageId: string, subscriberId: string, versionId: string) {
+      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+        if (isPackageVersionDevhubQuery(request, packageId)) {
+          const returnValue = structuredClone(DEFAULT_PACKAGE_VERSION);
+          returnValue.records![0].SubscriberPackageVersionId = versionId;
+          return Promise.resolve(returnValue);
+        } else if (isTargetOrgInstalledVersionQuery(request, subscriberId)) {
+          return Promise.resolve(DEFAULT_INSTALLED_PACKAGE_RESULT);
+        } else {
+          return Promise.resolve({ records: [] });
+        }
+      };
+    }
+
+    function mockPackageInstallRequestQueries(packageId: string, subscriberId: string) {
+      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+        if (isPackageVersionDevhubQuery(request, packageId)) {
+          return Promise.resolve(DEFAULT_PACKAGE_VERSION);
+        } else if (isTargetOrgInstalledVersionQuery(request, subscriberId)) {
+          return Promise.resolve(DEFAULT_INSTALLED_PACKAGE_RESULT);
+        } else {
+          return Promise.resolve({ records: [] });
+        }
+      };
+    }
+
+    function mockPackageVersionWithInstallationKey(packageId: string) {
+      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+        if (isPackageVersionDevhubQuery(request, packageId)) {
+          const returnValue = { ...DEFAULT_PACKAGE_VERSION };
+          returnValue.records![0].SubscriberPackageVersion.IsPasswordProtected = true;
+          return Promise.resolve(returnValue);
+        } else {
+          return Promise.resolve({ records: [] });
+        }
+      };
+    }
+
+    function isPackageVersionDevhubQuery(request: AnyJson, packageId: string): boolean {
+      const _request = ensureJsonMap(request);
+      return Boolean(
+        request &&
+          ensureString(_request.url).includes(`Package2Id%20%3D%20'${packageId}'`) &&
+          ensureString(_request.url).includes(mockDevHubOrg.instanceUrl)
+      );
+    }
+
+    function isTargetOrgInstalledVersionQuery(request: AnyJson, packageId: string): boolean {
+      const _request = ensureJsonMap(request);
+      return Boolean(
+        request &&
+          ensureString(_request.url).includes(`SubscriberPackageId%20%3D%20'${packageId}'`) &&
+          ensureString(_request.url).includes(mockTargetOrg.instanceUrl)
+      );
+    }
+  });
 });

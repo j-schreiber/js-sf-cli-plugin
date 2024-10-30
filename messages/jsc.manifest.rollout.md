@@ -6,7 +6,7 @@ Summary of a command.
 
 More information about a command. Don't repeat the summary.
 
-# flags.manifest-file.summary
+# flags.manifest.summary
 
 Manifest file
 

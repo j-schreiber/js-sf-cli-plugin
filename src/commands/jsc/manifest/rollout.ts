@@ -1,26 +1,25 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import { ArtifactDeployResult } from '../../../release-manifest/manifestRolloutResult.js';
 import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
-import ReleaseManifest from '../../../release-manifest/releaseManifest.js';
+import { ZManifestDeployResultType } from '../../../types/orgManifestOutputSchema.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'jsc.manifest.rollout');
 
-export type RolloutResult = {
+export type JscManifestRolloutResult = {
   targetOrgUsername?: string;
   devhubOrgUsername?: string;
-  deployedArtifacts: ArtifactDeployResult[];
+  deployedArtifacts: ZManifestDeployResultType;
 };
 
-export default class Rollout extends SfCommand<RolloutResult> {
+export default class JscManifestRollout extends SfCommand<JscManifestRolloutResult> {
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
 
   public static readonly flags = {
-    'manifest-file': Flags.file({
-      summary: messages.getMessage('flags.manifest-file.summary'),
+    manifest: Flags.file({
+      summary: messages.getMessage('flags.manifest.summary'),
       char: 'm',
       required: true,
       exists: true,
@@ -37,17 +36,17 @@ export default class Rollout extends SfCommand<RolloutResult> {
     }),
   };
 
-  public async run(): Promise<RolloutResult> {
-    const { flags } = await this.parse(Rollout);
-    const manifest = new ReleaseManifest(
-      ReleaseManifestLoader.load(flags['manifest-file']),
+  public async run(): Promise<JscManifestRolloutResult> {
+    const { flags } = await this.parse(JscManifestRollout);
+    const manifest = ReleaseManifestLoader.load(flags.manifest);
+    const result = await manifest.rollout(
+      flags['target-org'].getConnection('60.0'),
       flags['devhub-org'].getConnection('60.0')
     );
-    const deployResult = await manifest.rollout(flags['target-org'].getConnection('60.0'));
     return {
       targetOrgUsername: flags['target-org'].getUsername(),
       devhubOrgUsername: flags['devhub-org'].getUsername(),
-      deployedArtifacts: deployResult,
+      deployedArtifacts: result,
     };
   }
 }
