@@ -3,17 +3,23 @@
 /* eslint-disable @typescript-eslint/require-await */
 
 import { Connection } from '@salesforce/core';
-import { DeployStrategies, ZSourceDeployResultType, ZUnpackagedSourceArtifact } from '../../types/releaseManifest.js';
+import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
+import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
+import { DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
-  public internalState: ZSourceDeployResultType;
+  private internalState: ZSourceDeployResultType;
 
   public constructor(private artifact: ZUnpackagedSourceArtifact) {
     this.internalState = {
       status: 'Pending',
       deployStrategy: DeployStrategies.Enum.SourceDeploy,
     };
+  }
+
+  public getStatus(): ZSourceDeployResultType {
+    return this.internalState;
   }
 
   public async deploy(targetOrg: Connection): Promise<ZSourceDeployResultType> {

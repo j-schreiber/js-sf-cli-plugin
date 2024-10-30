@@ -1,8 +1,13 @@
 import { Connection } from '@salesforce/core';
-import { ZArtifactDeployResultType } from '../../types/releaseManifest.js';
+import { ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
 
 export type ArtifactDeployStrategy = {
-  internalState: ZArtifactDeployResultType;
+  // internalState: ZArtifactDeployResultType;
+
+  /**
+   * Return the internal state of the job, for inspection
+   */
+  getStatus(): ZArtifactDeployResultType;
 
   /**
    * Prepare internal state of the step before "deploy" is run.

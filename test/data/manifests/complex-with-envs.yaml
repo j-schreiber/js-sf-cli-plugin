@@ -11,6 +11,7 @@ artifacts:
     package_id: 0Ho67000000oLkyCAE
     installation_key: APEX_UTILS_INSTALLATION_KEY
     version: 1.28.0
+    skip_if_installed: false
   lwc_utils:
     type: UnlockedPackage
     package_id: 0Ho670000008OMHCA2
@@ -38,5 +39,3 @@ artifacts:
   pims_overrides:
     type: Unpackaged
     path: test/data/mock-src/package-overrides/pims
-options:
-  skip_if_installed: true

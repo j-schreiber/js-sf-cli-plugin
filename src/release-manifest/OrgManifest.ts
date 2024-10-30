@@ -1,4 +1,4 @@
-import { ZReleaseManifestType } from '../types/releaseManifest.js';
+import { ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
 
 export default class OrgManifest {
@@ -12,7 +12,7 @@ export default class OrgManifest {
       });
     }
     for (const [artifactName, artifact] of Object.entries(this.data.artifacts)) {
-      this.deployJobs.push(new ArtifactDeployJob(artifactName, artifact));
+      this.deployJobs.push(new ArtifactDeployJob(artifactName, artifact, this.data.options));
     }
   }
 

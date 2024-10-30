@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
-import { ZArtifactType, ZReleaseManifestType } from '../types/releaseManifest.js';
+import { ZArtifactType, ZReleaseManifestType } from '../types/orgManifestOutputSchema.js';
 import ValidationResult from '../common/validationResult.js';
 import { ArtifactDeployResult } from './manifestRolloutResult.js';
 

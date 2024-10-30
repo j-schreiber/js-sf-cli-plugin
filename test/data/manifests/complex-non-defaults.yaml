@@ -1,0 +1,14 @@
+artifacts:
+  apex_utils:
+    type: UnlockedPackage
+    package_id: 0Ho67000000oLkyCAE
+    installation_key: APEX_UTILS_INSTALLATION_KEY
+    version: 1.28.0
+    skip_if_installed: true
+  lwc_utils:
+    type: UnlockedPackage
+    package_id: 0Ho670000008OMHCA2
+    installation_key: LWC_UTILS_INSTALLATION_KEY
+    version: 0.12.0
+options:
+  skip_if_installed: false

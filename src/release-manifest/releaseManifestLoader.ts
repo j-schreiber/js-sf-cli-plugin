@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import yaml from 'js-yaml';
-import { ZReleaseManifest, ZReleaseManifestType } from '../types/releaseManifest.js';
+import { ZReleaseManifest, ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import OrgManifest from './OrgManifest.js';
 
 export default class ReleaseManifestLoader {
