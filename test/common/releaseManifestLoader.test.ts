@@ -18,6 +18,8 @@ import {
   MockInstalledVersionQueryResult,
   MockPackageVersionQueryResult,
 } from '../mock-utils/releaseManifestMockUtils.js';
+import { ZReleaseManifestType } from '../../src/types/orgManifestInputSchema.js';
+import OrgManifest from '../../src/release-manifest/OrgManifest.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -25,6 +27,19 @@ const DEFAULT_MANIFEST_OPTIONS = {
   strict_environments: false,
   pipefail: true,
 };
+
+const TEST_ENVS = {
+  dev: 'admin@example.com.dev',
+  stage: 'admin@example.com.stage',
+  'pre-prod': 'admin@example.com.qa',
+  prod: 'devhub-admin@example.com',
+};
+
+const TEST_MANIFEST = new OrgManifest({
+  options: DEFAULT_MANIFEST_OPTIONS,
+  environments: TEST_ENVS,
+  artifacts: {},
+} as ZReleaseManifestType);
 
 describe('org manifest', () => {
   const $$ = new TestContext();
@@ -202,7 +217,7 @@ describe('org manifest', () => {
           version: '1.2.3',
           skip_if_installed: false,
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -242,7 +257,7 @@ describe('org manifest', () => {
           version: '1.2.3',
           skip_if_installed: true,
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -276,7 +291,7 @@ describe('org manifest', () => {
           version: '1.2.2',
           skip_if_installed: true,
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -308,7 +323,7 @@ describe('org manifest', () => {
           package_id: packageId,
           version: '1.2.2',
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -337,7 +352,7 @@ describe('org manifest', () => {
           version: '2.0.0',
           skip_if_installed: false,
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
 
       // Assert
@@ -368,7 +383,7 @@ describe('org manifest', () => {
           version: '2.0.0',
           skip_if_installed: false,
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -401,7 +416,7 @@ describe('org manifest', () => {
           skip_if_installed: false,
           installation_key: 'MY_INSTALLATION_KEY',
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -434,7 +449,7 @@ describe('org manifest', () => {
           skip_if_installed: false,
           installation_key: 'MY_INSTALLATION_KEY',
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -507,8 +522,6 @@ describe('org manifest', () => {
 
   describe('unpackage source deploy jobs', () => {
     it('has single source path > resolves to one step with path', async () => {
-      // Arrange
-
       // Act
       const sourceJob = new ArtifactDeployJob(
         'org_shape',
@@ -516,7 +529,7 @@ describe('org manifest', () => {
           type: 'Unpackaged',
           path: 'test/data/mock-src/unpackaged/my-happy-soup',
         },
-        DEFAULT_MANIFEST_OPTIONS
+        TEST_MANIFEST
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -524,9 +537,171 @@ describe('org manifest', () => {
 
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
-      const installStep = steps[0] as ZSourceDeployResultType;
-      expect(installStep.deployStrategy).to.equal('SourceDeploy');
-      expect(installStep.status).to.equal('Pending');
+      const deployStep = steps[0] as ZSourceDeployResultType;
+      expect(deployStep.deployStrategy).to.equal('SourceDeploy');
+      expect(deployStep.status).to.equal('Resolved');
+      expect(deployStep.sourcePath).to.equal('test/data/mock-src/unpackaged/my-happy-soup');
+    });
+
+    it('has multi-env source paths > resolves to mapped target org path', async () => {
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'core_overrides',
+        {
+          type: 'Unpackaged',
+          path: {
+            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
+            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+          },
+        },
+        TEST_MANIFEST
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
+      const stepsResolvedToProd = await sourceJob.resolve(devhubConnection, devhubConnection);
+
+      // Assert
+      expect(stepsResolvedToQa.length).to.equal(1, stepsResolvedToQa.toString());
+      const qaDeployStep = stepsResolvedToQa[0] as ZSourceDeployResultType;
+      expect(qaDeployStep.deployStrategy).to.equal('SourceDeploy');
+      expect(qaDeployStep.status).to.equal('Resolved');
+      expect(qaDeployStep.sourcePath).to.equal('test/data/mock-src/package-overrides/core-crm/dev');
+      const prodDeployStep = stepsResolvedToProd[0] as ZSourceDeployResultType;
+      expect(prodDeployStep.sourcePath).to.equal('test/data/mock-src/package-overrides/core-crm/prod');
+    });
+
+    it('has no source path configured for mapped env > envs are strict > skips job', async () => {
+      // Arrange
+      const STRICT_MANIFEST = structuredClone(TEST_MANIFEST.data);
+      STRICT_MANIFEST.options.strict_environments = true;
+
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'core_overrides',
+        {
+          type: 'Unpackaged',
+          path: {
+            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+          },
+        },
+        new OrgManifest(STRICT_MANIFEST)
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
+      const stepsResolvedToProd = await sourceJob.resolve(devhubConnection, devhubConnection);
+
+      // Assert
+      expect(stepsResolvedToQa.length).to.equal(1, stepsResolvedToQa.toString());
+      const qaDeployStep = stepsResolvedToQa[0] as ZSourceDeployResultType;
+      expect(qaDeployStep.deployStrategy).to.equal('SourceDeploy');
+      expect(qaDeployStep.status).to.equal('Skipped');
+      expect(qaDeployStep.sourcePath).to.be.undefined;
+      const prodDeployStep = stepsResolvedToProd[0] as ZSourceDeployResultType;
+      expect(prodDeployStep.status).to.equal('Resolved');
+      expect(prodDeployStep.sourcePath).to.equal('test/data/mock-src/package-overrides/core-crm/prod');
+    });
+
+    it('has multi-env source paths > no env configured and envs are not strict > resolves empty and skips', async () => {
+      // Arrange
+      const MANIFEST_NO_ENVS = structuredClone(TEST_MANIFEST.data);
+      MANIFEST_NO_ENVS.environments = undefined;
+      MANIFEST_NO_ENVS.options.strict_environments = false;
+
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'core_overrides',
+        {
+          type: 'Unpackaged',
+          path: {
+            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
+            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+          },
+        },
+        new OrgManifest(MANIFEST_NO_ENVS)
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      const qaDeployStep = stepsResolvedToQa[0] as ZSourceDeployResultType;
+      expect(qaDeployStep.status).to.equal('Skipped');
+      expect(qaDeployStep.sourcePath).to.equal(undefined);
+    });
+
+    it('has no envs configured in manifest but envs are strict > throws error', async () => {
+      // Arrange
+      const MANIFEST_NO_ENVS = structuredClone(TEST_MANIFEST.data);
+      MANIFEST_NO_ENVS.environments = undefined;
+      MANIFEST_NO_ENVS.options.strict_environments = true;
+
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'core_overrides',
+        {
+          type: 'Unpackaged',
+          path: {
+            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
+            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+          },
+        },
+        new OrgManifest(MANIFEST_NO_ENVS)
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Assert
+      try {
+        await sourceJob.resolve(targetConnection, devhubConnection);
+        expect.fail('Should throw an error, but resolved');
+      } catch (err) {
+        expect(err).to.be.instanceOf(SfError);
+        if (err instanceof SfError) {
+          expect(err.message).to.equal(
+            `No environment configured for target org ${mockTargetOrg.username}, but strict validation was set.`
+          );
+        }
+      }
+    });
+
+    it('has no env for username configred but envs are strict > throws error', async () => {
+      // Arrange
+      const MANIFEST = structuredClone(TEST_MANIFEST.data);
+      MANIFEST.environments = {
+        dev: 'admin@example.com.dev',
+        stage: 'admin@example.com.stage',
+        prod: 'devhub-admin@example.com',
+      };
+      MANIFEST.options.strict_environments = true;
+
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'core_overrides',
+        {
+          type: 'Unpackaged',
+          path: {
+            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+          },
+        },
+        new OrgManifest(MANIFEST)
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Assert
+      try {
+        await sourceJob.resolve(targetConnection, devhubConnection);
+        expect.fail('Should throw an error, but resolved');
+      } catch (err) {
+        expect(err).to.be.instanceOf(SfError);
+        if (err instanceof SfError) {
+          expect(err.message).to.equal(
+            `No environment configured for target org ${mockTargetOrg.username}, but strict validation was set.`
+          );
+        }
+      }
     });
   });
 });

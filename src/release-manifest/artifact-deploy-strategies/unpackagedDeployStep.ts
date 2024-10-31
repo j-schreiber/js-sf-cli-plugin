@@ -1,19 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable class-methods-use-this */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/require-await */
 
-import { Connection } from '@salesforce/core';
+import { Connection, SfError } from '@salesforce/core';
+import OrgManifest from '../OrgManifest.js';
 import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
-import { DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
+import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
   private internalState: Partial<ZSourceDeployResultType>;
 
-  public constructor(private artifact: ZUnpackagedSourceArtifact) {
+  public constructor(private artifact: ZUnpackagedSourceArtifact, private manifest: OrgManifest) {
     this.internalState = {
-      status: 'Pending',
+      status: DeployStatus.Enum.Pending,
       deployStrategy: DeployStrategies.Enum.SourceDeploy,
     };
   }
@@ -28,41 +31,27 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     return this.internalState as ZSourceDeployResultType;
   }
 
-  public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZSourceDeployResultType> {
-    // resolve source path together with target org & envs
-    console.log(`Resolving: ${JSON.stringify(this.artifact)}`);
-    console.log(`Dev Hub: ${devhubOrg.getUsername()!}`);
-    console.log(`Target Org: ${targetOrg.getUsername()!}`);
+  public async resolve(targetOrg: Connection): Promise<ZSourceDeployResultType> {
+    this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
+    this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
     return this.internalState as ZSourceDeployResultType;
   }
 
-  /*
   private resolveDeployPath(
     manifestInput: string | Record<string, string>,
-    targetOrgConn: Connection
+    targetUsername?: string
   ): string | undefined {
     if (typeof manifestInput === 'string') {
       return manifestInput;
     } else {
-      if (this.data.environments === undefined) {
-        throw new Error('Environments undefined, but required');
+      const envName = this.manifest.getEnvironmentName(targetUsername);
+      if (this.manifest.data.options.strict_environments && envName === undefined) {
+        throw new SfError(`No environment configured for target org ${targetUsername}, but strict validation was set.`);
       }
-      // map environments from input as username -> env name
-      // resolve path from input by env-name
-      // in strict mode, enforce that an env is mapped relative to the target org
-      // if not in strict mode, mapped environments are ignored if deployed to a different target org
-      const envs = new Map<string, string>();
-      Object.entries(this.data.environments).forEach(([key, value]) => {
-        console.log(`Env key: ${key} has username: ${value}`);
-        envs.set(value, key);
-      });
-      const manifestPaths = new Map(Object.entries(manifestInput));
-      // console.log(`Target env username: ${targetOrgConn.getUsername()}`);
-      const envName = envs.get(targetOrgConn.getUsername()!);
-      // console.log(`Required env name: ${envName}`);
-      const result = manifestPaths.get(envName!);
-      // console.log(`Mapped path: ${result}`);
-      return result;
+      if (envName === undefined) {
+        return undefined;
+      }
+      return manifestInput[envName];
     }
-  }*/
+  }
 }

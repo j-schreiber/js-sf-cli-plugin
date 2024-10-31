@@ -43,6 +43,7 @@ export const ZReleaseManifest = z
   })
   .strict();
 
+export type ZManifestEnvsType = z.infer<typeof ZEnvironments>;
 export type ZManifestOptionsType = z.infer<typeof ZManifestOptions>;
 export type ZReleaseManifestType = z.infer<typeof ZReleaseManifest>;
 export type ZArtifactType = z.infer<typeof ZArtifact>;

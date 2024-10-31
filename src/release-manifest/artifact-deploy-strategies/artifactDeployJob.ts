@@ -1,17 +1,14 @@
 /* eslint-disable camelcase */
 import { Connection } from '@salesforce/core';
 import { ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
-import { ZArtifactType, ZManifestOptionsType } from '../../types/orgManifestInputSchema.js';
+import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
+import OrgManifest from '../OrgManifest.js';
 import UnpackagedDeployStep from './unpackagedDeployStep.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 import UnlockedPackageInstallStep from './unlockedPackageInstallStep.js';
 
 export default class ArtifactDeployJob {
-  public constructor(
-    public name: string,
-    public definition: ZArtifactType,
-    private globalOptions: ZManifestOptionsType
-  ) {}
+  public constructor(public name: string, public definition: ZArtifactType, private parentManifest: OrgManifest) {}
 
   /**
    * Prepares the artifact to be deployed against the target org. Resolves
@@ -35,10 +32,10 @@ export default class ArtifactDeployJob {
     // a job may have multiple steps (like package install will have picklist fix after install)
     switch (this.definition.type) {
       case 'Unpackaged':
-        steps.push(new UnpackagedDeployStep(this.definition));
+        steps.push(new UnpackagedDeployStep(this.definition, this.parentManifest));
         break;
       case 'UnlockedPackage':
-        steps.push(new UnlockedPackageInstallStep(this.definition, this.globalOptions));
+        steps.push(new UnlockedPackageInstallStep(this.definition, this.parentManifest.data.options));
         break;
       default:
         break;

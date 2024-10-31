@@ -14,11 +14,14 @@ export default class OrgManifest {
       });
     }
     for (const [artifactName, artifact] of Object.entries(this.data.artifacts)) {
-      this.deployJobs.push(new ArtifactDeployJob(artifactName, artifact, this.data.options));
+      this.deployJobs.push(new ArtifactDeployJob(artifactName, artifact, this));
     }
   }
 
-  public getEnvironmentName(targetUsername: string): string | undefined {
+  public getEnvironmentName(targetUsername?: string): string | undefined {
+    if (targetUsername === undefined) {
+      return undefined;
+    }
     return this.environmentsMap.get(targetUsername);
   }
 
