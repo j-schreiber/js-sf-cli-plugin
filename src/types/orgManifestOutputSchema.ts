@@ -22,7 +22,6 @@ const PackageInstallResult = ArtifactDeployResult.extend({
   requestedVersionId: z.string(),
   installedVersion: z.string().optional(),
   installedVersionId: z.string().optional(),
-  skipped: z.boolean(),
   useInstallationKey: z.boolean(),
   installationKey: z.string().optional(),
 });

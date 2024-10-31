@@ -44,14 +44,18 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     );
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
-    this.internalState.skipped =
-      this.internalState.shouldSkipIfInstalled &&
-      this.internalState.requestedVersionId === this.internalState.installedVersionId;
-    this.internalState.status = DeployStatus.Enum.Resolved;
+    this.internalState.status = this.isResolved() ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
     return this.internalState as ZPackageInstallResultType;
   }
 
   //      PRIVATE ZONE
+
+  private isResolved(): boolean {
+    return !(
+      this.internalState.shouldSkipIfInstalled &&
+      this.internalState.requestedVersionId === this.internalState.installedVersionId
+    );
+  }
 
   private async resolvePackageVersionId(
     packageVersionLiteral: string,

@@ -234,7 +234,6 @@ describe('org manifest', () => {
       expect(installStep.installedVersion).to.equal('1.2.2');
       expect(installStep.useInstallationKey).to.equal(false);
       expect(installStep.shouldSkipIfInstalled).to.equal(false);
-      expect(installStep.skipped).to.equal(false);
     });
 
     it('resolves package deploy job > no installed version > loads version from devhub and prepares install', async () => {
@@ -269,7 +268,6 @@ describe('org manifest', () => {
       expect(installStep.status).to.equal('Resolved');
       expect(installStep.requestedVersionId).to.equal('04t0X0000000001AAA');
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
-      expect(installStep.skipped).to.equal(false);
       expect(installStep.installedVersionId).to.equal(undefined);
       expect(installStep.installedVersion).to.equal(undefined);
     });
@@ -300,10 +298,9 @@ describe('org manifest', () => {
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
-      expect(installStep.status).to.equal('Resolved');
+      expect(installStep.status).to.equal('Skipped');
       expect(installStep.requestedVersionId).to.equal(defaultPackageVersionId);
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
-      expect(installStep.skipped).to.equal(true);
       expect(installStep.installedVersionId).to.equal(defaultPackageVersionId);
     });
 
@@ -333,7 +330,7 @@ describe('org manifest', () => {
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
-      expect(installStep.skipped).to.equal(true);
+      expect(installStep.status).to.equal('Skipped');
     });
 
     it('resolves package deploy job > package has no released version > throws error', async () => {
