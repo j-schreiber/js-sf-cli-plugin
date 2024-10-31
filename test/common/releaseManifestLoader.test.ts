@@ -10,7 +10,7 @@ import { QueryResult } from '@jsforce/jsforce-node';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
-import { ZPackageInstallResultType } from '../../src/types/orgManifestOutputSchema.js';
+import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/types/orgManifestOutputSchema.js';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
 import { InstalledSubscriberPackage, Package2Version } from '../../src/types/sfToolingApiTypes.js';
 import {
@@ -180,7 +180,7 @@ describe('org manifest', () => {
     });
   });
 
-  describe('deploy jobs', () => {
+  describe('package deploy jobs', () => {
     let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
     let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
 
@@ -212,9 +212,9 @@ describe('org manifest', () => {
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.deployStrategy).to.equal('PackageInstall');
-      expect(installStep.status).to.equal('Pending');
-      expect(installStep.version).to.equal('1.2.3');
-      expect(installStep.versionId).to.equal('04t0X0000000001AAA');
+      expect(installStep.status).to.equal('Resolved');
+      expect(installStep.requestedVersion).to.equal('1.2.3');
+      expect(installStep.requestedVersionId).to.equal('04t0X0000000001AAA');
       expect(installStep.installedVersionId).to.equal('04t0X0000000000AAA');
       expect(installStep.installedVersion).to.equal('1.2.2');
       expect(installStep.useInstallationKey).to.equal(false);
@@ -251,8 +251,8 @@ describe('org manifest', () => {
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
-      expect(installStep.status).to.equal('Pending');
-      expect(installStep.versionId).to.equal('04t0X0000000001AAA');
+      expect(installStep.status).to.equal('Resolved');
+      expect(installStep.requestedVersionId).to.equal('04t0X0000000001AAA');
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
       expect(installStep.skipped).to.equal(false);
       expect(installStep.installedVersionId).to.equal(undefined);
@@ -285,8 +285,8 @@ describe('org manifest', () => {
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
-      expect(installStep.status).to.equal('Pending');
-      expect(installStep.versionId).to.equal(defaultPackageVersionId);
+      expect(installStep.status).to.equal('Resolved');
+      expect(installStep.requestedVersionId).to.equal(defaultPackageVersionId);
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
       expect(installStep.skipped).to.equal(true);
       expect(installStep.installedVersionId).to.equal(defaultPackageVersionId);
@@ -503,5 +503,30 @@ describe('org manifest', () => {
           ensureString(_request.url).includes(mockTargetOrg.instanceUrl)
       );
     }
+  });
+
+  describe('unpackage source deploy jobs', () => {
+    it('has single source path > resolves to one step with path', async () => {
+      // Arrange
+
+      // Act
+      const sourceJob = new ArtifactDeployJob(
+        'org_shape',
+        {
+          type: 'Unpackaged',
+          path: 'test/data/mock-src/unpackaged/my-happy-soup',
+        },
+        DEFAULT_MANIFEST_OPTIONS
+      );
+      const devhubConnection = await mockDevHubOrg.getConnection();
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await sourceJob.resolve(targetConnection, devhubConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const installStep = steps[0] as ZSourceDeployResultType;
+      expect(installStep.deployStrategy).to.equal('SourceDeploy');
+      expect(installStep.status).to.equal('Pending');
+    });
   });
 });

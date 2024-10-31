@@ -12,18 +12,18 @@ const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult))
 
 const SourceDeployResult = ArtifactDeployResult.extend({
   deployStrategy: z.literal(DeployStrategies.Enum.SourceDeploy),
-  sourcePath: z.string().optional(),
+  sourcePath: z.string(),
 });
 
 const PackageInstallResult = ArtifactDeployResult.extend({
   deployStrategy: z.literal(DeployStrategies.Enum.PackageInstall),
-  version: z.string(),
   shouldSkipIfInstalled: z.boolean(),
-  versionId: z.string().optional(),
+  requestedVersion: z.string(),
+  requestedVersionId: z.string(),
   installedVersion: z.string().optional(),
   installedVersionId: z.string().optional(),
-  skipped: z.boolean().optional(),
-  useInstallationKey: z.boolean().optional(),
+  skipped: z.boolean(),
+  useInstallationKey: z.boolean(),
   installationKey: z.string().optional(),
 });
 

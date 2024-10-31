@@ -7,7 +7,7 @@ export type ArtifactDeployStrategy = {
   /**
    * Return the internal state of the job, for inspection
    */
-  getStatus(): ZArtifactDeployResultType;
+  getStatus(): Partial<ZArtifactDeployResultType>;
 
   /**
    * Prepare internal state of the step before "deploy" is run.

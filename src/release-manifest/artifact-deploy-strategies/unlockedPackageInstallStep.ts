@@ -9,35 +9,35 @@ import { Package2Version, SubscriberPackageVersion } from '../../types/sfTooling
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
-  private internalState: ZPackageInstallResultType;
+  private internalState: Partial<ZPackageInstallResultType>;
 
   public constructor(public artifact: ZUnlockedPackageArtifact, private globalOptions: ZManifestOptionsType) {
     this.internalState = {
       status: DeployStatus.Enum.Pending,
-      version: this.artifact.version,
+      requestedVersion: this.artifact.version,
       deployStrategy: DeployStrategies.Enum.PackageInstall,
       shouldSkipIfInstalled: artifact.skip_if_installed ?? this.globalOptions.skip_if_installed,
     };
   }
 
-  public getStatus(): ZPackageInstallResultType {
+  public getStatus(): Partial<ZPackageInstallResultType> {
     return this.internalState;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async deploy(targetOrg: Connection): Promise<ZPackageInstallResultType> {
     this.internalState.status = 'Success';
-    return this.internalState;
+    return this.internalState as ZPackageInstallResultType;
   }
 
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZPackageInstallResultType> {
     const versionDetails = await this.resolvePackageVersionId(
-      this.artifact.version,
+      this.internalState.requestedVersion!,
       this.artifact.package_id,
       devhubOrg
     );
     this.assertInstallationKey(versionDetails);
-    this.internalState.versionId = versionDetails.id;
+    this.internalState.requestedVersionId = versionDetails.id;
     const installedVersionDetails = await this.resolveInstalledVersionId(
       versionDetails.subscriberPackageId!,
       targetOrg
@@ -46,9 +46,12 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     this.internalState.installedVersion = installedVersionDetails.versionName;
     this.internalState.skipped =
       this.internalState.shouldSkipIfInstalled &&
-      this.internalState.versionId === this.internalState.installedVersionId;
-    return this.internalState;
+      this.internalState.requestedVersionId === this.internalState.installedVersionId;
+    this.internalState.status = DeployStatus.Enum.Resolved;
+    return this.internalState as ZPackageInstallResultType;
   }
+
+  //      PRIVATE ZONE
 
   private async resolvePackageVersionId(
     packageVersionLiteral: string,

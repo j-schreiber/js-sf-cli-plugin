@@ -9,7 +9,7 @@ import { DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
-  private internalState: ZSourceDeployResultType;
+  private internalState: Partial<ZSourceDeployResultType>;
 
   public constructor(private artifact: ZUnpackagedSourceArtifact) {
     this.internalState = {
@@ -18,14 +18,14 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     };
   }
 
-  public getStatus(): ZSourceDeployResultType {
+  public getStatus(): Partial<ZSourceDeployResultType> {
     return this.internalState;
   }
 
   public async deploy(targetOrg: Connection): Promise<ZSourceDeployResultType> {
     console.log(`Target Org: ${targetOrg.getUsername()}`);
     this.internalState.status = 'Success';
-    return this.internalState;
+    return this.internalState as ZSourceDeployResultType;
   }
 
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZSourceDeployResultType> {
@@ -33,7 +33,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     console.log(`Resolving: ${JSON.stringify(this.artifact)}`);
     console.log(`Dev Hub: ${devhubOrg.getUsername()!}`);
     console.log(`Target Org: ${targetOrg.getUsername()!}`);
-    return this.internalState;
+    return this.internalState as ZSourceDeployResultType;
   }
 
   /*
