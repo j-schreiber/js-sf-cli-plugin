@@ -1,7 +1,10 @@
+import { Config } from '@oclif/core';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
 import { ZManifestDeployResultType } from '../../../types/orgManifestOutputSchema.js';
+import { eventBus } from '../../../common/comms/eventBus.js';
+import { CommandStatusEvent, ProcessingStatus } from '../../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'jsc.manifest.rollout');
@@ -36,6 +39,12 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     }),
   };
 
+  public constructor(argv: string[], config: Config) {
+    super(argv, config);
+    eventBus.on('manifestRollout', (payload: CommandStatusEvent) => this.handleStatusEvent(payload));
+    eventBus.on('simpleMessage', (payload: CommandStatusEvent) => this.log(payload.message));
+  }
+
   public async run(): Promise<JscManifestRolloutResult> {
     const { flags } = await this.parse(JscManifestRollout);
     const manifest = ReleaseManifestLoader.load(flags.manifest);
@@ -48,5 +57,15 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
       devhubOrgUsername: flags['devhub-org'].getUsername(),
       deployedArtifacts: result,
     };
+  }
+
+  private handleStatusEvent(payload: CommandStatusEvent): void {
+    if (payload.status === ProcessingStatus.Started) {
+      this.spinner.start(payload.message!);
+    }
+    this.spinner.status = payload.message;
+    if (payload.status === ProcessingStatus.Completed) {
+      this.spinner.stop(payload.message);
+    }
   }
 }

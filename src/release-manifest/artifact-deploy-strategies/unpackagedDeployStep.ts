@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable class-methods-use-this */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/require-await */
 
-import { Connection, SfError } from '@salesforce/core';
+import { Connection, Messages, SfError } from '@salesforce/core';
 import OrgManifest from '../OrgManifest.js';
 import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
+import { eventBus } from '../../common/comms/eventBus.js';
+import { CommandStatusEvent } from '../../common/comms/processingEvents.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
+
+const messages = Messages.loadMessages('jsc', 'orgmanifest');
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
   private internalState: Partial<ZSourceDeployResultType>;
@@ -26,8 +29,14 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
   }
 
   public async deploy(targetOrg: Connection): Promise<ZSourceDeployResultType> {
-    console.log(`Target Org: ${targetOrg.getUsername()}`);
-    this.internalState.status = 'Success';
+    if (this.internalState.status === DeployStatus.Enum.Pending) {
+      await this.resolve(targetOrg);
+    }
+    this.emitDeployMessage(targetOrg.getUsername());
+    if (this.internalState.status === DeployStatus.Enum.Resolved) {
+      // this is where we delegate to sf project deploy start
+      this.internalState.status = 'Success';
+    }
     return this.internalState as ZSourceDeployResultType;
   }
 
@@ -46,12 +55,24 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     } else {
       const envName = this.manifest.getEnvironmentName(targetUsername);
       if (this.manifest.data.options.strict_environments && envName === undefined) {
-        throw new SfError(`No environment configured for target org ${targetUsername}, but strict validation was set.`);
+        throw new SfError(messages.getMessage('no-env-configured-with-strict-validation', [targetUsername]));
       }
       if (envName === undefined) {
         return undefined;
       }
       return manifestInput[envName];
     }
+  }
+
+  private emitDeployMessage(username?: string): void {
+    let msg;
+    if (this.internalState.status === DeployStatus.Enum.Resolved) {
+      msg = `Running "sf project deploy start" with ${this.internalState.sourcePath} on ${username}`;
+    } else if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      msg = `Skipping artifact, because no path was resolved for username ${username}`;
+    }
+    eventBus.emit('simpleMessage', {
+      message: msg,
+    } as CommandStatusEvent);
   }
 }

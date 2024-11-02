@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable class-methods-use-this */
 import { isEmpty } from '@salesforce/kit';
@@ -6,6 +7,8 @@ import { ZPackageInstallResultType } from '../../types/orgManifestOutputSchema.j
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ZManifestOptionsType, ZUnlockedPackageArtifact } from '../../types/orgManifestInputSchema.js';
 import { Package2Version, SubscriberPackageVersion } from '../../types/sfToolingApiTypes.js';
+import { eventBus } from '../../common/comms/eventBus.js';
+import { CommandStatusEvent } from '../../common/comms/processingEvents.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
@@ -24,8 +27,10 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     return this.internalState;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async deploy(targetOrg: Connection): Promise<ZPackageInstallResultType> {
+    eventBus.emit('simpleMessage', {
+      message: `Running sf package install with ${this.internalState.requestedVersion} to ${targetOrg.getUsername()}`,
+    } as CommandStatusEvent);
     this.internalState.status = 'Success';
     return this.internalState as ZPackageInstallResultType;
   }

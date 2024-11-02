@@ -3,11 +3,15 @@ import { Connection } from '@salesforce/core';
 import { ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
 import OrgManifest from '../OrgManifest.js';
+import { eventBus } from '../../common/comms/eventBus.js';
+import { CommandStatusEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
 import UnpackagedDeployStep from './unpackagedDeployStep.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 import UnlockedPackageInstallStep from './unlockedPackageInstallStep.js';
 
 export default class ArtifactDeployJob {
+  private deploySteps: ArtifactDeployStrategy[] = [];
+
   public constructor(public name: string, public definition: ZArtifactType, private parentManifest: OrgManifest) {}
 
   /**
@@ -18,28 +22,54 @@ export default class ArtifactDeployJob {
    * @param devhubOrg
    */
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZArtifactDeployResultType[]> {
-    // resolve source path together with target org & envs
+    eventBus.emit('manifestRollout', {
+      status: ProcessingStatus.InProgress,
+      message: `Resolving ${this.name}`,
+    } as CommandStatusEvent);
     const results: ZArtifactDeployResultType[] = [];
     for (const element of this.getSteps()) {
       // eslint-disable-next-line no-await-in-loop
       results.push(await element.resolve(targetOrg, devhubOrg));
     }
+    eventBus.emit('manifestRollout', {
+      status: ProcessingStatus.InProgress,
+      message: `Completed ${this.name}`,
+    } as CommandStatusEvent);
+    return results;
+  }
+
+  public async rollout(targetOrg: Connection): Promise<ZArtifactDeployResultType[]> {
+    eventBus.emit('simpleMessage', {
+      message: `Starting rollout for ${this.name}. Executing ${this.getSteps().length} steps.`,
+    } as CommandStatusEvent);
+    const results: ZArtifactDeployResultType[] = [];
+    for (const element of this.getSteps()) {
+      // eslint-disable-next-line no-await-in-loop
+      results.push(await element.deploy(targetOrg));
+    }
+    eventBus.emit('simpleMessage', {
+      message: `Completed ${this.name}!`,
+    } as CommandStatusEvent);
     return results;
   }
 
   public getSteps(): ArtifactDeployStrategy[] {
-    const steps = new Array<ArtifactDeployStrategy>();
-    // a job may have multiple steps (like package install will have picklist fix after install)
+    if (this.deploySteps.length > 0) {
+      return this.deploySteps;
+    }
+    // in the future, a single job can have multiple steps, e.g.
+    // package artifact: install package, then remove deprecated components, then data cleanup
+    // unpackaged artifact: deploy source, then delete removed source (destructive changes)
     switch (this.definition.type) {
       case 'Unpackaged':
-        steps.push(new UnpackagedDeployStep(this.definition, this.parentManifest));
+        this.deploySteps.push(new UnpackagedDeployStep(this.definition, this.parentManifest));
         break;
       case 'UnlockedPackage':
-        steps.push(new UnlockedPackageInstallStep(this.definition, this.parentManifest.data.options));
+        this.deploySteps.push(new UnlockedPackageInstallStep(this.definition, this.parentManifest.data.options));
         break;
       default:
         break;
     }
-    return steps;
+    return this.deploySteps;
   }
 }

@@ -1,6 +1,8 @@
 import { Connection } from '@salesforce/core';
 import { ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import { ZManifestDeployResultType } from '../types/orgManifestOutputSchema.js';
+import { eventBus } from '../common/comms/eventBus.js';
+import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
 
 export default class OrgManifest {
@@ -29,11 +31,44 @@ export default class OrgManifest {
     return this.deployJobs;
   }
 
+  /**
+   * Validates and resolves a manifest file.
+   *
+   * @param targetOrg
+   * @param devhubOrg
+   * @returns
+   */
+  public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZManifestDeployResultType> {
+    eventBus.emit('manifestRollout', {
+      status: ProcessingStatus.Started,
+      message: `Resolving manifest: ${this.deployJobs.length} artifacts found`,
+    } as CommandStatusEvent);
+    const result: ZManifestDeployResultType = {};
+    for (const element of this.getDeployJobs()) {
+      // need to check if we can go async here and await Promise.all() after loop
+      // eslint-disable-next-line no-await-in-loop
+      result[element.name] = await element.resolve(targetOrg, devhubOrg);
+    }
+    eventBus.emit('manifestRollout', {
+      status: ProcessingStatus.Completed,
+      message: 'Success! All artifacts resolved.',
+    } as CommandStatusEvent);
+    return result;
+  }
+
+  /**
+   * Rolls out a manifest. Must have been resolved first, throws error otherwise.
+   *
+   * @param targetOrg
+   * @param devhubOrg
+   * @returns
+   */
   public async rollout(targetOrg: Connection, devhubOrg: Connection): Promise<ZManifestDeployResultType> {
+    await this.resolve(targetOrg, devhubOrg);
     const result: ZManifestDeployResultType = {};
     for (const element of this.getDeployJobs()) {
       // eslint-disable-next-line no-await-in-loop
-      result[element.name] = await element.resolve(targetOrg, devhubOrg);
+      result[element.name] = await element.rollout(targetOrg);
     }
     return result;
   }

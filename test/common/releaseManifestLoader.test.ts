@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-base-to-string */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-underscore-dangle */
@@ -18,8 +19,14 @@ import {
   MockInstalledVersionQueryResult,
   MockPackageVersionQueryResult,
 } from '../mock-utils/releaseManifestMockUtils.js';
-import { ZReleaseManifestType } from '../../src/types/orgManifestInputSchema.js';
+import {
+  ZArtifactType,
+  ZReleaseManifestType,
+  ZUnpackagedSourceArtifact,
+} from '../../src/types/orgManifestInputSchema.js';
 import OrgManifest from '../../src/release-manifest/OrgManifest.js';
+import { eventBus } from '../../src/common/comms/eventBus.js';
+import { CommandStatusEvent } from '../../src/common/comms/processingEvents.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -57,6 +64,7 @@ describe('org manifest', () => {
   afterEach(async () => {
     $$.SANDBOX.restore();
     fs.rmSync('test/data/mock-src', { recursive: true });
+    eventBus.removeAllListeners();
   });
 
   describe('loading', () => {
@@ -195,7 +203,7 @@ describe('org manifest', () => {
     });
   });
 
-  describe('package deploy jobs', () => {
+  describe('resolve package deploy jobs', () => {
     let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
     let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
 
@@ -204,7 +212,7 @@ describe('org manifest', () => {
       DEFAULT_PACKAGE_VERSION = MockPackageVersionQueryResult;
     });
 
-    it('resolves package deploy job > loads version ids with devhub and target org connection', async () => {
+    it('loads version ids with devhub and target org connection', async () => {
       // Arrange
       mockPackageInstallRequestQueries('0Ho0X0000000001AAA', '033000000000000AAA');
 
@@ -236,7 +244,7 @@ describe('org manifest', () => {
       expect(installStep.shouldSkipIfInstalled).to.equal(false);
     });
 
-    it('resolves package deploy job > no installed version > loads version from devhub and prepares install', async () => {
+    it('target org has no version installed > loads version from devhub and prepares install', async () => {
       // Arrange
       // only return a subscriber version id for the devhub query
       $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
@@ -272,7 +280,7 @@ describe('org manifest', () => {
       expect(installStep.installedVersion).to.equal(undefined);
     });
 
-    it('resolves package deploy job that explicitly sets true > same version already installed > prepares to skip', async () => {
+    it('explicitly sets skip if installed true > same version already installed > prepares to skip', async () => {
       // Arrange
       // only return a subscriber version id for the devhub query
       const packageId = '0Ho0X0000000001AAA';
@@ -304,7 +312,7 @@ describe('org manifest', () => {
       expect(installStep.installedVersionId).to.equal(defaultPackageVersionId);
     });
 
-    it('resolves package deploy job that implicitly skips from default options > same version already installed > prepares to skip', async () => {
+    it('implicitly skips if installed from default options > same version already installed > prepares to skip', async () => {
       // Arrange
       // only return a subscriber version id for the devhub query
       const packageId = '0Ho0X0000000001AAA';
@@ -333,7 +341,7 @@ describe('org manifest', () => {
       expect(installStep.status).to.equal('Skipped');
     });
 
-    it('resolves package deploy job > package has no released version > throws error', async () => {
+    it('package has no released version > throws error', async () => {
       // Arrange
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
@@ -366,7 +374,7 @@ describe('org manifest', () => {
       }
     });
 
-    it('resolves package deploy job > requires installation key but none configured > throws error', async () => {
+    it('package requires installation key but none configured > throws error', async () => {
       // Arrange
       const packageId = '0Ho0X0000000001AAA';
       mockPackageVersionWithInstallationKey(packageId);
@@ -398,7 +406,7 @@ describe('org manifest', () => {
       }
     });
 
-    it('resolves package deploy job > requires installation key but env is not set > throws error', async () => {
+    it('package requires installation key but env is not set > throws error', async () => {
       // Arrange
       const packageId = '0Ho0X0000000001AAA';
       mockPackageVersionWithInstallationKey(packageId);
@@ -430,7 +438,7 @@ describe('org manifest', () => {
       }
     });
 
-    it('resolves package deploy job > requires installation that is set', async () => {
+    it('package requires installation that is set > resolves successfully', async () => {
       // Arrange
       const packageId = '0Ho0X0000000001AAA';
       mockPackageVersionWithInstallationKey(packageId);
@@ -455,6 +463,7 @@ describe('org manifest', () => {
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
+      expect(installStep.status).to.equal('Resolved');
       expect(installStep.deployStrategy).to.equal('PackageInstall');
       expect(installStep.useInstallationKey).to.equal(true);
       expect(installStep.installationKey).to.equal('123testkey');
@@ -518,16 +527,21 @@ describe('org manifest', () => {
   });
 
   describe('unpackage source deploy jobs', () => {
+    const MockHappySoupArtifact: ZUnpackagedSourceArtifact = {
+      type: 'Unpackaged',
+      path: 'test/data/mock-src/unpackaged/my-happy-soup',
+    };
+    const MultiPathCoreOverrides: ZUnpackagedSourceArtifact = {
+      type: 'Unpackaged',
+      path: {
+        'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
+        prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+      },
+    };
+
     it('has single source path > resolves to one step with path', async () => {
       // Act
-      const sourceJob = new ArtifactDeployJob(
-        'org_shape',
-        {
-          type: 'Unpackaged',
-          path: 'test/data/mock-src/unpackaged/my-happy-soup',
-        },
-        TEST_MANIFEST
-      );
+      const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
       const steps = await sourceJob.resolve(targetConnection, devhubConnection);
@@ -542,21 +556,12 @@ describe('org manifest', () => {
 
     it('has multi-env source paths > resolves to mapped target org path', async () => {
       // Act
-      const sourceJob = new ArtifactDeployJob(
-        'core_overrides',
-        {
-          type: 'Unpackaged',
-          path: {
-            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
-            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
-          },
-        },
-        TEST_MANIFEST
-      );
+      const qaSourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
+      const prodSourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
-      const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
-      const stepsResolvedToProd = await sourceJob.resolve(devhubConnection, devhubConnection);
+      const stepsResolvedToQa = await qaSourceJob.resolve(targetConnection, devhubConnection);
+      const stepsResolvedToProd = await prodSourceJob.resolve(devhubConnection, devhubConnection);
 
       // Assert
       expect(stepsResolvedToQa.length).to.equal(1, stepsResolvedToQa.toString());
@@ -568,26 +573,24 @@ describe('org manifest', () => {
       expect(prodDeployStep.sourcePath).to.equal('test/data/mock-src/package-overrides/core-crm/prod');
     });
 
-    it('has no source path configured for mapped env > envs are strict > skips job', async () => {
+    it('has no source path configured for a valid and mapped env > envs are strict > skips job', async () => {
       // Arrange
       const STRICT_MANIFEST = structuredClone(TEST_MANIFEST.data);
       STRICT_MANIFEST.options.strict_environments = true;
+      const mockArtifact: ZArtifactType = {
+        type: 'Unpackaged',
+        path: {
+          prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+        },
+      };
 
       // Act
-      const sourceJob = new ArtifactDeployJob(
-        'core_overrides',
-        {
-          type: 'Unpackaged',
-          path: {
-            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
-          },
-        },
-        new OrgManifest(STRICT_MANIFEST)
-      );
+      const qaSourceJob = new ArtifactDeployJob('core_overrides', mockArtifact, new OrgManifest(STRICT_MANIFEST));
+      const prodSourceJob = new ArtifactDeployJob('core_overrides', mockArtifact, new OrgManifest(STRICT_MANIFEST));
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
-      const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
-      const stepsResolvedToProd = await sourceJob.resolve(devhubConnection, devhubConnection);
+      const stepsResolvedToQa = await qaSourceJob.resolve(targetConnection, devhubConnection);
+      const stepsResolvedToProd = await prodSourceJob.resolve(devhubConnection, devhubConnection);
 
       // Assert
       expect(stepsResolvedToQa.length).to.equal(1, stepsResolvedToQa.toString());
@@ -609,13 +612,7 @@ describe('org manifest', () => {
       // Act
       const sourceJob = new ArtifactDeployJob(
         'core_overrides',
-        {
-          type: 'Unpackaged',
-          path: {
-            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
-            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
-          },
-        },
+        MultiPathCoreOverrides,
         new OrgManifest(MANIFEST_NO_ENVS)
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
@@ -637,13 +634,7 @@ describe('org manifest', () => {
       // Act
       const sourceJob = new ArtifactDeployJob(
         'core_overrides',
-        {
-          type: 'Unpackaged',
-          path: {
-            'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
-            prod: 'test/data/mock-src/package-overrides/core-crm/prod',
-          },
-        },
+        MultiPathCoreOverrides,
         new OrgManifest(MANIFEST_NO_ENVS)
       );
       const devhubConnection = await mockDevHubOrg.getConnection();
@@ -699,6 +690,53 @@ describe('org manifest', () => {
           );
         }
       }
+    });
+
+    it('rollout with single source path > delegates to sf project deploy start', async () => {
+      // Arrange
+      const messageListener = $$.SANDBOX.stub();
+      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await sourceJob.rollout(targetConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const deployStep = steps[0] as ZSourceDeployResultType;
+      expect(deployStep.status).to.equal('Success');
+      expect(deployStep.sourcePath).to.equal(MockHappySoupArtifact.path);
+      expect(messageListener.callCount).to.equal(3);
+      expect(messageListener.args.flat()).to.deep.equal([
+        'Starting rollout for org_shape. Executing 1 steps.',
+        `Running "sf project deploy start" with ${MockHappySoupArtifact.path} on ${mockTargetOrg.username}`,
+        'Completed org_shape!',
+      ]);
+    });
+
+    it('rollout with no resolved source > skips sf project deploy', async () => {
+      // Arrange
+      const messageListener = $$.SANDBOX.stub();
+      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
+      // username is a mapped env, but no source path is configured
+      mockTargetOrg.username = 'admin@example.com.dev';
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+      const steps = await sourceJob.rollout(targetConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const deployStep = steps[0] as ZSourceDeployResultType;
+      expect(deployStep.status).to.equal('Skipped');
+      expect(deployStep.sourcePath).to.be.undefined;
+      expect(messageListener.args.flat()).to.deep.equal([
+        'Starting rollout for core_overrides. Executing 1 steps.',
+        'Skipping artifact, because no path was resolved for username admin@example.com.dev',
+        'Completed core_overrides!',
+      ]);
     });
   });
 });
