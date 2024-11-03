@@ -28,10 +28,14 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
   }
 
   public async deploy(targetOrg: Connection): Promise<ZPackageInstallResultType> {
-    eventBus.emit('simpleMessage', {
-      message: `Running sf package install with ${this.internalState.requestedVersion} to ${targetOrg.getUsername()}`,
-    } as CommandStatusEvent);
-    this.internalState.status = 'Success';
+    if (this.internalState.status === DeployStatus.Enum.Pending) {
+      throw new SfError('Package step must be resolved first');
+    }
+    this.emitDeployMessage(targetOrg.getUsername());
+    if (this.internalState.status === DeployStatus.Enum.Resolved) {
+      // this is where we delegate to sf package install
+      this.internalState.status = 'Success';
+    }
     return this.internalState as ZPackageInstallResultType;
   }
 
@@ -141,6 +145,18 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     }
     this.internalState.useInstallationKey = true;
     this.internalState.installationKey = process.env[this.artifact.installation_key!];
+  }
+
+  private emitDeployMessage(username?: string): void {
+    let msg;
+    if (this.internalState.status === DeployStatus.Enum.Resolved) {
+      msg = `Installing ${this.internalState.requestedVersion} with "sf package install" on ${username}`;
+    } else if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      msg = `Skipping installation of ${this.internalState.requestedVersion}, because it is already installed on ${username}`;
+    }
+    eventBus.emit('simpleMessage', {
+      message: msg,
+    } as CommandStatusEvent);
   }
 }
 

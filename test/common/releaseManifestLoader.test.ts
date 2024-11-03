@@ -22,6 +22,7 @@ import {
 import {
   ZArtifactType,
   ZReleaseManifestType,
+  ZUnlockedPackageArtifact,
   ZUnpackagedSourceArtifact,
 } from '../../src/types/orgManifestInputSchema.js';
 import OrgManifest from '../../src/release-manifest/OrgManifest.js';
@@ -206,9 +207,27 @@ describe('org manifest', () => {
   describe('resolve package deploy jobs', () => {
     let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
     let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
+    const testPackageId = '0Ho0X0000000001AAA';
+    const testSubscriberPackageId = '033000000000000AAA';
+    const testExistingVersionId = '04t0X0000000000AAA';
+    const testNewVersionId = '04t0X0000000001AAA';
+
+    const MockNoSkipInstallPackage: ZUnlockedPackageArtifact = {
+      type: 'UnlockedPackage',
+      package_id: testPackageId,
+      version: '1.2.3',
+      skip_if_installed: false,
+    };
+    const MockSkipInstallPackage: ZUnlockedPackageArtifact = {
+      type: 'UnlockedPackage',
+      package_id: testPackageId,
+      version: '1.2.3',
+      skip_if_installed: true,
+    };
 
     beforeEach(() => {
       DEFAULT_INSTALLED_PACKAGE_RESULT = MockInstalledVersionQueryResult;
+      DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId = testExistingVersionId;
       DEFAULT_PACKAGE_VERSION = MockPackageVersionQueryResult;
     });
 
@@ -217,16 +236,7 @@ describe('org manifest', () => {
       mockPackageInstallRequestQueries('0Ho0X0000000001AAA', '033000000000000AAA');
 
       // Act
-      const packageJob = new ArtifactDeployJob(
-        'test_package',
-        {
-          type: 'UnlockedPackage',
-          package_id: '0Ho0X0000000001AAA',
-          version: '1.2.3',
-          skip_if_installed: false,
-        },
-        TEST_MANIFEST
-      );
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
@@ -256,16 +266,7 @@ describe('org manifest', () => {
       };
 
       // Act
-      const packageJob = new ArtifactDeployJob(
-        'test_package',
-        {
-          type: 'UnlockedPackage',
-          package_id: '0Ho0X0000000001AAA',
-          version: '1.2.3',
-          skip_if_installed: true,
-        },
-        TEST_MANIFEST
-      );
+      const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
@@ -283,22 +284,13 @@ describe('org manifest', () => {
     it('explicitly sets skip if installed true > same version already installed > prepares to skip', async () => {
       // Arrange
       // only return a subscriber version id for the devhub query
-      const packageId = '0Ho0X0000000001AAA';
+      const packageId = MockSkipInstallPackage.package_id;
       const subscriberId = '033000000000000AAA';
       const defaultPackageVersionId = DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId;
       mockSameInstalledPackageVersions(packageId, subscriberId, defaultPackageVersionId);
 
       // Act
-      const packageJob = new ArtifactDeployJob(
-        'test_package',
-        {
-          type: 'UnlockedPackage',
-          package_id: packageId,
-          version: '1.2.2',
-          skip_if_installed: true,
-        },
-        TEST_MANIFEST
-      );
+      const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
       const devhubConnection = await mockDevHubOrg.getConnection();
       const targetConnection = await mockTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
@@ -469,14 +461,65 @@ describe('org manifest', () => {
       expect(installStep.installationKey).to.equal('123testkey');
     });
 
+    it('should install package version > delegates to sf package install', async () => {
+      // Arrange
+      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const messageListener = $$.SANDBOX.stub();
+      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
+
+      // Act
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+      await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const steps = await packageJob.rollout(targetConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const deployStep = steps[0] as ZSourceDeployResultType;
+      expect(deployStep.status).to.equal('Success');
+      expect(messageListener.callCount).to.equal(3);
+      expect(messageListener.args.flat()).to.deep.equal([
+        'Starting rollout for test_package. Executing 1 steps.',
+        `Installing ${MockNoSkipInstallPackage.version} with "sf package install" on ${mockTargetOrg.username}`,
+        'Completed test_package!',
+      ]);
+    });
+
+    it('should skip installation package version > step is skipped and command informed', async () => {
+      // Arrange
+      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const messageListener = $$.SANDBOX.stub();
+      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
+
+      // Act
+      const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+      await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const steps = await packageJob.rollout(targetConnection);
+
+      // Assert
+      expect(steps.length).to.equal(1, steps.toString());
+      const deployStep = steps[0] as ZSourceDeployResultType;
+      expect(deployStep.status).to.equal('Skipped');
+      expect(messageListener.callCount).to.equal(3);
+      expect(messageListener.args.flat()).to.deep.equal([
+        'Starting rollout for test_package. Executing 1 steps.',
+        `Skipping installation of ${MockSkipInstallPackage.version}, because it is already installed on ${mockTargetOrg.username}`,
+        'Completed test_package!',
+      ]);
+    });
+
     function mockSameInstalledPackageVersions(packageId: string, subscriberId: string, versionId: string) {
       $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
         if (isPackageVersionDevhubQuery(request, packageId)) {
           const returnValue = structuredClone(DEFAULT_PACKAGE_VERSION);
           returnValue.records![0].SubscriberPackageVersionId = versionId;
+          returnValue.records![0].SubscriberPackageVersion.IsPasswordProtected = false;
           return Promise.resolve(returnValue);
         } else if (isTargetOrgInstalledVersionQuery(request, subscriberId)) {
-          return Promise.resolve(DEFAULT_INSTALLED_PACKAGE_RESULT);
+          const returnValue = structuredClone(DEFAULT_INSTALLED_PACKAGE_RESULT);
+          returnValue.records![0].SubscriberPackageVersionId = versionId;
+          return Promise.resolve(returnValue);
         } else {
           return Promise.resolve({ records: [] });
         }
