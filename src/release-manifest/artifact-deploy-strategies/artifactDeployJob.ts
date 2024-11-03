@@ -38,21 +38,6 @@ export default class ArtifactDeployJob {
     return results;
   }
 
-  public async rollout(targetOrg: Connection): Promise<ZArtifactDeployResultType[]> {
-    eventBus.emit('simpleMessage', {
-      message: `Starting rollout for ${this.name}. Executing ${this.getSteps().length} steps.`,
-    } as CommandStatusEvent);
-    const results: ZArtifactDeployResultType[] = [];
-    for (const element of this.getSteps()) {
-      // eslint-disable-next-line no-await-in-loop
-      results.push(await element.deploy(targetOrg));
-    }
-    eventBus.emit('simpleMessage', {
-      message: `Completed ${this.name}!`,
-    } as CommandStatusEvent);
-    return results;
-  }
-
   public getSteps(): ArtifactDeployStrategy[] {
     if (this.deploySteps.length > 0) {
       return this.deploySteps;

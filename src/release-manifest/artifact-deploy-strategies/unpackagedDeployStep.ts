@@ -8,14 +8,12 @@ import OrgManifest from '../OrgManifest.js';
 import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
-import { eventBus } from '../../common/comms/eventBus.js';
-import { CommandStatusEvent } from '../../common/comms/processingEvents.js';
-import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
+import { ArtifactDeployStrategy, SfCommandConfig } from './artifactDeployStrategy.js';
 
 const messages = Messages.loadMessages('jsc', 'orgmanifest');
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
-  private internalState: Partial<ZSourceDeployResultType>;
+  private internalState: ZSourceDeployResultType;
 
   public constructor(private artifact: ZUnpackagedSourceArtifact, private manifest: OrgManifest) {
     this.internalState = {
@@ -28,23 +26,33 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     return this.internalState;
   }
 
-  public async deploy(targetOrg: Connection): Promise<ZSourceDeployResultType> {
-    if (this.internalState.status === DeployStatus.Enum.Pending) {
-      await this.resolve(targetOrg);
+  public getCommandConfig(): SfCommandConfig {
+    const displayMsg = this.getDeployMessage();
+    if (this.internalState.status !== DeployStatus.Enum.Resolved) {
+      return { displayMessage: displayMsg, args: [] };
     }
-    this.emitDeployMessage(targetOrg.getUsername());
-    if (this.internalState.status === DeployStatus.Enum.Resolved) {
-      // this is where we delegate to sf project deploy start
-      this.internalState.status = 'Success';
-    }
-    return this.internalState as ZSourceDeployResultType;
+    return {
+      name: 'project:deploy:start',
+      args: [
+        '--target-org',
+        this.internalState.targetUsername!,
+        '--source-dir',
+        this.internalState.sourcePath!,
+        '--wait',
+        '10',
+      ],
+      displayMessage: displayMsg,
+    };
   }
 
   public async resolve(targetOrg: Connection): Promise<ZSourceDeployResultType> {
+    this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
     this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
-    return this.internalState as ZSourceDeployResultType;
+    return this.internalState;
   }
+
+  //    PRIVATE ZONE
 
   private resolveDeployPath(
     manifestInput: string | Record<string, string>,
@@ -64,15 +72,12 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     }
   }
 
-  private emitDeployMessage(username?: string): void {
-    let msg;
+  private getDeployMessage(): string | undefined {
     if (this.internalState.status === DeployStatus.Enum.Resolved) {
-      msg = `Running "sf project deploy start" with ${this.internalState.sourcePath} on ${username}`;
+      return `Running "sf project deploy start" with ${this.internalState.sourcePath} on ${this.internalState.targetUsername}`;
     } else if (this.internalState.status === DeployStatus.Enum.Skipped) {
-      msg = `Skipping artifact, because no path was resolved for username ${username}`;
+      return `Skipping artifact, because no path was resolved for username ${this.internalState.targetUsername}`;
     }
-    eventBus.emit('simpleMessage', {
-      message: msg,
-    } as CommandStatusEvent);
+    return undefined;
   }
 }

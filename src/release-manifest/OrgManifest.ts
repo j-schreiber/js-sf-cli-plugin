@@ -55,21 +55,4 @@ export default class OrgManifest {
     } as CommandStatusEvent);
     return result;
   }
-
-  /**
-   * Rolls out a manifest. Must have been resolved first, throws error otherwise.
-   *
-   * @param targetOrg
-   * @param devhubOrg
-   * @returns
-   */
-  public async rollout(targetOrg: Connection, devhubOrg: Connection): Promise<ZManifestDeployResultType> {
-    await this.resolve(targetOrg, devhubOrg);
-    const result: ZManifestDeployResultType = {};
-    for (const element of this.getDeployJobs()) {
-      // eslint-disable-next-line no-await-in-loop
-      result[element.name] = await element.rollout(targetOrg);
-    }
-    return result;
-  }
 }

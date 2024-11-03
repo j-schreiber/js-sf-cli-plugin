@@ -27,7 +27,6 @@ import {
 } from '../../src/types/orgManifestInputSchema.js';
 import OrgManifest from '../../src/release-manifest/OrgManifest.js';
 import { eventBus } from '../../src/common/comms/eventBus.js';
-import { CommandStatusEvent } from '../../src/common/comms/processingEvents.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -464,49 +463,35 @@ describe('org manifest', () => {
     it('should install package version > delegates to sf package install', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
-      const messageListener = $$.SANDBOX.stub();
-      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const steps = await packageJob.rollout(targetConnection);
+      const commandConf = packageJob.getSteps()[0].getCommandConfig();
 
       // Assert
-      expect(steps.length).to.equal(1, steps.toString());
-      const deployStep = steps[0] as ZSourceDeployResultType;
-      expect(deployStep.status).to.equal('Success');
-      expect(messageListener.callCount).to.equal(3);
-      expect(messageListener.args.flat()).to.deep.equal([
-        'Starting rollout for test_package. Executing 1 steps.',
-        `Installing ${MockNoSkipInstallPackage.version} with "sf package install" on ${mockTargetOrg.username}`,
-        'Completed test_package!',
-      ]);
+      expect(commandConf.name).to.equal('package:install');
+      expect(commandConf.displayMessage).to.equal(
+        `Installing ${MockNoSkipInstallPackage.version} with "sf package install" on ${mockTargetOrg.username}`
+      );
     });
 
     it('should skip installation package version > step is skipped and command informed', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
-      const messageListener = $$.SANDBOX.stub();
-      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const steps = await packageJob.rollout(targetConnection);
+      const commandConf = packageJob.getSteps()[0].getCommandConfig();
 
       // Assert
-      expect(steps.length).to.equal(1, steps.toString());
-      const deployStep = steps[0] as ZSourceDeployResultType;
-      expect(deployStep.status).to.equal('Skipped');
-      expect(messageListener.callCount).to.equal(3);
-      expect(messageListener.args.flat()).to.deep.equal([
-        'Starting rollout for test_package. Executing 1 steps.',
-        `Skipping installation of ${MockSkipInstallPackage.version}, because it is already installed on ${mockTargetOrg.username}`,
-        'Completed test_package!',
-      ]);
+      expect(commandConf.name).to.be.undefined;
+      expect(commandConf.displayMessage).to.equal(
+        `Skipping installation of ${MockSkipInstallPackage.version}, because it is already installed on ${mockTargetOrg.username}`
+      );
     });
 
     function mockSameInstalledPackageVersions(packageId: string, subscriberId: string, versionId: string) {
@@ -736,50 +721,35 @@ describe('org manifest', () => {
     });
 
     it('rollout with single source path > delegates to sf project deploy start', async () => {
-      // Arrange
-      const messageListener = $$.SANDBOX.stub();
-      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
-
       // Act
       const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
-      const steps = await sourceJob.rollout(targetConnection);
+      await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const commandConf = sourceJob.getSteps()[0].getCommandConfig();
 
       // Assert
-      expect(steps.length).to.equal(1, steps.toString());
-      const deployStep = steps[0] as ZSourceDeployResultType;
-      expect(deployStep.status).to.equal('Success');
-      expect(deployStep.sourcePath).to.equal(MockHappySoupArtifact.path);
-      expect(messageListener.callCount).to.equal(3);
-      expect(messageListener.args.flat()).to.deep.equal([
-        'Starting rollout for org_shape. Executing 1 steps.',
-        `Running "sf project deploy start" with ${MockHappySoupArtifact.path} on ${mockTargetOrg.username}`,
-        'Completed org_shape!',
-      ]);
+      expect(commandConf.name).to.equal('project:deploy:start');
+      expect(commandConf.displayMessage).to.equal(
+        `Running "sf project deploy start" with ${MockHappySoupArtifact.path} on ${mockTargetOrg.username}`
+      );
     });
 
     it('rollout with no resolved source > skips sf project deploy', async () => {
       // Arrange
-      const messageListener = $$.SANDBOX.stub();
-      eventBus.on('simpleMessage', (payload: CommandStatusEvent) => messageListener(payload.message));
       // username is a mapped env, but no source path is configured
       mockTargetOrg.username = 'admin@example.com.dev';
 
       // Act
       const sourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
-      const steps = await sourceJob.rollout(targetConnection);
+      await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const commandConf = sourceJob.getSteps()[0].getCommandConfig();
 
       // Assert
-      expect(steps.length).to.equal(1, steps.toString());
-      const deployStep = steps[0] as ZSourceDeployResultType;
-      expect(deployStep.status).to.equal('Skipped');
-      expect(deployStep.sourcePath).to.be.undefined;
-      expect(messageListener.args.flat()).to.deep.equal([
-        'Starting rollout for core_overrides. Executing 1 steps.',
-        'Skipping artifact, because no path was resolved for username admin@example.com.dev',
-        'Completed core_overrides!',
-      ]);
+      expect(commandConf.name).to.be.undefined;
+      expect(commandConf.displayMessage).to.equal(
+        'Skipping artifact, because no path was resolved for username admin@example.com.dev'
+      );
     });
   });
 });

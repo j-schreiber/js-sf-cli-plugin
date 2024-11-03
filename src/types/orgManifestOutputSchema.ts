@@ -6,13 +6,14 @@ import { DeployStatus, DeployStrategies } from './orgManifestGlobalConstants.js'
 const ArtifactDeployResult = z.object({
   deployStrategy: z.string(),
   status: DeployStatus,
+  targetUsername: z.string().optional(),
 });
 
 const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));
 
 const SourceDeployResult = ArtifactDeployResult.extend({
   deployStrategy: z.literal(DeployStrategies.Enum.SourceDeploy),
-  sourcePath: z.string(),
+  sourcePath: z.string().optional(),
 });
 
 const PackageInstallResult = ArtifactDeployResult.extend({
