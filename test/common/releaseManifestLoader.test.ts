@@ -166,6 +166,19 @@ describe('org manifest', () => {
         'Artifact basic_happy_soup specified an empty path: test/data/mock-src/unpackaged/my-happy-soup'
       );
     });
+
+    it('defines existing path in unpackaged artifact that contains directories > throws error', () => {
+      // Arrange
+      const testDir = 'test/data/mock-src/unpackaged/my-happy-soup/classes';
+      // reset all files from test setup
+      fs.readdirSync(testDir).forEach((f) => fs.rmSync(`${testDir}/${f}`));
+      fs.mkdirSync('test/data/mock-src/unpackaged/my-happy-soup/objects/Account', { recursive: true });
+
+      // Act
+      expect(() => ReleaseManifestLoader.load('test/data/manifests/minimal.yaml')).to.throw(
+        'Artifact basic_happy_soup specified an empty path: test/data/mock-src/unpackaged/my-happy-soup'
+      );
+    });
   });
 
   describe('manifest functionality', () => {

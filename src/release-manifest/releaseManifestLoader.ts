@@ -51,8 +51,12 @@ export default class ReleaseManifestLoader {
     if (!fs.existsSync(path)) {
       throw new SfError(`Error parsing artifact "${artifactName}": ${path} does not exist.`);
     }
-    const dirContent = fs.readdirSync(path);
-    if (dirContent.length === 0) {
+    const dirContent = fs.readdirSync(path, { recursive: true });
+    let hasFiles = false;
+    dirContent.forEach((dirContentPath) => {
+      hasFiles = hasFiles || !fs.lstatSync(`${path}/${String(dirContentPath)}`).isDirectory();
+    });
+    if (!hasFiles) {
       throw new SfError(messages.getMessage('source-path-is-empty', [artifactName, path]));
     }
   }
