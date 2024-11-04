@@ -49,14 +49,14 @@
       "@oclif/plugin-help"
     ],
     "topics": {
-      "hello": {
-        "description": "Commands to say hello."
-      },
-      "sfdami": {
-        "description": "description for sfdami",
+      "jsc": {
+        "description": "All commands in the JSC namespace",
         "subtopics": {
-          "plan": {
-            "description": "description for sfdami.plan"
+          "data": {
+            "description": "Commands to import, export and migrate data"
+          },
+          "manifest": {
+            "description": "Commands to generate, validate and rollout org manifests"
           }
         }
       }

@@ -22,6 +22,7 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
+  public static readonly requiresProject = true;
 
   public static readonly flags = {
     manifest: Flags.file({
