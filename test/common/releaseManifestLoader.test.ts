@@ -108,7 +108,7 @@ describe('org manifest', () => {
 
     it('loads manifest with simple path-directory does not exist > throws error', () => {
       // Arrange
-      fs.rmdirSync('test/data/mock-src/unpackaged/my-happy-soup');
+      fs.rmSync('test/data/mock-src/unpackaged/my-happy-soup', { recursive: true });
 
       // Assert
       expect(() => ReleaseManifestLoader.load('test/data/manifests/minimal.yaml')).to.throw(
@@ -118,7 +118,7 @@ describe('org manifest', () => {
 
     it('loads manifest with complex path-directory does not exist > throws error', () => {
       // Arrange
-      fs.rmdirSync('test/data/mock-src/package-overrides/pims');
+      fs.rmSync('test/data/mock-src/package-overrides/pims', { recursive: true });
 
       // Assert
       expect(() => ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml')).to.throw(
@@ -154,6 +154,16 @@ describe('org manifest', () => {
       // Act
       expect(() => ReleaseManifestLoader.load('test/data/manifests/does-not-exist.yaml')).to.throw(
         'Invalid path, file does not exist: test/data/manifests/does-not-exist.yaml'
+      );
+    });
+
+    it('defines existing empty path in unpackaged artifact > throws error', () => {
+      // Arrange
+      fs.rmSync('test/data/mock-src/unpackaged/my-happy-soup/classes', { recursive: true });
+
+      // Act
+      expect(() => ReleaseManifestLoader.load('test/data/manifests/minimal.yaml')).to.throw(
+        'Artifact basic_happy_soup specified an empty path: test/data/mock-src/unpackaged/my-happy-soup'
       );
     });
   });

@@ -48,5 +48,6 @@ export const MockPackageVersionQueryResult = {
 export function initSourceDirectories() {
   testSourcePaths.forEach((path) => {
     fs.mkdirSync(path, { recursive: true });
+    fs.cpSync('test/data/apex', `${path}/classes`, { recursive: true });
   });
 }

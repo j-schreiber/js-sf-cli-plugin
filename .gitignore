@@ -2,6 +2,8 @@
 tmp/
 .jsc
 exports/
+.sf/
+.sfdx/
 
 # use yarn by default, so ignore npm
 package-lock.json

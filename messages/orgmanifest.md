@@ -13,3 +13,7 @@ The package version %s (%s) requires an installation key, but no key export was 
 # install-key-set-but-empty
 
 Installation key set to %s, but the corresponding environment variable is not set.
+
+# source-path-is-empty
+
+Artifact %s specified an empty path: %s

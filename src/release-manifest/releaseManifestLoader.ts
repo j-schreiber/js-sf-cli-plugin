@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import yaml from 'js-yaml';
+import { Messages, SfError } from '@salesforce/core';
 import { ZReleaseManifest, ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import OrgManifest from './OrgManifest.js';
 
+const messages = Messages.loadMessages('jsc', 'orgmanifest');
 export default class ReleaseManifestLoader {
   public static load(filePath: string): OrgManifest {
     if (fs.existsSync(filePath)) {
@@ -11,7 +13,7 @@ export default class ReleaseManifestLoader {
       ReleaseManifestLoader.parseArtifactPaths(manifestType);
       return new OrgManifest(manifestType);
     } else {
-      throw new Error(`Invalid path, file does not exist: ${filePath}`);
+      throw new SfError(`Invalid path, file does not exist: ${filePath}`);
     }
   }
 
@@ -40,14 +42,18 @@ export default class ReleaseManifestLoader {
   ): void {
     Object.keys(pathsObject).forEach((env) => {
       if (envs && !(env in envs)) {
-        throw new Error(`Error parsing artifact "${artifactName}": "${env}" is not defined in environments.`);
+        throw new SfError(`Error parsing artifact "${artifactName}": "${env}" is not defined in environments.`);
       }
     });
   }
 
   private static assertPathExists(path: string, artifactName: string): void {
     if (!fs.existsSync(path)) {
-      throw new Error(`Error parsing artifact "${artifactName}": ${path} does not exist.`);
+      throw new SfError(`Error parsing artifact "${artifactName}": ${path} does not exist.`);
+    }
+    const dirContent = fs.readdirSync(path);
+    if (dirContent.length === 0) {
+      throw new SfError(messages.getMessage('source-path-is-empty', [artifactName, path]));
     }
   }
 }
