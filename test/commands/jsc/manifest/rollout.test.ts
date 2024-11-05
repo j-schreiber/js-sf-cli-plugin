@@ -14,7 +14,7 @@ import {
 } from '../../../mock-utils/releaseManifestMockUtils.js';
 import { eventBus } from '../../../../src/common/comms/eventBus.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
-import { ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
+import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 
 const MockLwcUtilsInstallationKey = 'lwcutils1234';
@@ -87,7 +87,7 @@ describe('jsc manifest rollout', () => {
       '--target-org',
       testTargetOrg.username,
       '--manifest',
-      'test/data/manifests/complex-non-defaults.yaml',
+      'test/data/manifests/complex-with-global-options.yaml',
     ]);
 
     // Assert
@@ -239,6 +239,38 @@ describe('jsc manifest rollout', () => {
     const happySoupResult = result.deployedArtifacts['basic_happy_soup'][0] as unknown as ZSourceDeployResultType;
     expect(happySoupResult.status).to.equal(DeployStatus.Enum.Failed);
     expect(happySoupResult.errorDetails).to.equal(subCommandError);
+  });
+
+  it('first artifact fails with --json flag => aborts execution immediately', async () => {
+    // Arrange
+    mockSubscriberVersionsForAllPackages();
+    const subCommandError = { status: 1, message: 'Complex error from child process' };
+    oclifWrapperStub.restore();
+    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+
+    // Act
+    const result = await JscManifestRollout.run([
+      '--devhub-org',
+      testDevHub.username,
+      '--target-org',
+      testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/simple-multi-step.yaml',
+      '--json',
+    ]);
+
+    // Assert
+    expect(process.exitCode).to.equal(2);
+    expect(result.deployedArtifacts['basic_happy_soup']).to.not.be.undefined;
+    expect(result.deployedArtifacts['apex_utils']).to.not.be.undefined;
+    expect(result.deployedArtifacts['basic_happy_soup'].length).to.equal(1, 'steps in basic_happy_soup');
+    expect(result.deployedArtifacts['apex_utils'].length).to.equal(1, 'steps in apex_utils');
+    const apexUtilsResult = result.deployedArtifacts['basic_happy_soup'][0] as unknown as ZSourceDeployResultType;
+    expect(apexUtilsResult.status).to.equal(DeployStatus.Enum.Failed);
+    expect(apexUtilsResult.errorDetails).to.equal(subCommandError);
+    const lwcUtilsResult = result.deployedArtifacts['apex_utils'][0] as unknown as ZPackageInstallResultType;
+    expect(lwcUtilsResult.status).to.equal(DeployStatus.Enum.Skipped);
+    expect(lwcUtilsResult.displayMessage).to.equal('Skipped, because a previous artifact failed.');
   });
 
   function mockSubscriberVersionsForAllPackages() {

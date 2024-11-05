@@ -214,7 +214,7 @@ describe('org manifest', () => {
 
     it('loads manifest with non-default package options > deploy jobs configured correctly', () => {
       // Act
-      const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-non-defaults.yaml');
+      const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-global-options.yaml');
       const jobs = orgManifest.getDeployJobs();
 
       // Assert

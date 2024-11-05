@@ -1,0 +1,10 @@
+artifacts:
+  basic_happy_soup:
+    type: Unpackaged
+    path: test/data/mock-src/unpackaged/my-happy-soup
+  apex_utils:
+    type: UnlockedPackage
+    package_id: 0Ho000000000000AAA
+    installation_key: APEX_UTILS_INSTALLATION_KEY
+    version: 1.28.0
+    skip_if_installed: false
