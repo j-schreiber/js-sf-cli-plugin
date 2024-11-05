@@ -85,3 +85,7 @@ export function initSourceDirectories() {
     fs.cpSync('test/data/apex', `${path}/classes`, { recursive: true });
   });
 }
+
+export function cleanSourceDirectories() {
+  fs.rmSync('test/data/mock-src', { recursive: true });
+}

@@ -7,12 +7,15 @@ import { SfError } from '@salesforce/core';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
 import {
+  cleanSourceDirectories,
   initSourceDirectories,
   MockInstalledVersionQueryResult,
   MockPackageVersionQueryResult,
 } from '../../../mock-utils/releaseManifestMockUtils.js';
 import { eventBus } from '../../../../src/common/comms/eventBus.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
+import { ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
+import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 
 const MockLwcUtilsInstallationKey = 'lwcutils1234';
 
@@ -39,6 +42,7 @@ describe('jsc manifest rollout', () => {
   afterEach(() => {
     oclifWrapperStub.restore();
     eventBus.removeAllListeners();
+    cleanSourceDirectories();
   });
 
   it('runs command with json flag > minimal manifest => exits OK', async () => {
@@ -54,6 +58,7 @@ describe('jsc manifest rollout', () => {
 
     // Assert
     expect(result).to.be.ok;
+    expect(process.exitCode).to.equal(0);
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
     expect(oclifWrapperStub.callCount).to.equal(1);
     // first param of first call is the command config we pass into ->
@@ -86,6 +91,7 @@ describe('jsc manifest rollout', () => {
     ]);
 
     // Assert
+    expect(process.exitCode).to.equal(0);
     expect(result).to.be.ok;
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['apex_utils', 'lwc_utils']);
     expect(oclifWrapperStub.callCount).to.equal(1);
@@ -106,6 +112,7 @@ describe('jsc manifest rollout', () => {
     ]);
 
     // // Assert
+    expect(process.exitCode).to.equal(0);
     expect(result).to.be.ok;
     expect(sfSpinnerStub.start.callCount).to.equal(2);
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
@@ -129,6 +136,7 @@ describe('jsc manifest rollout', () => {
     ]);
 
     // Assert
+    expect(process.exitCode).to.equal(0);
     expect(result).to.be.ok;
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
       [
@@ -164,7 +172,7 @@ describe('jsc manifest rollout', () => {
     );
   });
 
-  it('has failing artifact with console output => exits error & shows details', async () => {
+  it('has failing artifact and no-json run => exits error & log details', async () => {
     // Arrange
     mockSubscriberVersionsForAllPackages();
     const subCommandError = { status: 1, message: 'Complex error from child process' };
@@ -191,6 +199,7 @@ describe('jsc manifest rollout', () => {
     }
 
     // Assert
+    expect(process.exitCode).to.equal(2);
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
       ['Resolving manifest: 1 artifacts found', 'Rolling out basic_happy_soup (1 steps).'],
       'args for spinner.start() calls'
@@ -203,6 +212,33 @@ describe('jsc manifest rollout', () => {
       'args for spinner.stop() calls'
     );
     expect(sfCommandStubs.logToStderr.called).to.be.true;
+  });
+
+  it('has failing artifact but runs with --json => exits result without exception', async () => {
+    // Arrange
+    mockSubscriberVersionsForAllPackages();
+    const subCommandError = { status: 1, message: 'Complex error from child process' };
+    oclifWrapperStub.restore();
+    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+
+    // Act
+    const result = await JscManifestRollout.run([
+      '--devhub-org',
+      testDevHub.username,
+      '--target-org',
+      testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/minimal.yaml',
+      '--json',
+    ]);
+
+    // Assert
+    expect(process.exitCode).to.equal(2);
+    expect(result.deployedArtifacts['basic_happy_soup']).to.not.be.undefined;
+    expect(result.deployedArtifacts['basic_happy_soup'].length).to.equal(1, 'steps in basic_happy_soup');
+    const happySoupResult = result.deployedArtifacts['basic_happy_soup'][0] as unknown as ZSourceDeployResultType;
+    expect(happySoupResult.status).to.equal(DeployStatus.Enum.Failed);
+    expect(happySoupResult.errorDetails).to.equal(subCommandError);
   });
 
   function mockSubscriberVersionsForAllPackages() {

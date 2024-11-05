@@ -15,6 +15,7 @@ import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/ty
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
 import { InstalledSubscriberPackage, Package2Version } from '../../src/types/sfToolingApiTypes.js';
 import {
+  cleanSourceDirectories,
   initSourceDirectories,
   MockInstalledVersionQueryResult,
   MockPackageVersionQueryResult,
@@ -64,7 +65,7 @@ describe('org manifest', () => {
   });
 
   afterEach(async () => {
-    fs.rmSync('test/data/mock-src', { recursive: true });
+    cleanSourceDirectories();
     eventBus.removeAllListeners();
   });
 
