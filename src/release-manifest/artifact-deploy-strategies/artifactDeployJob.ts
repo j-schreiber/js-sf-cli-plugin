@@ -5,6 +5,7 @@ import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
 import OrgManifest from '../OrgManifest.js';
 import { eventBus } from '../../common/comms/eventBus.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
+import { DeployStatus } from '../../types/orgManifestGlobalConstants.js';
 import UnpackagedDeployStep from './unpackagedDeployStep.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 import UnlockedPackageInstallStep from './unlockedPackageInstallStep.js';
@@ -36,6 +37,23 @@ export default class ArtifactDeployJob {
       message: `Completed ${this.name}`,
     } as CommandStatusEvent);
     return results;
+  }
+
+  /**
+   * Returns the aggregated status of all steps (the highest).
+   * If all steps succeeded, the job succeeded. If one step failed,
+   * the job failed. If all steps skipped, the job skipped.
+   */
+  public getAggregatedStatus(): string {
+    let ordinalStatusValue = 0;
+    this.getSteps().forEach((step) => {
+      const stepStatus = step.getStatus().status!;
+      const intValue = DeployStatus.options.indexOf(stepStatus);
+      if (intValue > ordinalStatusValue) {
+        ordinalStatusValue = intValue;
+      }
+    });
+    return DeployStatus.options[ordinalStatusValue];
   }
 
   public getSteps(): ArtifactDeployStrategy[] {

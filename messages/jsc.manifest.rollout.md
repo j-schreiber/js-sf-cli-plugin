@@ -18,6 +18,10 @@ Target org (sandbox, production, etc) where manifest is deployed/rolled out
 
 Devhub that owns the packages
 
+# flags.verbose.summary
+
+Prints all subcommand outputs to terminal (e.g. deployed source files, package install status, etc).
+
 # examples
 
 - <%= config.bin %> <%= command.id %>

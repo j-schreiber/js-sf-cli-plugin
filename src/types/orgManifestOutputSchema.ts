@@ -7,6 +7,7 @@ const ArtifactDeployResult = z.object({
   deployStrategy: z.string(),
   status: DeployStatus,
   targetUsername: z.string().optional(),
+  displayMessage: z.string().optional(),
 });
 
 const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));

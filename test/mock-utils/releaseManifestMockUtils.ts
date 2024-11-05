@@ -1,4 +1,7 @@
+/* eslint-disable camelcase */
 import fs from 'node:fs';
+import OrgManifest from '../../src/release-manifest/OrgManifest.js';
+import { ZReleaseManifestType } from '../../src/types/orgManifestInputSchema.js';
 
 export const testSourcePaths = [
   'test/data/mock-src/package-overrides/core-crm/dev',
@@ -44,6 +47,37 @@ export const MockPackageVersionQueryResult = {
     },
   ],
 };
+
+const DEFAULT_MANIFEST_OPTIONS = {
+  skip_if_installed: true,
+  requires_promoted_versions: true,
+  strict_environments: false,
+  pipefail: true,
+};
+
+const TEST_ENVS = {
+  dev: 'admin@example.com.dev',
+  stage: 'admin@example.com.stage',
+  'pre-prod': 'admin@example.com.qa',
+  prod: 'devhub-admin@example.com',
+};
+
+const TEST_MANIFEST = {
+  options: DEFAULT_MANIFEST_OPTIONS,
+  environments: TEST_ENVS,
+  artifacts: {},
+} as ZReleaseManifestType;
+
+/**
+ * Initialises a new org manifest instance. Each instance is created
+ * from a fresh deep-clone of the manifest template that can safely
+ * be manipulated within tests.
+ *
+ * @returns
+ */
+export function newOrgManifest(): OrgManifest {
+  return new OrgManifest(structuredClone(TEST_MANIFEST));
+}
 
 export function initSourceDirectories() {
   testSourcePaths.forEach((path) => {

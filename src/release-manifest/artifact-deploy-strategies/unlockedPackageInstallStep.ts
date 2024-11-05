@@ -28,9 +28,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
   public getCommandConfig(): SfCommandConfig {
     if (this.internalState.status === DeployStatus.Enum.Skipped) {
       return {
-        displayMessage: `Skipping installation of ${
-          this.internalState.requestedVersion
-        }, because it is already installed on ${this.internalState.targetUsername!}`,
+        displayMessage: this.internalState.displayMessage,
         args: [],
       };
     }
@@ -50,12 +48,12 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
       return {
         name: 'package:install',
         args,
-        displayMessage: `Installing ${this.internalState.requestedVersion} with "sf package install" on ${this.internalState.targetUsername}`,
+        displayMessage: this.internalState.displayMessage,
       };
     } else {
       return {
         args: [],
-        displayMessage: 'Step was not resolved',
+        displayMessage: this.internalState.displayMessage,
       };
     }
   }
@@ -76,6 +74,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
     this.internalState.status = this.isResolved() ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
+    this.internalState.displayMessage = this.buildDisplayMessage();
     return this.internalState as ZPackageInstallResultType;
   }
 
@@ -167,6 +166,17 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     }
     this.internalState.useInstallationKey = true;
     this.internalState.installationKey = process.env[this.artifact.installation_key!];
+  }
+
+  private buildDisplayMessage(): string {
+    if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      return `Skipping installation of ${this.internalState.requestedVersion}, because it is already installed on ${this
+        .internalState.targetUsername!}`;
+    } else if (this.internalState.status === DeployStatus.Enum.Resolved) {
+      return `Installing ${this.internalState.requestedVersion} on ${this.internalState.targetUsername}`;
+    } else {
+      return 'Step not resolved';
+    }
   }
 }
 

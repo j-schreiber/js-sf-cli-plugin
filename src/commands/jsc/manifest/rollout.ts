@@ -41,6 +41,10 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
       char: 'o',
       required: true,
     }),
+    verbose: Flags.boolean({
+      summary: messages.getMessage('flags.verbose.summary'),
+      char: 'v',
+    }),
   };
 
   public constructor(argv: string[], config: Config) {
@@ -72,28 +76,42 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
   }
 
   private async deployArtifacts(manifest: OrgManifest): Promise<ZManifestDeployResultType> {
-    // process all artifacts in a totally generic manner
-    // create artifact deploy results & runs the deploy config
     const result: ZManifestDeployResultType = {};
-    for (const job of manifest.getDeployJobs()) {
+    for (const artifact of manifest.getDeployJobs()) {
       const jobResults: ZArtifactDeployResultType[] = [];
-      this.log(`Starting rollout for ${job.name}. Executing ${job.getSteps().length} steps.`);
-      for (const step of job.getSteps()) {
+      this.spinner.start(`Rolling out ${artifact.name} (${artifact.getSteps().length} steps).`);
+      this.spinner.status = 'Testing message';
+      for (let i = 0; i < artifact.getSteps().length; i++) {
+        const step = artifact.getSteps()[i];
         const stepResult = step.getStatus() as ZArtifactDeployResultType;
         const commandConf = step.getCommandConfig();
-        this.log(`${commandConf.displayMessage!}`);
         if (stepResult.status === DeployStatus.Enum.Resolved) {
+          const { name, args } = commandConf;
+          this.spinner.status = `Running ${stepResult.deployStrategy} (Step ${i + 1} of ${artifact.getSteps().length})`;
           // eslint-disable-next-line no-await-in-loop
-          await OclifUtils.wrapCoreCommand(commandConf, this.config);
-          // looks like this continues, instead of aborting with error
-          stepResult.status = DeployStatus.Enum.Success;
+          const cmdResult = await OclifUtils.execCoreCommand({ name, args });
+          if (cmdResult.status === 0) {
+            this.spinner.status = `Completed ${commandConf.name!}`;
+            stepResult.status = DeployStatus.Enum.Success;
+          } else {
+            stepResult.status = DeployStatus.Enum.Failed;
+            this.log(`Command ${commandConf.name!} failed with result:`);
+            this.error(JSON.stringify(cmdResult.result, null, 2));
+          }
         }
         jobResults.push(stepResult);
       }
-      // TODO need to find smart way to reduce all status of all steps
-      this.log(`Completed ${job.name} with ${job.getSteps()[0].getStatus().status!}`);
-      result[job.name] = jobResults;
+      this.spinner.stop(this.buildStopMsgForArtifactCompletion(artifact.getAggregatedStatus()));
+      result[artifact.name] = jobResults;
     }
     return result;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private buildStopMsgForArtifactCompletion(artifactStatus: string): string {
+    if (artifactStatus === DeployStatus.Enum.Skipped) {
+      return 'Artifact skipped.';
+    }
+    return `Completed with ${artifactStatus.toLowerCase()}.`;
   }
 }

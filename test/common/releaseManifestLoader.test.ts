@@ -496,7 +496,7 @@ describe('org manifest', () => {
       // Assert
       expect(commandConf.name).to.equal('package:install');
       expect(commandConf.displayMessage).to.equal(
-        `Installing ${MockNoSkipInstallPackage.version} with "sf package install" on ${mockTargetOrg.username}`
+        `Installing ${MockNoSkipInstallPackage.version} on ${mockTargetOrg.username}`
       );
     });
 
@@ -771,7 +771,7 @@ describe('org manifest', () => {
       // Assert
       expect(commandConf.name).to.be.undefined;
       expect(commandConf.displayMessage).to.equal(
-        'Skipping artifact, because no path was resolved for username admin@example.com.dev'
+        'Skipping step, because no path was resolved for username admin@example.com.dev'
       );
     });
   });

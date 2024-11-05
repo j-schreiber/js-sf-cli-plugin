@@ -49,6 +49,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
     this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
+    this.internalState.displayMessage = this.getDeployMessage();
     return this.internalState;
   }
 
@@ -76,7 +77,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     if (this.internalState.status === DeployStatus.Enum.Resolved) {
       return `Running "sf project deploy start" with ${this.internalState.sourcePath} on ${this.internalState.targetUsername}`;
     } else if (this.internalState.status === DeployStatus.Enum.Skipped) {
-      return `Skipping artifact, because no path was resolved for username ${this.internalState.targetUsername}`;
+      return `Skipping step, because no path was resolved for username ${this.internalState.targetUsername}`;
     }
     return undefined;
   }

@@ -3,7 +3,7 @@ import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { expect } from 'chai';
 import sinon, { SinonStub } from 'sinon';
-import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
+import { stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
 import {
   initSourceDirectories,
@@ -20,16 +20,15 @@ describe('jsc manifest rollout', () => {
   const testDevHub = new MockTestOrgData();
   const testTargetOrg = new MockTestOrgData();
   let oclifWrapperStub: SinonStub;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
   beforeEach(async () => {
     testDevHub.isDevHub = true;
-    sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.SANDBOX);
     initSourceDirectories();
-    oclifWrapperStub = sinon.stub(OclifUtils, 'wrapCoreCommand');
+    oclifWrapperStub = sinon
+      .stub(OclifUtils, 'execCoreCommand')
+      .resolves({ status: 0, result: { status: 1, message: 'Success' } });
     await $$.stubAuths(testDevHub, testTargetOrg);
   });
 
@@ -65,7 +64,6 @@ describe('jsc manifest rollout', () => {
         '--wait',
         '10',
       ],
-      displayMessage: `Running "sf project deploy start" with test/data/mock-src/unpackaged/my-happy-soup on ${testTargetOrg.username}`,
     });
   });
 
@@ -98,7 +96,6 @@ describe('jsc manifest rollout', () => {
         '10',
         '--no-prompt',
       ],
-      displayMessage: `Installing 0.12.0 with "sf package install" on ${testTargetOrg.username}`,
     });
   });
 
@@ -118,18 +115,11 @@ describe('jsc manifest rollout', () => {
 
     // // Assert
     expect(result).to.be.ok;
-    // how to get chai/mocha to show the problems in diffs,
-    // instead of only displaying "expect [Array(n) ] when fail?"
-    expect(sfSpinnerStub.start.callCount).to.equal(1);
+    expect(sfSpinnerStub.start.callCount).to.equal(2);
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
-      ['Resolving manifest: 1 artifacts found'],
+      ['Resolving manifest: 1 artifacts found', 'Rolling out basic_happy_soup (1 steps).'],
       'total arguments for spinner.start() calls'
     );
-    // expect(sfCommandStubs.log.args.flat()).to.deep.equal([
-    //   'Starting rollout for basic_happy_soup. Executing 1 steps.',
-    //   `Running "sf project deploy start" with test/data/mock-src/unpackaged/my-happy-soup on ${testTargetOrg.username}`,
-    //   'Completed basic_happy_soup!',
-    // ]);
   });
 
   it('runs command with regular output > package manifest => shows details', async () => {
@@ -148,13 +138,38 @@ describe('jsc manifest rollout', () => {
 
     // Assert
     expect(result).to.be.ok;
-    // TODO how to get chai/mocha to show the problems in diffs,
-    // instead of only displaying "expect [Array(n) ] when fail?"
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
-      ['Resolving manifest: 8 artifacts found'],
-      'total arguments for spinner.start() calls'
+      [
+        'Resolving manifest: 8 artifacts found',
+        'Rolling out org_shape_settings (1 steps).',
+        'Rolling out apex_utils (1 steps).',
+        'Rolling out lwc_utils (1 steps).',
+        'Rolling out core_crm (1 steps).',
+        'Rolling out core_crm_overrides (1 steps).',
+        'Rolling out core_crm_extensions (1 steps).',
+        'Rolling out pims (1 steps).',
+        'Rolling out pims_overrides (1 steps).',
+      ],
+      'args for spinner.start() calls'
     );
-    // expect(sfCommandStubs.log.callCount).to.equal(8 * 3, '3 log lines per artifact');
+    // all packages except apex_utils are expected to be Skipped
+    // because we mock "same version installed"
+    // core_crm_overrides skipped, because strict_envs is false and
+    // the mapped paths resolve undefined for the target org
+    expect(sfSpinnerStub.stop.args.flat()).to.deep.equal(
+      [
+        'Success! All artifacts resolved.', // validation
+        'Completed with success.', // org_shape_settings
+        'Completed with success.', // apex_utils has skip_if_installed = false
+        'Artifact skipped.', // lwc_utils
+        'Artifact skipped.', // core_crm
+        'Artifact skipped.', // core_crm_overrides resolves to empty path
+        'Completed with success.', // core_crm_extensions
+        'Artifact skipped.', // pims
+        'Completed with success.', // pims_overrides
+      ],
+      'args for spinner.stop() calls'
+    );
   });
 
   function mockSubscriberVersionsForAllPackages() {
