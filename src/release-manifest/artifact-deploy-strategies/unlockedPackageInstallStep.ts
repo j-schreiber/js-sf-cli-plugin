@@ -3,11 +3,12 @@
 /* eslint-disable class-methods-use-this */
 import { isEmpty } from '@salesforce/kit';
 import { Connection, SfError } from '@salesforce/core';
+import OclifUtils from '../../common/utils/wrapChildprocess.js';
 import { ZPackageInstallResultType } from '../../types/orgManifestOutputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ZManifestOptionsType, ZUnlockedPackageArtifact } from '../../types/orgManifestInputSchema.js';
 import { Package2Version, SubscriberPackageVersion } from '../../types/sfToolingApiTypes.js';
-import { ArtifactDeployStrategy, SfCommandConfig } from './artifactDeployStrategy.js';
+import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
   private internalState: Partial<ZPackageInstallResultType>;
@@ -25,37 +26,16 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     return this.internalState;
   }
 
-  public getCommandConfig(): SfCommandConfig {
+  public async deploy(): Promise<ZPackageInstallResultType> {
     if (this.internalState.status === DeployStatus.Enum.Skipped) {
-      return {
-        displayMessage: this.internalState.displayMessage,
-        args: [],
-      };
+      return this.internalState as ZPackageInstallResultType;
     }
-    const args = [
-      '--target-org',
-      this.internalState.targetUsername!,
-      '--package',
-      this.internalState.requestedVersionId!,
-      '--wait',
-      '10',
-      '--no-prompt',
-    ];
-    if (this.internalState.useInstallationKey) {
-      args.push(...['--installation-key', this.internalState.installationKey!]);
+    const result = await OclifUtils.execCoreCommand({ name: 'package:install', args: this.buildCommandArgs() });
+    this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
+    if (result.status !== 0) {
+      this.internalState.errorDetails = result.result;
     }
-    if (this.internalState.status === DeployStatus.Enum.Resolved) {
-      return {
-        name: 'package:install',
-        args,
-        displayMessage: this.internalState.displayMessage,
-      };
-    } else {
-      return {
-        args: [],
-        displayMessage: this.internalState.displayMessage,
-      };
-    }
+    return this.internalState as ZPackageInstallResultType;
   }
 
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZPackageInstallResultType> {
@@ -177,6 +157,22 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     } else {
       return 'Step not resolved';
     }
+  }
+
+  private buildCommandArgs(): string[] {
+    const args = [
+      '--target-org',
+      this.internalState.targetUsername!,
+      '--package',
+      this.internalState.requestedVersionId!,
+      '--wait',
+      '10',
+      '--no-prompt',
+    ];
+    if (this.internalState.useInstallationKey) {
+      args.push(...['--installation-key', this.internalState.installationKey!]);
+    }
+    return args;
   }
 }
 

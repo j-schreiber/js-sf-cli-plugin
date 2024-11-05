@@ -7,7 +7,6 @@ import { eventBus } from '../../../common/comms/eventBus.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../common/comms/processingEvents.js';
 import OrgManifest from '../../../release-manifest/OrgManifest.js';
 import { DeployStatus } from '../../../types/orgManifestGlobalConstants.js';
-import OclifUtils from '../../../common/utils/wrapChildprocess.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'jsc.manifest.rollout');
@@ -83,22 +82,14 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
       this.spinner.status = 'Testing message';
       for (let i = 0; i < artifact.getSteps().length; i++) {
         const step = artifact.getSteps()[i];
-        const stepResult = step.getStatus() as ZArtifactDeployResultType;
-        const commandConf = step.getCommandConfig();
-        if (stepResult.status === DeployStatus.Enum.Resolved) {
-          const { name, args } = commandConf;
-          this.spinner.status = `Running ${stepResult.deployStrategy} (Step ${i + 1} of ${artifact.getSteps().length})`;
-          // eslint-disable-next-line no-await-in-loop
-          const cmdResult = await OclifUtils.execCoreCommand({ name, args });
-          if (cmdResult.status === 0) {
-            this.spinner.status = `Completed ${commandConf.name!}`;
-            stepResult.status = DeployStatus.Enum.Success;
-          } else {
-            stepResult.status = DeployStatus.Enum.Failed;
-            this.log(`Command ${commandConf.name!} failed with result:`);
-            this.error(JSON.stringify(cmdResult.result, null, 2));
-          }
+        const stepStatus = step.getStatus();
+        this.spinner.status = `Running ${stepStatus.deployStrategy!} (Step ${i + 1} of ${artifact.getSteps().length})`;
+        // eslint-disable-next-line no-await-in-loop
+        const stepResult = await step.deploy();
+        if (stepResult.status === DeployStatus.Enum.Failed) {
+          this.error(JSON.stringify(stepResult.errorDetails, null, 2));
         }
+        this.spinner.status = stepResult.displayMessage;
         jobResults.push(stepResult);
       }
       this.spinner.stop(this.buildStopMsgForArtifactCompletion(artifact.getAggregatedStatus()));
@@ -111,6 +102,9 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
   private buildStopMsgForArtifactCompletion(artifactStatus: string): string {
     if (artifactStatus === DeployStatus.Enum.Skipped) {
       return 'Artifact skipped.';
+    }
+    if (artifactStatus === DeployStatus.Enum.Failed) {
+      return 'FAILED!';
     }
     return `Completed with ${artifactStatus.toLowerCase()}.`;
   }

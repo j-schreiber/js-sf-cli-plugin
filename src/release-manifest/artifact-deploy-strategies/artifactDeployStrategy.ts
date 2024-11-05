@@ -8,9 +8,10 @@ export type ArtifactDeployStrategy = {
   getStatus(): Partial<ZArtifactDeployResultType>;
 
   /**
-   * Returns the sf default command that is used to deploy the artifact
+   * Deploys the artifact step with the current internal state.
+   * Throws an exception, if called on a step that is not resolved.
    */
-  getCommandConfig(): SfCommandConfig;
+  deploy(): Promise<ZArtifactDeployResultType>;
 
   /**
    * Prepare internal state of the step before "deploy" is run.
@@ -25,5 +26,4 @@ export type ArtifactDeployStrategy = {
 export type SfCommandConfig = {
   args: string[];
   name?: string;
-  displayMessage?: string;
 };

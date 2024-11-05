@@ -1,0 +1,168 @@
+{
+  "status": 1,
+  "result": {
+    "checkOnly": false,
+    "completedDate": "2024-11-05T14:12:34.000Z",
+    "createdBy": "0059K00000E86L7",
+    "createdByName": "User User",
+    "createdDate": "2024-11-05T14:12:31.000Z",
+    "details": {
+      "componentFailures": [
+        {
+          "changed": false,
+          "columnNumber": 21,
+          "componentType": "CompactLayout",
+          "created": false,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2.CUSTOM",
+          "lineNumber": 156,
+          "problem": "In field: Group__c - no CustomField named Product2.Group__c found",
+          "problemType": "Error",
+          "success": false
+        },
+        {
+          "changed": false,
+          "componentType": "CustomObject",
+          "created": false,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2",
+          "problem": "Product_Record_Page does not exist or is not a valid override for action View.",
+          "problemType": "Error",
+          "success": false
+        }
+      ],
+      "componentSuccesses": [
+        {
+          "changed": true,
+          "componentType": "CustomField",
+          "created": false,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2.IsActive",
+          "success": true
+        },
+        {
+          "changed": true,
+          "componentType": "CustomField",
+          "created": true,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2.NumberOfChargePoints__c",
+          "id": "00N9K00000LpFiXUAV",
+          "success": true
+        },
+        {
+          "changed": true,
+          "componentType": "CustomField",
+          "created": true,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2.NumberOfKilowatts__c",
+          "id": "00N9K00000LpFiYUAV",
+          "success": true
+        },
+        {
+          "changed": true,
+          "componentType": "ValidationRule",
+          "created": true,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "objects/Product2.object",
+          "fullName": "Product2.Charge_Points_Required_For_Charger",
+          "id": "03d9K000002M3HRQA0",
+          "success": true
+        },
+        {
+          "changed": true,
+          "componentType": "",
+          "created": false,
+          "createdDate": "2024-11-05T14:12:33.000Z",
+          "deleted": false,
+          "fileName": "package.xml",
+          "fullName": "package.xml",
+          "success": true
+        }
+      ],
+      "runTestResult": {
+        "numFailures": 0,
+        "numTestsRun": 0,
+        "totalTime": 0,
+        "codeCoverage": [],
+        "codeCoverageWarnings": [],
+        "failures": [],
+        "flowCoverage": [],
+        "flowCoverageWarnings": [],
+        "successes": []
+      }
+    },
+    "done": true,
+    "id": "0Af9K00000YHTvOSAX",
+    "ignoreWarnings": false,
+    "lastModifiedDate": "2024-11-05T14:12:34.000Z",
+    "numberComponentErrors": 2,
+    "numberComponentsDeployed": 4,
+    "numberComponentsTotal": 6,
+    "numberTestErrors": 0,
+    "numberTestsCompleted": 0,
+    "numberTestsTotal": 0,
+    "rollbackOnError": true,
+    "runTestsEnabled": false,
+    "startDate": "2024-11-05T14:12:31.000Z",
+    "status": "Failed",
+    "success": false,
+    "files": [
+      {
+        "fullName": "Product2.CUSTOM",
+        "type": "CompactLayout",
+        "state": "Failed",
+        "problemType": "Error",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/compactLayouts/CUSTOM.compactLayout-meta.xml",
+        "lineNumber": 156,
+        "columnNumber": 21,
+        "error": "In field: Group__c - no CustomField named Product2.Group__c found (156:21)"
+      },
+      {
+        "fullName": "Product2.IsActive",
+        "type": "CustomField",
+        "state": "Changed",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/fields/IsActive.field-meta.xml"
+      },
+      {
+        "fullName": "Product2.NumberOfChargePoints__c",
+        "type": "CustomField",
+        "state": "Created",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/fields/NumberOfChargePoints__c.field-meta.xml"
+      },
+      {
+        "fullName": "Product2.NumberOfKilowatts__c",
+        "type": "CustomField",
+        "state": "Created",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/fields/NumberOfKilowatts__c.field-meta.xml"
+      },
+      {
+        "fullName": "Product2",
+        "type": "CustomObject",
+        "state": "Failed",
+        "problemType": "Error",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/Product2.object-meta.xml",
+        "error": "Product_Record_Page does not exist or is not a valid override for action View."
+      },
+      {
+        "fullName": "Product2.Charge_Points_Required_For_Charger",
+        "type": "ValidationRule",
+        "state": "Created",
+        "filePath": "/Users/Jannis.Schreiber/Documents/Source/salesforce/sfdami/tmp/test-src/package-overrides/pims/objects/Product2/validationRules/Charge_Points_Required_For_Charger.validationRule-meta.xml"
+      }
+    ],
+    "zipSize": 2136,
+    "zipFileCount": 2
+  },
+  "warnings": []
+}

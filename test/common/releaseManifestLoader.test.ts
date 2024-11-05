@@ -27,6 +27,8 @@ import {
 } from '../../src/types/orgManifestInputSchema.js';
 import OrgManifest from '../../src/release-manifest/OrgManifest.js';
 import { eventBus } from '../../src/common/comms/eventBus.js';
+import OclifUtils from '../../src/common/utils/wrapChildprocess.js';
+import { DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -62,7 +64,6 @@ describe('org manifest', () => {
   });
 
   afterEach(async () => {
-    $$.SANDBOX.restore();
     fs.rmSync('test/data/mock-src', { recursive: true });
     eventBus.removeAllListeners();
   });
@@ -486,33 +487,43 @@ describe('org manifest', () => {
     it('should install package version > delegates to sf package install', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+        status: 0,
+        result: { status: 0, message: 'Success' },
+      });
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const commandConf = packageJob.getSteps()[0].getCommandConfig();
+      const installResult = await packageJob.getSteps()[0].deploy();
 
       // Assert
-      expect(commandConf.name).to.equal('package:install');
-      expect(commandConf.displayMessage).to.equal(
-        `Installing ${MockNoSkipInstallPackage.version} on ${mockTargetOrg.username}`
-      );
+      expect(installResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(oclifWrapperStub.args[0][0]).to.deep.equal({
+        name: 'package:install',
+        args: ['--target-org', mockTargetOrg.username, '--package', testNewVersionId, '--wait', '10', '--no-prompt'],
+      });
     });
 
     it('should skip installation package version > step is skipped and command informed', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+        status: 0,
+        result: { status: 0, message: 'Success' },
+      });
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const commandConf = packageJob.getSteps()[0].getCommandConfig();
+      const installResult = await packageJob.getSteps()[0].deploy();
 
       // Assert
-      expect(commandConf.name).to.be.undefined;
-      expect(commandConf.displayMessage).to.equal(
+      expect(oclifWrapperStub.called).to.be.false;
+      expect(installResult.status).to.equal(DeployStatus.Enum.Skipped);
+      expect(installResult.displayMessage).to.equal(
         `Skipping installation of ${MockSkipInstallPackage.version}, because it is already installed on ${mockTargetOrg.username}`
       );
     });
@@ -744,35 +755,57 @@ describe('org manifest', () => {
     });
 
     it('rollout with single source path > delegates to sf project deploy start', async () => {
+      // Arrange
+      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+        status: 0,
+        result: { status: 0, message: 'Success' },
+      });
+
       // Act
       const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const commandConf = sourceJob.getSteps()[0].getCommandConfig();
+      const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(commandConf.name).to.equal('project:deploy:start');
-      expect(commandConf.displayMessage).to.equal(
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(deployResult.displayMessage).to.equal(
         `Running "sf project deploy start" with ${MockHappySoupArtifact.path} on ${mockTargetOrg.username}`
       );
+      expect(oclifWrapperStub.args[0][0]).to.deep.equal({
+        name: 'project:deploy:start',
+        args: [
+          '--target-org',
+          mockTargetOrg.username,
+          '--source-dir',
+          'test/data/mock-src/unpackaged/my-happy-soup',
+          '--wait',
+          '10',
+        ],
+      });
     });
 
     it('rollout with no resolved source > skips sf project deploy', async () => {
       // Arrange
       // username is a mapped env, but no source path is configured
       mockTargetOrg.username = 'admin@example.com.dev';
+      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+        status: 0,
+        result: { status: 0, message: 'Success' },
+      });
 
       // Act
       const sourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
       const targetConnection = await mockTargetOrg.getConnection();
       await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const commandConf = sourceJob.getSteps()[0].getCommandConfig();
+      const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(commandConf.name).to.be.undefined;
-      expect(commandConf.displayMessage).to.equal(
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Skipped);
+      expect(deployResult.displayMessage).to.equal(
         'Skipping step, because no path was resolved for username admin@example.com.dev'
       );
+      expect(oclifWrapperStub.called).to.be.false;
     });
   });
 });

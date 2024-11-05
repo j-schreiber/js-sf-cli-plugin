@@ -2,8 +2,9 @@
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { expect } from 'chai';
-import sinon, { SinonStub } from 'sinon';
-import { stubSpinner } from '@salesforce/sf-plugins-core';
+import { SinonStub } from 'sinon';
+import { SfError } from '@salesforce/core';
+import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
 import {
   initSourceDirectories,
@@ -20,15 +21,18 @@ describe('jsc manifest rollout', () => {
   const testDevHub = new MockTestOrgData();
   const testTargetOrg = new MockTestOrgData();
   let oclifWrapperStub: SinonStub;
+  let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
   beforeEach(async () => {
     testDevHub.isDevHub = true;
+    sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.SANDBOX);
     initSourceDirectories();
-    oclifWrapperStub = sinon
-      .stub(OclifUtils, 'execCoreCommand')
-      .resolves({ status: 0, result: { status: 1, message: 'Success' } });
+    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+      status: 0,
+      result: { status: 0, message: 'Success' },
+    });
     await $$.stubAuths(testDevHub, testTargetOrg);
   });
 
@@ -85,18 +89,6 @@ describe('jsc manifest rollout', () => {
     expect(result).to.be.ok;
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['apex_utils', 'lwc_utils']);
     expect(oclifWrapperStub.callCount).to.equal(1);
-    expect(oclifWrapperStub.args[0][0]).to.deep.equal({
-      name: 'package:install',
-      args: [
-        '--target-org',
-        testTargetOrg.username,
-        '--package',
-        MockPackageVersionQueryResult.records[0].SubscriberPackageVersionId,
-        '--wait',
-        '10',
-        '--no-prompt',
-      ],
-    });
   });
 
   it('runs command with regular output > minimal manifest => shows details', async () => {
@@ -170,6 +162,47 @@ describe('jsc manifest rollout', () => {
       ],
       'args for spinner.stop() calls'
     );
+  });
+
+  it('has failing artifact with console output => exits error & shows details', async () => {
+    // Arrange
+    mockSubscriberVersionsForAllPackages();
+    const subCommandError = { status: 1, message: 'Complex error from child process' };
+    oclifWrapperStub.restore();
+    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+
+    // Act
+    try {
+      await JscManifestRollout.run([
+        '--devhub-org',
+        testDevHub.username,
+        '--target-org',
+        testTargetOrg.username,
+        '--manifest',
+        'test/data/manifests/minimal.yaml',
+      ]);
+      expect.fail('Expected exception, but succeeded');
+    } catch (e) {
+      if (e instanceof SfError) {
+        expect(e.message).to.equal(JSON.stringify(subCommandError, null, 2));
+      } else {
+        expect.fail('Expected SfError');
+      }
+    }
+
+    // Assert
+    expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
+      ['Resolving manifest: 1 artifacts found', 'Rolling out basic_happy_soup (1 steps).'],
+      'args for spinner.start() calls'
+    );
+    expect(sfSpinnerStub.stop.args.flat()).to.deep.equal(
+      [
+        'Success! All artifacts resolved.', // validation
+        'Error', // basic_happy_soup
+      ],
+      'args for spinner.stop() calls'
+    );
+    expect(sfCommandStubs.logToStderr.called).to.be.true;
   });
 
   function mockSubscriberVersionsForAllPackages() {

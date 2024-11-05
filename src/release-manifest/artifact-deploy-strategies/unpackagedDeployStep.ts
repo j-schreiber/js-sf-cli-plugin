@@ -5,10 +5,11 @@
 
 import { Connection, Messages, SfError } from '@salesforce/core';
 import OrgManifest from '../OrgManifest.js';
+import OclifUtils from '../../common/utils/wrapChildprocess.js';
 import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
-import { ArtifactDeployStrategy, SfCommandConfig } from './artifactDeployStrategy.js';
+import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 const messages = Messages.loadMessages('jsc', 'orgmanifest');
 
@@ -26,23 +27,16 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     return this.internalState;
   }
 
-  public getCommandConfig(): SfCommandConfig {
-    const displayMsg = this.getDeployMessage();
-    if (this.internalState.status !== DeployStatus.Enum.Resolved) {
-      return { displayMessage: displayMsg, args: [] };
+  public async deploy(): Promise<ZSourceDeployResultType> {
+    if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      return this.internalState;
     }
-    return {
-      name: 'project:deploy:start',
-      args: [
-        '--target-org',
-        this.internalState.targetUsername!,
-        '--source-dir',
-        this.internalState.sourcePath!,
-        '--wait',
-        '10',
-      ],
-      displayMessage: displayMsg,
-    };
+    const result = await OclifUtils.execCoreCommand({ name: 'project:deploy:start', args: this.buildCommandArgs() });
+    this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
+    if (result.status !== 0) {
+      this.internalState.errorDetails = result.result;
+    }
+    return this.internalState;
   }
 
   public async resolve(targetOrg: Connection): Promise<ZSourceDeployResultType> {
@@ -80,5 +74,16 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
       return `Skipping step, because no path was resolved for username ${this.internalState.targetUsername}`;
     }
     return undefined;
+  }
+
+  private buildCommandArgs(): string[] {
+    return [
+      '--target-org',
+      this.internalState.targetUsername!,
+      '--source-dir',
+      this.internalState.sourcePath!,
+      '--wait',
+      '10',
+    ];
   }
 }
