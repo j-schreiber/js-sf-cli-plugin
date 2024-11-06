@@ -8,18 +8,18 @@ artifacts:
     path: test/data/mock-src/unpackaged/org-shape
   apex_utils:
     type: UnlockedPackage
-    package_id: 0Ho67000000oLkyCAE
+    package_id: 0Ho690000000000AAA
     installation_key: APEX_UTILS_INSTALLATION_KEY
     version: 1.28.0
     skip_if_installed: false
   lwc_utils:
     type: UnlockedPackage
-    package_id: 0Ho670000008OMHCA2
+    package_id: 0Ho690000000001AAA
     installation_key: LWC_UTILS_INSTALLATION_KEY
     version: 0.12.0
   core_crm:
     type: UnlockedPackage
-    package_id: 0Ho0X000000KymFSAS
+    package_id: 0Ho690000000002AAA
     installation_key: CORE_INSTALLATION_KEY
     version: 2.4.2
   core_crm_overrides:
@@ -34,7 +34,7 @@ artifacts:
   pims:
     type: UnlockedPackage
     installation_key: PIMS_INSTALLATION_KEY
-    package_id: 0Ho0X000000KymASAS
+    package_id: 0Ho690000000003AAA
     version: 2.9.0
   pims_overrides:
     type: Unpackaged
