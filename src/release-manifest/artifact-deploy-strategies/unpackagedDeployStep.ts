@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable class-methods-use-this */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/require-await */
 
 import { Connection, Messages, SfError } from '@salesforce/core';
 import OrgManifest from '../OrgManifest.js';
@@ -46,7 +43,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
     this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
-    return this.internalState;
+    return Promise.resolve(this.internalState);
   }
 
   //    PRIVATE ZONE

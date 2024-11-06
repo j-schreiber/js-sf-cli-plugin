@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/require-await */
+
 import { isEmpty } from '@salesforce/kit';
 import { Connection, Messages, SfError } from '@salesforce/core';
 import OclifUtils from '../../common/utils/wrapChildprocess.js';
