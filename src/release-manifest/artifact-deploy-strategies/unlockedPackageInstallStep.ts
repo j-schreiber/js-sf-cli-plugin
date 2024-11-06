@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable class-methods-use-this */
 import { isEmpty } from '@salesforce/kit';
-import { Connection, SfError } from '@salesforce/core';
+import { Connection, Messages, SfError } from '@salesforce/core';
 import OclifUtils from '../../common/utils/wrapChildprocess.js';
 import { ZPackageInstallResultType } from '../../types/orgManifestOutputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
@@ -10,7 +10,11 @@ import { ZManifestOptionsType, ZUnlockedPackageArtifact } from '../../types/orgM
 import { Package2Version, SubscriberPackageVersion } from '../../types/sfToolingApiTypes.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('jsc', 'orgmanifest');
+
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
+  public requiresSfdxProject: boolean = false;
   private internalState: Partial<ZPackageInstallResultType>;
 
   public constructor(public artifact: ZUnlockedPackageArtifact, private globalOptions: ZManifestOptionsType) {
@@ -28,6 +32,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
 
   public async deploy(): Promise<ZPackageInstallResultType> {
     if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      this.internalState.displayMessage = `Skipped. ${this.internalState.requestedVersion} (${this.internalState.requestedVersionId}) already installed.`;
       return this.internalState as ZPackageInstallResultType;
     }
     const result = await OclifUtils.execCoreCommand({ name: 'package:install', args: this.buildCommandArgs() });
@@ -35,6 +40,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
     }
+    this.internalState.displayMessage = `Installed ${this.internalState.requestedVersion} (${this.internalState.requestedVersionId}).`;
     return this.internalState as ZPackageInstallResultType;
   }
 
@@ -54,7 +60,6 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
     this.internalState.status = this.isResolved() ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
-    this.internalState.displayMessage = this.buildDisplayMessage();
     return this.internalState as ZPackageInstallResultType;
   }
 
@@ -87,7 +92,8 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     const queryResult = await devhubCon.tooling.query(queryString);
     if (queryResult.records.length === 0) {
       throw new SfError(
-        `No released package version found for package id ${packageId} and version ${packageVersionLiteral}`
+        messages.getMessage('errors.no-released-package-version', [packageId, packageVersionLiteral]),
+        'NoReleasedPackageVersionFound'
       );
     }
     const record = queryResult.records[0] as Package2Version;
@@ -132,31 +138,19 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
       return;
     }
     if (versionDetails.requiresInstallationKey && isEmpty(this.artifact.installation_key)) {
-      throw new SfError(`The package version ${
-        this.artifact.version
-      } (${versionDetails.id!}) requires an installation key, \
-            but no key export was specified for the artifact. Specify the environment variable \
-            that holds the installation key in the property installation_key.`);
+      throw new SfError(
+        messages.getMessage('errors.package-requires-install-key', [this.artifact.version, versionDetails.id]),
+        'InstallationKeyRequired'
+      );
     }
     if (!isEmpty(this.artifact.installation_key) && isEmpty(process.env[this.artifact.installation_key!])) {
       throw new SfError(
-        `Installation key set to ${this.artifact.installation_key!}, \
-          but the corresponding environment variable is not set.`
+        messages.getMessage('errors.install-key-defined-but-empty', [this.artifact.installation_key]),
+        'InstallationKeyEmpty'
       );
     }
     this.internalState.useInstallationKey = true;
     this.internalState.installationKey = process.env[this.artifact.installation_key!];
-  }
-
-  private buildDisplayMessage(): string {
-    if (this.internalState.status === DeployStatus.Enum.Skipped) {
-      return `Skipping installation of ${this.internalState.requestedVersion}, because it is already installed on ${this
-        .internalState.targetUsername!}`;
-    } else if (this.internalState.status === DeployStatus.Enum.Resolved) {
-      return `Installing ${this.internalState.requestedVersion} on ${this.internalState.targetUsername}`;
-    } else {
-      return 'Step not resolved';
-    }
   }
 
   private buildCommandArgs(): string[] {

@@ -14,6 +14,7 @@ import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 const messages = Messages.loadMessages('jsc', 'orgmanifest');
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
+  public requiresSfdxProject: boolean = true;
   private internalState: ZSourceDeployResultType;
 
   public constructor(private artifact: ZUnpackagedSourceArtifact, private manifest: OrgManifest) {
@@ -29,6 +30,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
 
   public async deploy(): Promise<ZSourceDeployResultType> {
     if (this.internalState.status === DeployStatus.Enum.Skipped) {
+      this.internalState.displayMessage = 'Skipped. Resolves to empty path.';
       return this.internalState;
     }
     const result = await OclifUtils.execCoreCommand({ name: 'project:deploy:start', args: this.buildCommandArgs() });
@@ -36,6 +38,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
     }
+    this.internalState.displayMessage = `Deployed ${this.internalState.sourcePath}.`;
     return this.internalState;
   }
 
@@ -43,7 +46,6 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
     this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
-    this.internalState.displayMessage = this.getDeployMessage();
     return this.internalState;
   }
 
@@ -58,22 +60,13 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     } else {
       const envName = this.manifest.getEnvironmentName(targetUsername);
       if (this.manifest.data.options.strict_environments && envName === undefined) {
-        throw new SfError(messages.getMessage('no-env-configured-with-strict-validation', [targetUsername]));
+        throw new SfError(messages.getMessage('errors.no-env-configured-with-strict-validation', [targetUsername]));
       }
       if (envName === undefined) {
         return undefined;
       }
       return manifestInput[envName];
     }
-  }
-
-  private getDeployMessage(): string | undefined {
-    if (this.internalState.status === DeployStatus.Enum.Resolved) {
-      return `Running "sf project deploy start" with ${this.internalState.sourcePath} on ${this.internalState.targetUsername}`;
-    } else if (this.internalState.status === DeployStatus.Enum.Skipped) {
-      return `Skipping step, because no path was resolved for username ${this.internalState.targetUsername}`;
-    }
-    return undefined;
   }
 
   private buildCommandArgs(): string[] {

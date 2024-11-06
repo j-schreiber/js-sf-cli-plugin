@@ -13,7 +13,7 @@ export default class ReleaseManifestLoader {
       ReleaseManifestLoader.parseArtifactPaths(manifestType);
       return new OrgManifest(manifestType);
     } else {
-      throw new SfError(`Invalid path, file does not exist: ${filePath}`);
+      throw new SfError(`Invalid path, file does not exist: ${filePath}`, 'FileDoesNotExist');
     }
   }
 
@@ -42,14 +42,17 @@ export default class ReleaseManifestLoader {
   ): void {
     Object.keys(pathsObject).forEach((env) => {
       if (envs && !(env in envs)) {
-        throw new SfError(`Error parsing artifact "${artifactName}": "${env}" is not defined in environments.`);
+        throw new SfError(
+          `Error parsing artifact "${artifactName}": "${env}" is not defined in environments.`,
+          'UnknownEnvironmentMapped'
+        );
       }
     });
   }
 
   private static assertPathExists(path: string, artifactName: string): void {
     if (!fs.existsSync(path)) {
-      throw new SfError(`Error parsing artifact "${artifactName}": ${path} does not exist.`);
+      throw new SfError(`Error parsing artifact "${artifactName}": ${path} does not exist.`, 'NoOrEmptySourcePath');
     }
     const dirContent = fs.readdirSync(path, { recursive: true });
     let hasFiles = false;
@@ -57,7 +60,10 @@ export default class ReleaseManifestLoader {
       hasFiles = hasFiles || !fs.lstatSync(`${path}/${String(dirContentPath)}`).isDirectory();
     });
     if (!hasFiles) {
-      throw new SfError(messages.getMessage('source-path-is-empty', [artifactName, path]));
+      throw new SfError(
+        messages.getMessage('errors.source-path-is-empty', [artifactName, path]),
+        'NoOrEmptySourcePath'
+      );
     }
   }
 }

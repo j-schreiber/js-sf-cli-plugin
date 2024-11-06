@@ -11,6 +11,11 @@ const ArtifactDeployResult = z.object({
   errorDetails: z.unknown(),
 });
 
+const AggregatedArtifactResult = z.object({
+  status: DeployStatus,
+  message: z.string().optional(),
+});
+
 const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));
 
 const SourceDeployResult = ArtifactDeployResult.extend({
@@ -44,3 +49,4 @@ export type ZManifestDeployResultType = z.infer<typeof ManifestDeployResult>;
 export type ZArtifactDeployResultType = z.infer<typeof ZArtifactDeployResult>;
 export type ZSourceDeployResultType = z.infer<typeof SourceDeployResult>;
 export type ZPackageInstallResultType = z.infer<typeof PackageInstallResult>;
+export type ZAggregatedArtifactResult = z.infer<typeof AggregatedArtifactResult>;

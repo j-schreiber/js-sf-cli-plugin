@@ -1,6 +1,6 @@
 import { Config } from '@oclif/core';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
-import { Messages } from '@salesforce/core';
+import { Messages, SfError, SfProject } from '@salesforce/core';
 import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
 import { ZArtifactDeployResultType, ZManifestDeployResultType } from '../../../types/orgManifestOutputSchema.js';
 import { eventBus } from '../../../common/comms/eventBus.js';
@@ -21,7 +21,6 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
-  public static readonly requiresProject = true;
 
   public static readonly flags = {
     manifest: Flags.file({
@@ -54,7 +53,10 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
 
   public async run(): Promise<JscManifestRolloutResult> {
     const { flags } = await this.parse(JscManifestRollout);
+    this.info(messages.getMessage('infos.target-org-info', [flags['target-org'].getUsername()]));
+    this.info(messages.getMessage('infos.devhub-org-info', [flags['devhub-org'].getUsername()]));
     const manifest = ReleaseManifestLoader.load(flags.manifest);
+    await this.assertIsSfdxProject(manifest);
     await manifest.resolve(flags['target-org'].getConnection('60.0'), flags['devhub-org'].getConnection('60.0'));
     const result = await this.deployArtifacts(manifest);
     return {
@@ -80,7 +82,6 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     for (const artifact of manifest.getDeployJobs()) {
       const jobResults: ZArtifactDeployResultType[] = [];
       this.spinner.start(`Rolling out ${artifact.name} (${artifact.getSteps().length} steps).`);
-      this.spinner.status = 'Testing message';
       for (let i = 0; i < artifact.getSteps().length; i++) {
         const step = artifact.getSteps()[i];
         const stepStatus = step.getStatus() as ZArtifactDeployResultType;
@@ -105,7 +106,7 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
           jobResults.push(stepResult);
         }
       }
-      this.spinner.stop(this.buildStopMsgForArtifactCompletion(artifact.getAggregatedStatus()));
+      this.spinner.stop(artifact.getAggregatedStatus().message);
       result[artifact.name] = jobResults;
     }
     if (!hasFailure) {
@@ -114,14 +115,15 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     return result;
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  private buildStopMsgForArtifactCompletion(artifactStatus: string): string {
-    if (artifactStatus === DeployStatus.Enum.Skipped) {
-      return 'Artifact skipped.';
+  private async assertIsSfdxProject(manifest: OrgManifest): Promise<void> {
+    if (manifest.requiresProject()) {
+      try {
+        this.project = await SfProject.resolve();
+      } catch (err) {
+        if (err instanceof Error && err.name === 'InvalidProjectWorkspaceError') {
+          this.error(new SfError(messages.getMessage('errors.manifest-requires-project'), 'RequiresProjectError'));
+        }
+      }
     }
-    if (artifactStatus === DeployStatus.Enum.Failed) {
-      return 'FAILED!';
-    }
-    return `Completed with ${artifactStatus.toLowerCase()}.`;
   }
 }

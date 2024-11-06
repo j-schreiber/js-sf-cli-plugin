@@ -25,3 +25,15 @@ Prints all subcommand outputs to terminal (e.g. deployed source files, package i
 # examples
 
 - <%= config.bin %> <%= command.id %>
+
+# errors.manifest-requires-project
+
+Manifest has at least one step that requires a project, but no valid sfdx project was found in this directory.
+
+# infos.target-org-info
+
+Target org for rollout: %s
+
+# infos.devhub-org-info
+
+Devhub to resolve packages: %s

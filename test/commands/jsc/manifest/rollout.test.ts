@@ -18,6 +18,7 @@ import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 
 const MockLwcUtilsInstallationKey = 'lwcutils1234';
+const MockVersionId = MockPackageVersionQueryResult.records[0].SubscriberPackageVersionId;
 
 describe('jsc manifest rollout', () => {
   const $$ = new TestContext();
@@ -45,7 +46,7 @@ describe('jsc manifest rollout', () => {
     cleanSourceDirectories();
   });
 
-  it('runs command with json flag > minimal manifest => exits OK', async () => {
+  it('runs command with json flag > unpackaged only manifest => exits OK', async () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
@@ -57,7 +58,6 @@ describe('jsc manifest rollout', () => {
     ]);
 
     // Assert
-    expect(result).to.be.ok;
     expect(process.exitCode).to.equal(0);
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
     expect(oclifWrapperStub.callCount).to.equal(1);
@@ -74,6 +74,10 @@ describe('jsc manifest rollout', () => {
         '10',
       ],
     });
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([
+      `Target org for rollout: ${testTargetOrg.username}`,
+      `Devhub to resolve packages: ${testDevHub.username}`,
+    ]);
   });
 
   it('runs command with json flag > package manifest => exits OK', async () => {
@@ -97,7 +101,7 @@ describe('jsc manifest rollout', () => {
     expect(oclifWrapperStub.callCount).to.equal(1);
   });
 
-  it('runs command with regular output > minimal manifest => shows details', async () => {
+  it('runs command with regular output > unpackaged manifest => shows details', async () => {
     // Arrange
     mockSubscriberVersionsForAllPackages();
 
@@ -159,14 +163,14 @@ describe('jsc manifest rollout', () => {
     expect(sfSpinnerStub.stop.args.flat()).to.deep.equal(
       [
         'Success! All artifacts resolved.', // validation
-        'Completed with success.', // org_shape_settings
-        'Completed with success.', // apex_utils has skip_if_installed = false
-        'Artifact skipped.', // lwc_utils
-        'Artifact skipped.', // core_crm
-        'Artifact skipped.', // core_crm_overrides resolves to empty path
-        'Completed with success.', // core_crm_extensions
-        'Artifact skipped.', // pims
-        'Completed with success.', // pims_overrides
+        'Deployed test/data/mock-src/unpackaged/org-shape.', // org_shape_settings
+        `Installed 1.28.0 (${MockVersionId}).`, // apex_utils has skip_if_installed = false
+        `Skipped. 0.12.0 (${MockVersionId}) already installed.`, // lwc_utils
+        `Skipped. 2.4.2 (${MockVersionId}) already installed.`, // core_crm
+        'Skipped. Resolves to empty path.', // core_crm_overrides resolves to empty path
+        'Deployed test/data/mock-src/package-extensions/core-crm.', // core_crm_extensions
+        `Skipped. 2.9.0 (${MockVersionId}) already installed.`, // pims
+        'Deployed test/data/mock-src/package-overrides/pims.', // pims_overrides
       ],
       'args for spinner.stop() calls'
     );
@@ -271,6 +275,53 @@ describe('jsc manifest rollout', () => {
     const lwcUtilsResult = result.deployedArtifacts['apex_utils'][0] as unknown as ZPackageInstallResultType;
     expect(lwcUtilsResult.status).to.equal(DeployStatus.Enum.Skipped);
     expect(lwcUtilsResult.displayMessage).to.equal('Skipped, because a previous artifact failed.');
+  });
+
+  it('runs unpackaged only manifest in non-DX directory => throws error', async () => {
+    // Arrange
+    $$.inProject(false);
+
+    // Act
+    try {
+      await JscManifestRollout.run([
+        '--devhub-org',
+        testDevHub.username,
+        '--target-org',
+        testTargetOrg.username,
+        '--manifest',
+        'test/data/manifests/minimal.yaml',
+      ]);
+      expect.fail('Expected exception, but succeeded');
+    } catch (e) {
+      if (e instanceof SfError) {
+        expect(e.name).to.equal('RequiresProjectError');
+      } else {
+        expect.fail('Expected SfError');
+      }
+    }
+
+    // Assert
+    expect(process.exitCode).to.equal(2);
+  });
+
+  it('runs package manifest in non-DX directory => exits OK', async () => {
+    // Arrange
+    $$.inProject(false);
+    mockSubscriberVersionsForAllPackages();
+
+    // Act
+    const result = await JscManifestRollout.run([
+      '--devhub-org',
+      testDevHub.username,
+      '--target-org',
+      testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/complex-with-global-options.yaml',
+    ]);
+
+    // Assert
+    expect(process.exitCode).to.equal(0);
+    expect(result).to.be.ok;
   });
 
   function mockSubscriberVersionsForAllPackages() {

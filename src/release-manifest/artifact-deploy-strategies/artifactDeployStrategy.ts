@@ -3,6 +3,12 @@ import { ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.j
 
 export type ArtifactDeployStrategy = {
   /**
+   * Used by resolve API to determine, if the manifest loads at least
+   * one deploy step that requires to be run from an sfdx project.
+   */
+  requiresSfdxProject: boolean;
+
+  /**
    * Return the internal state of the job, for inspection
    */
   getStatus(): Partial<ZArtifactDeployResultType>;

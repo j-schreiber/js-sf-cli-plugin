@@ -80,6 +80,7 @@ describe('org manifest', () => {
         qa: 'admin@example.com.qa',
         prod: 'admin@example.com',
       });
+      expect(orgManifest.requiresProject()).to.be.true;
       expect(orgManifest.getEnvironmentName('admin@example.com.qa')).to.equal('qa');
       expect(orgManifest.getEnvironmentName('admin-salesforce@mobilityhouse.com.dev')).to.equal('dev');
       expect(orgManifest.getEnvironmentName('unknown@example.com')).to.be.undefined;
@@ -102,6 +103,7 @@ describe('org manifest', () => {
       const orgManifest = ReleaseManifestLoader.load('test/data/manifests/minimal.yaml');
 
       // Assert
+      expect(orgManifest.requiresProject()).to.be.true;
       expect(orgManifest.data.environments).is.undefined;
       expect(orgManifest.getEnvironmentName('admin@example.com.qa')).to.be.undefined;
       const artifactsMap = new Map(Object.entries(orgManifest.data.artifacts));
@@ -190,6 +192,7 @@ describe('org manifest', () => {
       const jobs = orgManifest.getDeployJobs();
 
       // Assert
+      expect(orgManifest.requiresProject()).to.be.true;
       expect(jobs.length).to.equal(8);
       jobs.forEach((job) => {
         expect(job.getSteps().length).to.equal(1);
@@ -218,6 +221,7 @@ describe('org manifest', () => {
       const jobs = orgManifest.getDeployJobs();
 
       // Assert
+      expect(orgManifest.requiresProject()).to.be.false;
       expect(jobs.length).to.equal(2);
       expect(jobs[0].name).to.equal('apex_utils');
       expect(jobs[0].definition.type).to.equal('UnlockedPackage');
@@ -383,6 +387,7 @@ describe('org manifest', () => {
       } catch (err) {
         expect(err).to.be.instanceOf(SfError);
         if (err instanceof SfError) {
+          expect(err.name).to.equal('NoReleasedPackageVersionFound');
           expect(err.message).to.equal(
             'No released package version found for package id 0Ho0X000000000XAAA and version 2.0.0'
           );
@@ -416,6 +421,7 @@ describe('org manifest', () => {
       } catch (err) {
         expect(err).to.be.instanceOf(SfError);
         if (err instanceof SfError) {
+          expect(err.name).to.equal('InstallationKeyRequired');
           expect(err.message).to.contain('2.0.0 (04t0X0000000001AAA)');
           expect(err.message).to.contain('requires an installation key');
         }
@@ -449,6 +455,7 @@ describe('org manifest', () => {
       } catch (err) {
         expect(err).to.be.instanceOf(SfError);
         if (err instanceof SfError) {
+          expect(err.name).to.equal('InstallationKeyEmpty');
           expect(err.message).to.contain('MY_INSTALLATION_KEY');
         }
       }
@@ -524,9 +531,6 @@ describe('org manifest', () => {
       // Assert
       expect(oclifWrapperStub.called).to.be.false;
       expect(installResult.status).to.equal(DeployStatus.Enum.Skipped);
-      expect(installResult.displayMessage).to.equal(
-        `Skipping installation of ${MockSkipInstallPackage.version}, because it is already installed on ${mockTargetOrg.username}`
-      );
     });
 
     function mockSameInstalledPackageVersions(packageId: string, subscriberId: string, versionId: string) {
@@ -770,9 +774,6 @@ describe('org manifest', () => {
 
       // Assert
       expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
-      expect(deployResult.displayMessage).to.equal(
-        `Running "sf project deploy start" with ${MockHappySoupArtifact.path} on ${mockTargetOrg.username}`
-      );
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'project:deploy:start',
         args: [
@@ -803,9 +804,6 @@ describe('org manifest', () => {
 
       // Assert
       expect(deployResult.status).to.equal(DeployStatus.Enum.Skipped);
-      expect(deployResult.displayMessage).to.equal(
-        'Skipping step, because no path was resolved for username admin@example.com.dev'
-      );
       expect(oclifWrapperStub.called).to.be.false;
     });
   });

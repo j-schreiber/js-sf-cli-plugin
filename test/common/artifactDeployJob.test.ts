@@ -15,7 +15,7 @@ describe('deploy job', () => {
     );
 
     // Assert
-    expect(deployJob.getAggregatedStatus()).to.equal(DeployStatus.Enum.Pending);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Pending);
   });
 
   it('has only skipped steps > aggregate status is skipped', () => {
@@ -34,7 +34,7 @@ describe('deploy job', () => {
     });
 
     // Assert
-    expect(deployJob.getAggregatedStatus()).to.equal(DeployStatus.Enum.Skipped);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Skipped);
   });
 
   it('has only resolved steps > aggregate status is resolved', () => {
@@ -53,7 +53,7 @@ describe('deploy job', () => {
     });
 
     // Assert
-    expect(deployJob.getAggregatedStatus()).to.equal(DeployStatus.Enum.Resolved);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Resolved);
   });
 
   it('has skipped and one success step > aggregate status is success', () => {
@@ -72,7 +72,7 @@ describe('deploy job', () => {
     deployJob.getSteps()[deployJob.getSteps().length - 1].getStatus().status = DeployStatus.Enum.Success;
 
     // Assert
-    expect(deployJob.getAggregatedStatus()).to.equal(DeployStatus.Enum.Success);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Success);
   });
 
   it('has success and one failed step > aggregate status is failed', () => {
@@ -91,6 +91,6 @@ describe('deploy job', () => {
     deployJob.getSteps()[0].getStatus().status = DeployStatus.Enum.Failed;
 
     // Assert
-    expect(deployJob.getAggregatedStatus()).to.equal(DeployStatus.Enum.Failed);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Failed);
   });
 });

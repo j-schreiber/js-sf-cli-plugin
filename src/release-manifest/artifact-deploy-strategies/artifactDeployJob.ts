@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Connection } from '@salesforce/core';
-import { ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
+import { ZAggregatedArtifactResult, ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
 import OrgManifest from '../OrgManifest.js';
 import { eventBus } from '../../common/comms/eventBus.js';
@@ -44,16 +44,34 @@ export default class ArtifactDeployJob {
    * If all steps succeeded, the job succeeded. If one step failed,
    * the job failed. If all steps skipped, the job skipped.
    */
-  public getAggregatedStatus(): string {
+  public getAggregatedStatus(): ZAggregatedArtifactResult {
     let ordinalStatusValue = 0;
+    const msgs: string[] = [];
     this.getSteps().forEach((step) => {
-      const stepStatus = step.getStatus().status!;
-      const intValue = DeployStatus.options.indexOf(stepStatus);
+      const stepStatus = step.getStatus();
+      if (stepStatus.displayMessage) {
+        msgs.push(stepStatus.displayMessage);
+      }
+      const intValue = DeployStatus.options.indexOf(stepStatus.status!);
       if (intValue > ordinalStatusValue) {
         ordinalStatusValue = intValue;
       }
     });
-    return DeployStatus.options[ordinalStatusValue];
+    return { status: DeployStatus.options[ordinalStatusValue], message: msgs.join(', ') };
+  }
+
+  /**
+   * Aggregates all steps to determine, if this job requires an SFDX project
+   *
+   * @returns
+   */
+  public requiresProject(): boolean {
+    for (const step of this.getSteps()) {
+      if (step.requiresSfdxProject) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public getSteps(): ArtifactDeployStrategy[] {

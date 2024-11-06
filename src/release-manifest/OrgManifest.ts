@@ -20,6 +20,13 @@ export default class OrgManifest {
     }
   }
 
+  /**
+   * Searches mapped environments for a target org username and returns the
+   * environment name. If no username is mapped, returns undefined.
+   *
+   * @param targetUsername The username of a target org, e.g. info@example.com
+   * @returns The env name such as dev, prod, qa
+   */
   public getEnvironmentName(targetUsername?: string): string | undefined {
     if (targetUsername === undefined) {
       return undefined;
@@ -27,8 +34,28 @@ export default class OrgManifest {
     return this.environmentsMap.get(targetUsername);
   }
 
+  /**
+   * Ordered list of all artifacts as deploy jobs. A job can contain
+   * multiple steps.
+   *
+   * @returns
+   */
   public getDeployJobs(): ArtifactDeployJob[] {
     return this.deployJobs;
+  }
+
+  /**
+   * Aggregates all artifacts to determine, if the manifest requires an SFDX project
+   *
+   * @returns
+   */
+  public requiresProject(): boolean {
+    for (const artifact of this.deployJobs) {
+      if (artifact.requiresProject()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
