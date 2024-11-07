@@ -4,17 +4,15 @@ on:
     branches-ignore: [main]
   workflow_dispatch:
 
-env:
-  TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
-  TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
-
 jobs:
   unit-tests:
     uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main
   nuts:
     needs: unit-tests
     uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
-    secrets: inherit
+    secrets:
+      TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+      TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
