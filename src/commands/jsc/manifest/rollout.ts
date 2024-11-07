@@ -9,7 +9,7 @@ import OrgManifest from '../../../release-manifest/OrgManifest.js';
 import { DeployStatus } from '../../../types/orgManifestGlobalConstants.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('jsc', 'jsc.manifest.rollout');
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.manifest.rollout');
 
 export type JscManifestRolloutResult = {
   targetOrgUsername?: string;

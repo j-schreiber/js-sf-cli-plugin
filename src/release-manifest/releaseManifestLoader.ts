@@ -5,7 +5,7 @@ import { ZReleaseManifest, ZReleaseManifestType } from '../types/orgManifestInpu
 import OrgManifest from './OrgManifest.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('jsc', 'orgmanifest');
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'orgmanifest');
 
 export default class ReleaseManifestLoader {
   public static load(filePath: string): OrgManifest {

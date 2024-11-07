@@ -2,7 +2,7 @@ import { Connection, Messages, SfError } from '@salesforce/core';
 import { Package2Version, SubscriberPackageVersion } from '../../types/sfToolingApiTypes.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('jsc', 'orgmanifest');
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'orgmanifest');
 
 export async function resolvePackageVersionId(
   packageVersionLiteral: string,

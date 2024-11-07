@@ -14,7 +14,7 @@ import {
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('jsc', 'orgmanifest');
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'orgmanifest');
 
 export default class UnlockedPackageInstallStep implements ArtifactDeployStrategy {
   public requiresSfdxProject: boolean = false;

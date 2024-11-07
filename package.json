@@ -1,5 +1,5 @@
 {
-  "name": "jsc",
+  "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
   "version": "0.1.0",
   "dependencies": {
@@ -70,7 +70,7 @@
     "compile": "wireit",
     "docs": "sf-docs",
     "format": "wireit",
-    "pretty-quick-staged": "node_modules/.bin/pretty-quick --staged",
+    "pretty-quick-staged": "pretty-quick --staged",
     "link-check": "wireit",
     "lint": "wireit",
     "postpack": "sf-clean --ignore-signing-artifacts",
@@ -201,5 +201,13 @@
   },
   "exports": "./lib/index.js",
   "type": "module",
-  "author": "Jannis Schreiber"
+  "author": "Jannis Schreiber",
+  "main": "index.js",
+  "bin": {
+    "sf-plugin": "bin/dev.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  }
 }
