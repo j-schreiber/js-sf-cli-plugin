@@ -4,6 +4,10 @@ on:
     branches-ignore: [main]
   workflow_dispatch:
 
+env:
+  TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+  TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
+
 jobs:
   unit-tests:
     uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main

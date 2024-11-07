@@ -1,11 +1,12 @@
 import path from 'node:path';
 import { expect } from 'chai';
+import { env } from '@salesforce/kit';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscManifestRolloutResult } from '../../../../src/commands/jsc/manifest/rollout.js';
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
-const devhubUsername = process.env.TESTKIT_HUB_USERNAME;
+const devhubUsername = env.getString('TESTKIT_HUB_USERNAME');
 
 describe('jsc manifest rollout NUTs*', () => {
   let session: TestSession;
