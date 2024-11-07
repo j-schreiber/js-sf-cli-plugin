@@ -10,7 +10,7 @@ import {
 } from '../../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('jsc', 'jsc.data.export');
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.export');
 
 export type JscDataExportResult = {
   'source-org-id': string;

@@ -1,0 +1,8 @@
+environments:
+  prod: test@example.com
+artifacts:
+  basic_happy_soup:
+    type: Unpackaged
+    path:
+      staging: test/data/mock-src/unpackaged/qa
+      prod: test/data/mock-src/unpackaged/prod-only

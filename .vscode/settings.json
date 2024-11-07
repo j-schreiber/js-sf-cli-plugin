@@ -12,5 +12,6 @@
   },
   "editor.tabSize": 2,
   "editor.formatOnSave": true,
-  "rewrap.wrappingColumn": 80
+  "mochaExplorer.files": "test/**/*.test.ts",
+  "mochaExplorer.require": "tsx"
 }

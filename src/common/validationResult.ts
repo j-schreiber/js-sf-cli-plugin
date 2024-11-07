@@ -1,8 +1,17 @@
 export default class ValidationResult {
-  public errors: string[] = [];
+  public issues: ValidationIssue[] = [];
   public infos: string[] = [];
 
   public isValid(): boolean {
-    return this.errors.length === 0;
+    return this.issues.length === 0;
   }
+}
+
+export type ValidationIssue = {
+  issueType: ValidationIssueType;
+  message: string;
+};
+
+export enum ValidationIssueType {
+  'generic',
 }

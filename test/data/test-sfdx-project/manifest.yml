@@ -1,0 +1,8 @@
+artifacts:
+  apex_utils:
+    type: UnlockedPackage
+    package_id: 0Ho6f000000TN1jCAG
+    version: 0.2.0
+  unpackaged:
+    type: Unpackaged
+    path: src

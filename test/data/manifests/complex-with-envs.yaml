@@ -1,0 +1,41 @@
+environments:
+  dev: admin-salesforce@mobilityhouse.com.dev
+  qa: admin@example.com.qa
+  prod: admin@example.com
+artifacts:
+  org_shape_settings:
+    type: Unpackaged
+    path: test/data/mock-src/unpackaged/org-shape
+  apex_utils:
+    type: UnlockedPackage
+    package_id: 0Ho690000000000AAA
+    installation_key: APEX_UTILS_INSTALLATION_KEY
+    version: 1.28.0
+    skip_if_installed: false
+  lwc_utils:
+    type: UnlockedPackage
+    package_id: 0Ho690000000001AAA
+    installation_key: LWC_UTILS_INSTALLATION_KEY
+    version: 0.12.0
+  core_crm:
+    type: UnlockedPackage
+    package_id: 0Ho690000000002AAA
+    installation_key: CORE_INSTALLATION_KEY
+    version: 2.4.2
+  core_crm_overrides:
+    type: Unpackaged
+    path:
+      dev: test/data/mock-src/package-overrides/core-crm/dev
+      qa: test/data/mock-src/package-overrides/core-crm/dev
+      prod: test/data/mock-src/package-overrides/core-crm/prod
+  core_crm_extensions:
+    type: Unpackaged
+    path: test/data/mock-src/package-extensions/core-crm
+  pims:
+    type: UnlockedPackage
+    installation_key: PIMS_INSTALLATION_KEY
+    package_id: 0Ho690000000003AAA
+    version: 2.9.0
+  pims_overrides:
+    type: Unpackaged
+    path: test/data/mock-src/package-overrides/pims

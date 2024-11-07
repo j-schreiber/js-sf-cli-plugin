@@ -1,13 +1,15 @@
 {
-  "name": "jsc",
+  "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
   "version": "0.1.0",
   "dependencies": {
     "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
+    "@salesforce/kit": "^3.2.3",
     "@salesforce/sf-plugins-core": "^12.0.8",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@oclif/plugin-command-snapshot": "^5.1.9",
@@ -17,6 +19,7 @@
     "eslint-plugin-sf-plugin": "^1.18.6",
     "oclif": "^4.14.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.5"
   },
   "engines": {
@@ -46,14 +49,14 @@
       "@oclif/plugin-help"
     ],
     "topics": {
-      "hello": {
-        "description": "Commands to say hello."
-      },
-      "sfdami": {
-        "description": "description for sfdami",
+      "jsc": {
+        "description": "All commands in the JSC namespace",
         "subtopics": {
-          "plan": {
-            "description": "description for sfdami.plan"
+          "data": {
+            "description": "Commands to import, export and migrate data"
+          },
+          "manifest": {
+            "description": "Commands to generate, validate and rollout org manifests"
           }
         }
       }
@@ -67,16 +70,16 @@
     "compile": "wireit",
     "docs": "sf-docs",
     "format": "wireit",
-    "pretty-quick-staged": "node_modules/.bin/pretty-quick --staged",
+    "pretty-quick-staged": "pretty-quick --staged",
     "link-check": "wireit",
     "lint": "wireit",
-    "postinstall": "yarn husky install",
     "postpack": "sf-clean --ignore-signing-artifacts",
     "prepack": "sf-prepack",
     "test": "wireit",
     "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "version": "oclif readme"
+    "version": "oclif readme",
+    "test:new": "vitest"
   },
   "publishConfig": {
     "access": "public"
@@ -84,9 +87,13 @@
   "wireit": {
     "build": {
       "dependencies": [
+        "clean-deps",
         "compile",
         "lint"
       ]
+    },
+    "clean-deps": {
+      "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"
     },
     "compile": {
       "command": "tsc -p . --pretty --incremental",
@@ -194,5 +201,13 @@
   },
   "exports": "./lib/index.js",
   "type": "module",
-  "author": "Jannis Schreiber"
+  "author": "Jannis Schreiber",
+  "main": "index.js",
+  "bin": {
+    "sf-plugin": "bin/dev.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  }
 }

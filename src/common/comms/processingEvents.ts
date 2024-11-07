@@ -4,9 +4,12 @@ export enum ProcessingStatus {
   Completed,
 }
 
-export type PlanObjectEvent = {
+export type CommandStatusEvent = {
   message?: string;
   status: ProcessingStatus;
+};
+
+export type PlanObjectEvent = CommandStatusEvent & {
   objectName: string;
   totalBatches: number;
   batchesCompleted: number;
@@ -14,9 +17,7 @@ export type PlanObjectEvent = {
   files: string[];
 };
 
-export type PlanObjectValidationEvent = {
-  status: ProcessingStatus;
+export type PlanObjectValidationEvent = CommandStatusEvent & {
   objectName: string;
   planName: string;
-  message?: string;
 };

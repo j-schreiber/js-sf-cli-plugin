@@ -1,0 +1,4 @@
+artifacts:
+  basic_happy_soup:
+    type: Unpackaged
+    path: test/data/mock-src/unpackaged/my-happy-soup

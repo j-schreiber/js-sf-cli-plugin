@@ -1,6 +1,0 @@
-name: Invalid Test Plan
-objects:
-  # account does not have query or file
-  - objectName: Account
-  - objectName: Contact
-    queryString: SELECT Id,Invalid__x FROM Contact
