@@ -24,7 +24,11 @@ export async function resolvePackageVersionId(
   const queryResult = await devhubCon.tooling.query(queryString);
   if (queryResult.records.length === 0) {
     throw new SfError(
-      messages.getMessage('errors.no-released-package-version', [packageId, packageVersionLiteral]),
+      messages.getMessage('errors.no-released-package-version', [
+        packageId,
+        packageVersionLiteral,
+        devhubCon.getUsername(),
+      ]),
       'NoReleasedPackageVersionFound'
     );
   }

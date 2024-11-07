@@ -4,7 +4,7 @@ No environment configured for target org %s, but strict validation was set.
 
 # errors.no-released-package-version
 
-No released package version found for package id %s and version %s
+No released version found for package id %s and version %s on devhub %s.
 
 # errors.package-requires-install-key
 

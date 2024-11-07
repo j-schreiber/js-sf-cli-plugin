@@ -82,7 +82,7 @@ export function newOrgManifest(): OrgManifest {
 export function initSourceDirectories() {
   testSourcePaths.forEach((path) => {
     fs.mkdirSync(path, { recursive: true });
-    fs.cpSync('test/data/apex', `${path}/classes`, { recursive: true });
+    fs.cpSync('test/data/test-sfdx-project/src/classes', `${path}/classes`, { recursive: true });
   });
 }
 

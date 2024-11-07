@@ -1,0 +1,12 @@
+{
+  "packageDirectories": [
+    {
+      "path": "src",
+      "default": true
+    }
+  ],
+  "namespace": "",
+  "sfdcLoginUrl": "https://tmh.my.salesforce.com",
+  "sourceApiVersion": "61.0",
+  "packageAliases": {}
+}

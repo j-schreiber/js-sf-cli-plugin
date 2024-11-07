@@ -389,7 +389,7 @@ describe('org manifest', () => {
         if (err instanceof SfError) {
           expect(err.name).to.equal('NoReleasedPackageVersionFound');
           expect(err.message).to.equal(
-            'No released package version found for package id 0Ho0X000000000XAAA and version 2.0.0'
+            `No released version found for package id 0Ho0X000000000XAAA and version 2.0.0 on devhub ${mockDevHubOrg.username}.`
           );
         }
       }

@@ -4,7 +4,9 @@ import { Messages, SfError } from '@salesforce/core';
 import { ZReleaseManifest, ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import OrgManifest from './OrgManifest.js';
 
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'orgmanifest');
+
 export default class ReleaseManifestLoader {
   public static load(filePath: string): OrgManifest {
     if (fs.existsSync(filePath)) {

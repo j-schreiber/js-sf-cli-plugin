@@ -8,6 +8,7 @@ import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('jsc', 'orgmanifest');
 
 export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
