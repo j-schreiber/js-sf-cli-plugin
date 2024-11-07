@@ -5,19 +5,17 @@ import { JscManifestRolloutResult } from '../../../../src/commands/jsc/manifest/
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
-const devhubUsername = 'business@lietzau-consulting.de';
+const devhubUsername = process.env.TESTKIT_HUB_USERNAME;
 
 describe('jsc manifest rollout NUTs*', () => {
   let session: TestSession;
   before(async () => {
-    process.env.TESTKIT_HUB_USERNAME = devhubUsername;
-    process.env.TESTKIT_ENABLE_ZIP = 'true';
     session = await TestSession.create({
       project: {
         name: 'manifestRolloutProject',
         sourceDir: path.join('test', 'data', 'test-sfdx-project'),
       },
-      devhubAuthStrategy: 'AUTO',
+      devhubAuthStrategy: 'AUTH_URL',
       scratchOrgs: [
         {
           alias: scratchOrgAlias,
