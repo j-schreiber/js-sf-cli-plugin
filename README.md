@@ -1,91 +1,14 @@
-# sfdami
+# @j-schreiber/sf-plugin
 
-[![NPM](https://img.shields.io/npm/v/sfdami.svg?label=sfdami)](https://www.npmjs.com/package/sfdami) [![Downloads/week](https://img.shields.io/npm/dw/sfdami.svg)](https://npmjs.org/package/sfdami) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://raw.githubusercontent.com/salesforcecli/sfdami/main/LICENSE.txt)
+[![NPM](https://img.shields.io/npm/v/@j-schreiber/sf-plugin.svg?label=@j-schreiber/sf-plugin)](https://www.npmjs.com/package/@j-schreiber/sf-plugin) [![Downloads/week](https://img.shields.io/npm/dw/@j-schreiber/sf-plugin.svg)](https://npmjs.org/package/@j-schreiber/sf-plugin) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://raw.githubusercontent.com/salesforcecli/@j-schreiber/sf-plugin/main/LICENSE.txt)
 
-## Using the template
-
-This repository provides a template for creating a plugin for the Salesforce CLI. To convert this template to a working plugin:
-
-1. Please get in touch with the Platform CLI team. We want to help you develop your plugin.
-2. Generate your plugin:
-
-   ```
-   sf plugins install dev
-   sf dev generate plugin
-
-   git init -b main
-   git add . && git commit -m "chore: initial commit"
-   ```
-
-3. Create your plugin's repo in the salesforcecli github org
-4. When you're ready, replace the contents of this README with the information you want.
-
-## Learn about `sf` plugins
-
-Salesforce CLI plugins are based on the [oclif plugin framework](<(https://oclif.io/docs/introduction.html)>). Read the [plugin developer guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_plugins.meta/sfdx_cli_plugins/cli_plugins_architecture_sf_cli.htm) to learn about Salesforce CLI plugin development.
-
-This repository contains a lot of additional scripts and tools to help with general Salesforce node development and enforce coding standards. You should familiarize yourself with some of the [node developer packages](#tooling) used by Salesforce.
-
-Additionally, there are some additional tests that the Salesforce CLI will enforce if this plugin is ever bundled with the CLI. These test are included by default under the `posttest` script and it is required to keep these tests active in your plugin if you plan to have it bundled.
-
-### Tooling
-
-- [@salesforce/core](https://github.com/forcedotcom/sfdx-core)
-- [@salesforce/kit](https://github.com/forcedotcom/kit)
-- [@salesforce/sf-plugins-core](https://github.com/salesforcecli/sf-plugins-core)
-- [@salesforce/ts-types](https://github.com/forcedotcom/ts-types)
-- [@salesforce/ts-sinon](https://github.com/forcedotcom/ts-sinon)
-- [@salesforce/dev-config](https://github.com/forcedotcom/dev-config)
-- [@salesforce/dev-scripts](https://github.com/forcedotcom/dev-scripts)
-
-### Hooks
-
-For cross clouds commands, e.g. `sf env list`, we utilize [oclif hooks](https://oclif.io/docs/hooks) to get the relevant information from installed plugins.
-
-This plugin includes sample hooks in the [src/hooks directory](src/hooks). You'll just need to add the appropriate logic. You can also delete any of the hooks if they aren't required for your plugin.
-
-# Everything past here is only a suggestion as to what should be in your specific plugin's description
-
-This plugin is bundled with the [Salesforce CLI](https://developer.salesforce.com/tools/sfdxcli). For more information on the CLI, read the [getting started guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm).
-
-We always recommend using the latest version of these commands bundled with the CLI, however, you can install a specific version or tag if needed.
-
-## Install
-
-```bash
-sf plugins install sfdami@x.y.z
-```
-
-## Issues
-
-Please report any issues at https://github.com/forcedotcom/cli/issues
-
-## Contributing
-
-1. Please read our [Code of Conduct](CODE_OF_CONDUCT.md)
-2. Create a new issue before starting your project so that we can keep track of
-   what you are trying to add/fix. That way, we can also offer suggestions or
-   let you know if there is already an effort in progress.
-3. Fork this repository.
-4. [Build the plugin locally](#build)
-5. Create a _topic_ branch in your fork. Note, this step is recommended but technically not required if contributing using a fork.
-6. Edit the code in your fork.
-7. Write appropriate tests for your changes. Try to achieve at least 95% code coverage on any new code. No pull request will be accepted without unit tests.
-8. Sign CLA (see [CLA](#cla) below).
-9. Send us a pull request when you are done. We'll review your code, suggest any needed changes, and merge it in.
-
-### CLA
-
-External contributors will be required to sign a Contributor's License
-Agreement. You can do so by going to https://cla.salesforce.com/sign-cla.
-
-### Build
+## Build
 
 To build the plugin locally, make sure to have yarn installed and run the following commands:
 
 ```bash
 # Clone the repository
-git clone git@github.com:salesforcecli/sfdami
+git clone git@github.com/j-schreiber/js-sf-cli-plugin
 
 # Install the dependencies and compile
 yarn && yarn build
@@ -111,35 +34,65 @@ sf plugins
 
 <!-- commands -->
 
-- [`sf hello world`](#sf-hello-world)
+- [`sf jsc data export`](#sf-jsc-data-export)
+- [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 
-## `sf hello world`
+## `sf jsc data export`
 
-Say hello either to the world or someone you know.
+Export all data from a plan definition.
 
 ```
 USAGE
-  $ sf hello world [--json] [-n <value>]
+  $ sf jsc data export -o <value> -p <value> [--json] [--flags-dir <value>] [-d <value>] [-v]
 
 FLAGS
-  -n, --name=<value>  [default: World] The name of the person you'd like to say hello to.
+  -d, --output-dir=<value>  Output directory to export all fields.
+  -o, --source-org=<value>  (required) The source org from where data is exported.
+  -p, --plan=<value>        (required) Path to the plan file that defines the export.
+  -v, --validate-only       Does not retrieve records. Only validates the plan.
 
 GLOBAL FLAGS
-  --json  Format output as json.
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
 
 DESCRIPTION
-  Say hello either to the world or someone you know.
+  Export all data from a plan definition.
 
-  Say hello either to the world or someone you know.
+  Takes a plan definition and exports all data from the source org. The created files are
+  compatible with the "data import tree" command. Lookups are automatically resolved to
+  referenceIds to retain relationships. This command allows tree exports that are orders
+  of magnitute more complex than the basic "data export tree".
 
 EXAMPLES
-  Say hello to the world:
+  $ sf jsc data export
+```
 
-    $ sf hello world
+## `sf jsc manifest rollout`
 
-  Say hello to someone you know:
+Summary of a command.
 
-    $ sf hello world --name Astro
+```
+USAGE
+  $ sf jsc manifest rollout -m <value> -t <value> -o <value> [--json] [--flags-dir <value>] [-v]
+
+FLAGS
+  -m, --manifest=<value>    (required) Manifest file
+  -o, --devhub-org=<value>  (required) Devhub that owns the packages
+  -t, --target-org=<value>  (required) Target org (sandbox, production, etc) where manifest is deployed/rolled out
+  -v, --verbose             Prints all subcommand outputs to terminal (e.g. deployed source files, package install
+                            status, etc).
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Summary of a command.
+
+  More information about a command. Don't repeat the summary.
+
+EXAMPLES
+  $ sf jsc manifest rollout
 ```
 
 <!-- commandsstop -->
