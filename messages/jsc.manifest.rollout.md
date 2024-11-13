@@ -1,26 +1,26 @@
 # summary
 
-Summary of a command.
+Roll out a manifest. This deploys the artifacts of the manifest (unpackaged, package, etc) to the target org.
 
 # description
 
-More information about a command. Don't repeat the summary.
+The command takes an Org Manifest and rolls out its artifacts to a target org. Dynamic paths for unpackaged artifacts are resolved based on mapped environments, package versions are resolved based on the DevHub org.
 
 # flags.manifest.summary
 
-Manifest file
+A manifest file that defines the desired state of the target org
 
 # flags.target-org.summary
 
-Target org (sandbox, production, etc) where manifest is deployed/rolled out
+Target org (sandbox, production, etc) where artifacts of the manifest should be rolled out.
 
 # flags.devhub-org.summary
 
-Devhub that owns the packages
+Devhub that owns the packages. Needed to resolve package versions.
 
 # flags.verbose.summary
 
-Prints all subcommand outputs to terminal (e.g. deployed source files, package install status, etc).
+Placeholder - Prints all subcommand outputs to terminal (e.g. deployed source files, package install status, etc)
 
 # examples
 
