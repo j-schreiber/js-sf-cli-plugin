@@ -1,9 +1,12 @@
-import { Connection } from '@salesforce/core';
+import { Connection, Messages, SfError, SfProject } from '@salesforce/core';
 import { ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import { ZManifestDeployResultType } from '../types/orgManifestOutputSchema.js';
 import { eventBus } from '../common/comms/eventBus.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.manifest.rollout');
 
 export default class OrgManifest {
   private environmentsMap = new Map<string, string>();
@@ -66,6 +69,7 @@ export default class OrgManifest {
    * @returns
    */
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZManifestDeployResultType> {
+    await this.assertIsSfdxProject();
     eventBus.emit('manifestRollout', {
       status: ProcessingStatus.Started,
       message: `Resolving manifest: ${this.deployJobs.length} artifacts found`,
@@ -80,6 +84,19 @@ export default class OrgManifest {
       status: ProcessingStatus.Completed,
       message: 'Success! All artifacts resolved.',
     } as CommandStatusEvent);
+    process.exitCode = 0;
     return result;
+  }
+
+  private async assertIsSfdxProject(): Promise<void> {
+    if (this.requiresProject()) {
+      try {
+        await SfProject.resolve();
+      } catch (err) {
+        if (err instanceof Error && err.name === 'InvalidProjectWorkspaceError') {
+          throw new SfError(messages.getMessage('errors.manifest-requires-project'), 'RequiresProjectError', [], 2);
+        }
+      }
+    }
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -83,8 +83,7 @@
     "test": "wireit",
     "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "version": "oclif readme",
-    "test:new": "vitest"
+    "version": "oclif readme"
   },
   "publishConfig": {
     "access": "public"
@@ -94,8 +93,12 @@
       "dependencies": [
         "clean-deps",
         "compile",
-        "lint"
+        "lint",
+        "gen-readme"
       ]
+    },
+    "gen-readme": {
+      "command": "oclif readme"
     },
     "clean-deps": {
       "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"

@@ -1,6 +1,6 @@
 import { Config } from '@oclif/core';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
-import { Messages, SfError, SfProject } from '@salesforce/core';
+import { Messages } from '@salesforce/core';
 import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
 import { ZArtifactDeployResultType, ZManifestDeployResultType } from '../../../types/orgManifestOutputSchema.js';
 import { eventBus } from '../../../common/comms/eventBus.js';
@@ -43,6 +43,9 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
       summary: messages.getMessage('flags.verbose.summary'),
       char: 'v',
     }),
+    'validate-only': Flags.boolean({
+      summary: messages.getMessage('flags.validate-only.summary'),
+    }),
   };
 
   public constructor(argv: string[], config: Config) {
@@ -56,13 +59,22 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     this.info(messages.getMessage('infos.target-org-info', [flags['target-org'].getUsername()]));
     this.info(messages.getMessage('infos.devhub-org-info', [flags['devhub-org'].getUsername()]));
     const manifest = ReleaseManifestLoader.load(flags.manifest);
-    await this.assertIsSfdxProject(manifest);
-    await manifest.resolve(flags['target-org'].getConnection('60.0'), flags['devhub-org'].getConnection('60.0'));
-    const result = await this.deployArtifacts(manifest);
+    const resolveResults = await manifest.resolve(
+      flags['target-org'].getConnection('60.0'),
+      flags['devhub-org'].getConnection('60.0')
+    );
+    if (flags['validate-only']) {
+      return {
+        targetOrgUsername: flags['target-org'].getUsername(),
+        devhubOrgUsername: flags['devhub-org'].getUsername(),
+        deployedArtifacts: resolveResults,
+      };
+    }
+    const deployResults = await this.deployArtifacts(manifest);
     return {
       targetOrgUsername: flags['target-org'].getUsername(),
       devhubOrgUsername: flags['devhub-org'].getUsername(),
-      deployedArtifacts: result,
+      deployedArtifacts: deployResults,
     };
   }
 
@@ -113,17 +125,5 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
       process.exitCode = 0;
     }
     return result;
-  }
-
-  private async assertIsSfdxProject(manifest: OrgManifest): Promise<void> {
-    if (manifest.requiresProject()) {
-      try {
-        this.project = await SfProject.resolve();
-      } catch (err) {
-        if (err instanceof Error && err.name === 'InvalidProjectWorkspaceError') {
-          this.error(new SfError(messages.getMessage('errors.manifest-requires-project'), 'RequiresProjectError'));
-        }
-      }
-    }
   }
 }

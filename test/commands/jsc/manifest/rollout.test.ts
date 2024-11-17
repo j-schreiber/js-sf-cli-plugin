@@ -329,6 +329,26 @@ describe('jsc manifest rollout', () => {
     expect(result).to.be.ok;
   });
 
+  it('runs command with validate only flag > returns artifacts as resolved', async () => {
+    // Act
+    const result = await JscManifestRollout.run([
+      '--devhub-org',
+      testDevHub.username,
+      '--target-org',
+      testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/minimal.yaml',
+      '--validate-only',
+      '--json',
+    ]);
+
+    // Assert
+    expect(process.exitCode).to.equal(0);
+    expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
+    expect(oclifWrapperStub.callCount).to.equal(0);
+    expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.Enum.Resolved);
+  });
+
   function mockSubscriberVersionsForAllPackages() {
     process.env.APEX_UTILS_INSTALLATION_KEY = '123apexkey';
     process.env.LWC_UTILS_INSTALLATION_KEY = MockLwcUtilsInstallationKey;
