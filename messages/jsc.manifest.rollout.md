@@ -22,6 +22,10 @@ Devhub that owns the packages. Needed to resolve package versions.
 
 Placeholder - Prints all subcommand outputs to terminal (e.g. deployed source files, package install status, etc)
 
+# flags.validate-only.summary
+
+Only validate the manifest file, do not perform any rollout actions like package installs or source deploys.
+
 # examples
 
 - <%= config.bin %> <%= command.id %>

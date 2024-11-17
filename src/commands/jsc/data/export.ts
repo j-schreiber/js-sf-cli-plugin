@@ -40,7 +40,6 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
     }),
     'validate-only': Flags.boolean({
       summary: messages.getMessage('flags.validate-only.summary'),
-      char: 'v',
     }),
   };
 
