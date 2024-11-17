@@ -52,6 +52,7 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 
 - [`sf jsc data export`](#sf-jsc-data-export)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
+- [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
 
 ## `sf jsc data export`
 
@@ -118,5 +119,37 @@ EXAMPLES
 ```
 
 _See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.2.0/src/commands/jsc/manifest/rollout.ts)_
+
+## `sf jsc manifest validate`
+
+Validate a manifest file. Same result as running "rollout" with "--validate-only".
+
+```
+USAGE
+  $ sf jsc manifest validate -m <value> -t <value> -o <value> [--json] [--flags-dir <value>]
+
+FLAGS
+  -m, --manifest=<value>    (required) A manifest file that defines the desired state of the target org
+  -o, --devhub-org=<value>  (required) Devhub that owns the packages. Needed to resolve package versions.
+  -t, --target-org=<value>  (required) Target org (sandbox, production, etc) where artifacts of the manifest should be
+                            rolled out.
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Validate a manifest file. Same result as running "rollout" with "--validate-only".
+
+  The manifest file is validated against a DevHub and Target Org. It tries to resolve package versions and deploy paths
+  for all artifacts, but does not attempt to rollout the artifacts to the target org.
+
+  All artifacts are returned as RESOLVED, if validation succeeds.
+
+EXAMPLES
+  $ sf jsc manifest validate
+```
+
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.2.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

@@ -83,8 +83,7 @@
     "test": "wireit",
     "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "version": "oclif readme",
-    "test:new": "vitest"
+    "version": "oclif readme"
   },
   "publishConfig": {
     "access": "public"
@@ -94,8 +93,12 @@
       "dependencies": [
         "clean-deps",
         "compile",
-        "lint"
+        "lint",
+        "gen-readme"
       ]
+    },
+    "gen-readme": {
+      "command": "oclif readme"
     },
     "clean-deps": {
       "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"
