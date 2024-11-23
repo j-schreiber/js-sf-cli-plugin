@@ -52,3 +52,15 @@ export const MockAccounts = [
     Name: 'Cloud 9 GmbH',
   },
 ];
+
+export const MockOrders = [
+  {
+    attributes: {
+      type: 'Order',
+      url: '/services/data/v62.0/sobjects/Order/8019X0000046Tl1QAE',
+    },
+    Id: '8019X0000046Tl1QAE',
+    StatusCode: 'Draft',
+    CurrencyIsoCode: 'EUR',
+  },
+];

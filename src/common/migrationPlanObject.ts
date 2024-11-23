@@ -14,7 +14,6 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
   private queryBuilder?: QueryBuilder;
-  private queryString?: string;
 
   public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {}
 
@@ -27,21 +26,20 @@ export default class MigrationPlanObject {
   public async load(): Promise<MigrationPlanObject> {
     this.describeResult = await this.describeObject();
     this.assertQueryDefinitions();
-    this.queryBuilder = new QueryBuilder(this.describeResult);
-    this.queryString = this.resolveQueryString();
-    await this.queryBuilder.assertSyntax(this.conn, this.queryString);
+    await this.assertQuerySyntax(this.describeResult);
     return this;
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
+    const queryString = this.resolveQueryString();
     this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryResult = await this.runQuery(this.queryString!);
+    const queryResult = await this.runQuery(queryString);
     const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: queryResult.done,
-      queryString: this.queryString!,
+      queryString,
       totalSize: queryResult.records.length,
       files: [],
     };
@@ -136,6 +134,11 @@ export default class MigrationPlanObject {
     if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
       throw messages.createError('too-many-query-sources-defined');
     }
+  }
+
+  private async assertQuerySyntax(describe: DescribeSObjectResult): Promise<void> {
+    this.queryBuilder = new QueryBuilder(describe);
+    await this.queryBuilder.assertSyntax(this.conn, this.resolveQueryString());
   }
 
   private emitQueryProgress(currentCompleted: number, totalNumber?: number): void {

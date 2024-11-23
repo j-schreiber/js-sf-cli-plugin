@@ -92,7 +92,7 @@ describe('query builder', () => {
 
     // Assert
     expect(queryString).to.equal(
-      "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN ('1','2','3','4')"
+      "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN ('1','2','3','4') AND AccountId != NULL"
     );
   });
 
@@ -118,7 +118,7 @@ describe('query builder', () => {
     const queryString = testBuilder.toSOQL(queryObj);
 
     // Assert
-    expect(queryString).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN ()');
+    expect(queryString).to.contains("WHERE AccountId IN ('') AND AccountId != NULL");
   });
 
   it('formats soql with parent-child bind and filter > variable is cached > adds to filter with AND', async () => {
@@ -135,8 +135,28 @@ describe('query builder', () => {
     const queryString = testBuilder.toSOQL(queryObj);
 
     // Assert
-    expect(queryString).to.equal(
-      "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE (Status = 'Draft') AND AccountId IN ('1','2','3','4')"
+    expect(queryString).to.contains(
+      "WHERE (Status = 'Draft') AND AccountId IN ('1','2','3','4') AND AccountId != NULL"
+    );
+  });
+
+  it('formats soql with parent bind, filter, and limit > all elements in SOQL', async () => {
+    // Arrange
+    const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
+    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
+    const queryObj = {
+      fetchAllFields: true,
+      parent: { field: 'AccountId', bind: 'myAccountIds' },
+      filter: "Status = 'Draft'",
+      limit: 1000,
+    } as ZQueryObjectType;
+
+    // Act
+    const queryString = testBuilder.toSOQL(queryObj);
+
+    // Assert
+    expect(queryString).to.contains(
+      "FROM Order WHERE (Status = 'Draft') AND AccountId IN ('1','2','3','4') AND AccountId != NULL LIMIT 1000"
     );
   });
 });

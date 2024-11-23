@@ -114,10 +114,8 @@ export default class QueryBuilder {
   // eslint-disable-next-line class-methods-use-this
   private resolveParentBind(parentField: string, variableName: string): string {
     const ids = PlanCache.get(variableName)!;
-    const idFilter = ids.reduce(
-      (prevValue, currentVal, index) => (index === 0 ? `'${currentVal}'` : `${prevValue},'${currentVal}'`),
-      ''
-    );
-    return `${parentField} IN (${idFilter})`;
+    const quotedIds = ids.map((id) => `'${id}'`);
+    const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
+    return `${parentField} IN ${listInFilter} AND ${parentField} != NULL`;
   }
 }
