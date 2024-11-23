@@ -8,6 +8,7 @@ import {
   PlanObjectValidationEvent,
   ProcessingStatus,
 } from '../../../common/comms/processingEvents.js';
+import { MigrationPlanObjectQueryResult } from '../../../types/migrationPlanObjectData.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.export');
@@ -15,6 +16,7 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.expor
 export type JscDataExportResult = {
   'source-org-id': string;
   plan: string;
+  exports?: MigrationPlanObjectQueryResult[];
 };
 
 export default class JscDataExport extends SfCommand<JscDataExportResult> {
@@ -55,12 +57,14 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
   public async run(): Promise<JscDataExportResult> {
     const { flags } = await this.parse(JscDataExport);
     const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
+    let results;
     if (!flags['validate-only']) {
-      await plan.execute(flags['output-dir']);
+      results = await plan.execute(flags['output-dir']);
     }
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
+      exports: results,
     };
   }
 

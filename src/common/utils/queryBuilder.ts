@@ -21,7 +21,11 @@ export default class QueryBuilder {
     }
     if (fs.existsSync(filePath)) {
       const queryString = fs.readFileSync(filePath, 'utf8');
-      return queryString.trim().replace(/\s+/g, ' ');
+
+      const cleanesFromSpaces = queryString
+        .replace(/\s+/g, ' ')
+        .replace(/(?<=SELECT ).*(?= FROM)/gi, (_): string => _.replaceAll(' ', ''));
+      return cleanesFromSpaces.trim();
     } else {
       throw new Error(`Cannot load query. ${filePath} does not exist.`);
     }

@@ -41,6 +41,16 @@ describe('query builder', () => {
     );
   });
 
+  it('loads query from file > removes line breaks and spaces from fields', async () => {
+    // Assert
+    expect(QueryBuilder.loadFromFile('test/data/soql/accounts.sql')).equals(
+      'SELECT Id,Name,BillingStreet FROM Account LIMIT 9500'
+    );
+    expect(QueryBuilder.loadFromFile('test/data/soql/package-members.sql')).equals(
+      'SELECT Id,MaxPackageVersion.Name,SubscriberPackage.Name,SubjectId,SubjectKeyPrefix FROM Package2Member WHERE MaxPackageVersionId != NULL ORDER BY SubjectKeyPrefix'
+    );
+  });
+
   it('to SOQL > add all fields > builds with all fields from describe', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockAccountDescribeResult as DescribeSObjectResult);

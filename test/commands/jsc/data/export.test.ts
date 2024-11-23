@@ -9,6 +9,7 @@ import JscDataExport from '../../../../src/commands/jsc/data/export.js';
 import { MockAnyObjectResult } from '../../../data/describes/mockDescribeResults.js';
 import { GenericSuccess } from '../../../data/api/queryResults.js';
 import { LOCAL_CACHE_DIR } from '../../../../src/common/constants.js';
+import { eventBus } from '../../../../src/common/comms/eventBus.js';
 
 const TEST_PATH = 'exports/export-test-ts';
 
@@ -26,6 +27,7 @@ describe('jsc plan export', () => {
   });
 
   afterEach(() => {
+    eventBus.removeAllListeners();
     $$.restore();
     // cached describes
     fs.rmSync(`./${LOCAL_CACHE_DIR}/${testOrg.username}`, { recursive: true, force: true });
@@ -38,12 +40,7 @@ describe('jsc plan export', () => {
   it('runs command with required params => exits OK', async () => {
     // Arrange
     await $$.stubAuths(testOrg);
-    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-      if (request?.toString().endsWith('/describe')) {
-        return Promise.resolve(MockAnyObjectResult as AnyJson);
-      }
-      return Promise.resolve(GenericSuccess);
-    };
+    mockDescribeCalls();
 
     // Act
     const result = await JscDataExport.run([
@@ -65,6 +62,32 @@ describe('jsc plan export', () => {
     Sinon.assert.callCount(sfSpinnerStub.start, 5);
     Sinon.assert.callCount(sfSpinnerStub.stop, 5);
     expect(result['source-org-id']).equals(testOrg.orgId);
+  });
+
+  it('runs command with --json and valid plan => has query details in result', async () => {
+    // Arrange
+    await $$.stubAuths(testOrg);
+    mockDescribeCalls();
+
+    // Act
+    const result = await JscDataExport.run([
+      '--source-org',
+      testOrg.username,
+      '--plan',
+      'test/data/plans/test-plan.yaml',
+      '--output-dir',
+      TEST_PATH,
+      '--json',
+    ]);
+
+    // Assert
+    expect(result['source-org-id']).equals(testOrg.orgId);
+    expect(result.exports).to.not.be.undefined;
+    expect(result.exports?.length).equals(4);
+    expect(result.exports![0].queryString).equals('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
+    expect(result.exports![1].queryString).equals('SELECT Id,AccountId FROM Contact LIMIT 6000');
+    expect(result.exports![2].queryString).equals('SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100');
+    expect(result.exports![3].queryString).equals('SELECT Id,AccountId FROM Opportunity LIMIT 10');
   });
 
   it('runs command with invalid plan file => exits error', async () => {
@@ -91,12 +114,16 @@ describe('jsc plan export', () => {
       // 1 appears to be sub-level errors, 2 is explicit SfCommand-level errors?
       expect(err.exitCode).to.equal(1);
     }
-    // for reasons beyond my understanding, start is called twice
-    // the "validation.started" event is published & received two times
-    // this could be related to the framework that starts/stops the spinner
-    // in case of an error?
-    Sinon.assert.callCount(sfSpinnerStub.start, 2);
-    // spinner is never stopped by my code (atm)
+    Sinon.assert.callCount(sfSpinnerStub.start, 1);
     Sinon.assert.callCount(sfSpinnerStub.stop, 1);
   });
+
+  function mockDescribeCalls() {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      if (request?.toString().endsWith('/describe')) {
+        return Promise.resolve(MockAnyObjectResult as AnyJson);
+      }
+      return Promise.resolve(GenericSuccess);
+    };
+  }
 });

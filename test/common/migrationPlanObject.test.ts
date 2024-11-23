@@ -40,7 +40,7 @@ describe('migration plan object', () => {
 
     // Assert
     // the file is auto-formatted! Query builder replaces all formatting with single whitespace
-    expect(testObj.resolveQueryString()).to.equal('SELECT Id, Name, BillingStreet FROM Account LIMIT 9500');
+    expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
   });
 
   it('has only query string => returns direct input string', async () => {
@@ -226,10 +226,10 @@ describe('migration plan object', () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const url = (request as { url: string }).url;
       expect(url).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
-      if (url.includes('query?q=SELECT%20Id%2C%20Name%2C%20BillingStreet%20FROM%20Account%20LIMIT%201')) {
+      if (url.includes('query?q=SELECT%20Id%2CName%2CBillingStreet%20FROM%20Account%20LIMIT%201')) {
         return Promise.resolve(GenericSuccess);
       }
-      return Promise.reject('Unexpected query was executed');
+      return Promise.reject({ data: { message: 'Unexpected query was executed' } });
     };
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
@@ -246,6 +246,6 @@ describe('migration plan object', () => {
     await testObj.load();
 
     // Assert
-    expect(testObj.resolveQueryString()).to.equal('SELECT Id, Name, BillingStreet FROM Account LIMIT 9500');
+    expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
   });
 });
