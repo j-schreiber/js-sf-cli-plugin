@@ -93,8 +93,7 @@
       "dependencies": [
         "clean-deps",
         "compile",
-        "lint",
-        "gen-readme"
+        "lint"
       ]
     },
     "gen-readme": {
