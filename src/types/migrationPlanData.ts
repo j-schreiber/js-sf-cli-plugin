@@ -1,6 +1,6 @@
-import { MigrationPlanObjectData } from './migrationPlanObjectData.js';
+import { ZMigrationPlanObjectDataType } from './migrationPlanObjectData.js';
 
 export type MigrationPlanData = {
   name: string;
-  objects: MigrationPlanObjectData[];
+  objects: ZMigrationPlanObjectDataType[];
 };

@@ -17,3 +17,38 @@ export const GenericSuccess = {
   status: 0,
   records: [],
 };
+
+export const MockAccounts = [
+  {
+    attributes: {
+      type: 'Account',
+      url: '/services/data/v62.0/sobjects/Account/0019Q00000eC8UKQA0',
+    },
+    Id: '0019Q00000eC8UKQA0',
+    Name: 'Sample Account for Entitlements',
+  },
+  {
+    attributes: {
+      type: 'Account',
+      url: '/services/data/v62.0/sobjects/Account/0019Q00000eDKbNQAW',
+    },
+    Id: '0019Q00000eDKbNQAW',
+    Name: 'Starship Galactica Ltd.',
+  },
+  {
+    attributes: {
+      type: 'Account',
+      url: '/services/data/v62.0/sobjects/Account/0019Q00000eDKbOQAW',
+    },
+    Id: '0019Q00000eDKbOQAW',
+    Name: 'Colonial One',
+  },
+  {
+    attributes: {
+      type: 'Account',
+      url: '/services/data/v62.0/sobjects/Account/0019Q00000eDKbPQAW',
+    },
+    Id: '0019Q00000eDKbPQAW',
+    Name: 'Cloud 9 GmbH',
+  },
+];

@@ -6,12 +6,14 @@ import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
 import { MockAccountDescribeResult, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
-import { GenericSuccess, InvalidFieldInQuery } from '../data/api/queryResults.js';
+import { GenericSuccess, InvalidFieldInQuery, MockAccounts } from '../data/api/queryResults.js';
 import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
+import PlanCache from '../../src/common/planCache.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
 const NoQueryDefinedForAccount: string = 'No query defined for: Account';
+const ExportPath: string = 'tmp/tests/migration-plan-obj-tests';
 
 describe('migration plan object', () => {
   const $$ = new TestContext();
@@ -26,6 +28,8 @@ describe('migration plan object', () => {
     sinon.restore();
     // better to stub the describeAPI entirely
     fs.rmSync(`./${LOCAL_CACHE_DIR}/${testOrg.username}`, { recursive: true, force: true });
+    fs.rmSync(ExportPath, { recursive: true, force: true });
+    PlanCache.flush();
   });
 
   it('has only query file => returns string from file', async () => {
@@ -248,4 +252,67 @@ describe('migration plan object', () => {
     // Assert
     expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
   });
+
+  it('retrieves records from query and exports ids > exports all ids to cache', async () => {
+    // Arrange
+    mockQueryResults(MockAccounts);
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryFile: 'test/data/soql/accounts.sql',
+        exportIds: 'myAccountIds',
+      },
+      await testOrg.getConnection()
+    );
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(MockAccountDescribeResult as DescribeSObjectResult);
+    await testObj.load();
+
+    // Act
+    const result = await testObj.retrieveRecords(ExportPath);
+
+    // Assert
+    expect(result.totalSize).to.equal(4);
+    expect(PlanCache.isSet('myAccountIds')).to.be.true;
+    expect(PlanCache.get('myAccountIds')).deep.equals([
+      '0019Q00000eC8UKQA0',
+      '0019Q00000eDKbNQAW',
+      '0019Q00000eDKbOQAW',
+      '0019Q00000eDKbPQAW',
+    ]);
+  });
+
+  it('retrieves records and does not specify export > no ids exported to cache', async () => {
+    // Arrange
+    mockQueryResults(MockAccounts);
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryFile: 'test/data/soql/accounts.sql',
+      },
+      await testOrg.getConnection()
+    );
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(MockAccountDescribeResult as DescribeSObjectResult);
+    await testObj.load();
+
+    // Act
+    const result = await testObj.retrieveRecords(ExportPath);
+
+    // Assert
+    expect(result.totalSize).to.equal(4);
+    expect(PlanCache.isSet('myAccountIds')).to.be.false;
+  });
+
+  function mockQueryResults(mockResult: AnyJson) {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+      const url = (request as { url: string }).url;
+      if (url.includes('query')) {
+        return Promise.resolve({ status: 0, records: mockResult });
+      }
+      return Promise.reject({ data: { message: 'Unexpected query was executed' } });
+    };
+  }
 });

@@ -13,6 +13,14 @@ export default class PlanCache {
     this.cache.set(key, ids);
   }
 
+  public static push(key: string, ids: string[]): void {
+    if (this.isSet(key)) {
+      this.get(key)?.push(...ids);
+    } else {
+      this.cache.set(key, ids);
+    }
+  }
+
   public static flush(): void {
     this.cache.clear();
   }

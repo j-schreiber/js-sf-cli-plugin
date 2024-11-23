@@ -22,4 +22,14 @@ const ZQueryObject = z.object({
   parent: z.object({ field: z.string(), bind: z.string() }).optional(),
 });
 
+const ZMigrationPlanObjectData = z.object({
+  objectName: z.string(),
+  queryFile: z.string().optional(),
+  queryString: z.string().optional(),
+  isToolingObject: z.boolean().optional(),
+  exportIds: z.string().optional(),
+  query: ZQueryObject.optional(),
+});
+
 export type ZQueryObjectType = z.infer<typeof ZQueryObject>;
+export type ZMigrationPlanObjectDataType = z.infer<typeof ZMigrationPlanObjectData>;

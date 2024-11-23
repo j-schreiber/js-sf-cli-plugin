@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
 import { Connection, Messages } from '@salesforce/core';
-import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
+import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
 import { ProcessingStatus, PlanObjectEvent } from './comms/processingEvents.js';
+import PlanCache from './planCache.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
@@ -15,7 +16,7 @@ export default class MigrationPlanObject {
   private queryBuilder?: QueryBuilder;
   private queryString?: string;
 
-  public constructor(private data: MigrationPlanObjectData, private conn: Connection) {}
+  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {}
 
   //      PUBLIC API
 
@@ -48,7 +49,7 @@ export default class MigrationPlanObject {
     let nextRecordsUrl = queryResult.nextRecordsUrl;
     let incrementer = 1;
     this.emitQueryProgress(incrementer, totalBatches);
-    result.files.push(this.writeResultsToFile(queryResult.records, exportPath, incrementer));
+    result.files.push(this.processResults(queryResult.records, exportPath, incrementer));
     while (!isDone) {
       incrementer++;
       this.emitQueryProgress(incrementer, totalBatches);
@@ -56,7 +57,7 @@ export default class MigrationPlanObject {
       const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
       isDone = moreResults.done;
       nextRecordsUrl = moreResults.nextRecordsUrl;
-      result.files.push(this.writeResultsToFile(moreResults.records, exportPath, incrementer));
+      result.files.push(this.processResults(moreResults.records, exportPath, incrementer));
       result.totalSize += moreResults.records.length;
     }
     return result;
@@ -86,6 +87,17 @@ export default class MigrationPlanObject {
   }
 
   //        PRIVATE
+
+  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string {
+    if (this.data.exportIds) {
+      const recordIds: string[] = [];
+      queryRecords.forEach((record) => {
+        if (record.Id) recordIds.push(record.Id);
+      });
+      PlanCache.push(this.data.exportIds, recordIds);
+    }
+    return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+  }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
