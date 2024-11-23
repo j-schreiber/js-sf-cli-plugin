@@ -38,7 +38,6 @@ describe('jsc manifest rollout NUTs*', () => {
         `jsc:manifest:rollout --manifest manifest.yml --target-org ${scratchOrgAlias} --devhub-org ${session.hubOrg.username} --json`,
         { ensureExitCode: 0 }
       ).jsonOutput;
-      // console.log(result);
       expect(result).to.not.be.undefined;
       expect(result!.status).to.equal(0);
       const scratchOrgUsername = session.orgs.get(scratchOrgAlias)?.username;
