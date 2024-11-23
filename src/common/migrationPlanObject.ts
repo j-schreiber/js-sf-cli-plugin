@@ -80,11 +80,7 @@ export default class MigrationPlanObject {
     } else if (this.hasValidFile()) {
       return QueryBuilder.loadFromFile(this.data.queryFile);
     } else if (this.hasQueryConstructor()) {
-      this.queryBuilder!.setLimit(this.data.query?.limit).setWhere(this.data.query?.filter);
-      if (this.data.query?.fetchAllFields) {
-        this.queryBuilder!.addAllFields();
-      }
-      return this.queryBuilder!.toSOQL();
+      return this.queryBuilder!.toSOQL(this.data.query);
     }
     throw new Error(`No query defined for: ${this.getObjectName()}`);
   }

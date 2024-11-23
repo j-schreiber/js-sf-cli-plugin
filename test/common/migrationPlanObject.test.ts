@@ -52,6 +52,7 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
+    // don't load, because describe API is not stubbed
     // await testObj.load();
 
     // Assert

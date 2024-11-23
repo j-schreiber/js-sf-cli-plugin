@@ -2,11 +2,14 @@ import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { Connection } from '@salesforce/core';
 import { QueryError } from '../../types/sfStandardApiTypes.js';
+import { ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
+import PlanCache from '../planCache.js';
 
 export default class QueryBuilder {
   private selectFields: Set<string> = new Set<string>();
   private limit?: number;
   private filter?: string;
+  private parentBind?: string;
 
   public constructor(private describeResult: DescribeSObjectResult) {
     this.selectFields.add('Id');
@@ -65,15 +68,52 @@ export default class QueryBuilder {
     return this;
   }
 
-  public toSOQL(): string {
-    const whereFilter = this.filter ? ` WHERE ${this.filter}` : '';
+  public toSOQL(queryConfig?: ZQueryObjectType): string {
+    if (queryConfig) {
+      this.readQueryConfig(queryConfig);
+    }
     const limitClause = this.limit ? ` LIMIT ${this.limit}` : '';
-    return `SELECT ${[...this.selectFields].join(',')} FROM ${this.describeResult.name}${whereFilter}${limitClause}`;
+    return `SELECT ${[...this.selectFields].join(',')} FROM ${
+      this.describeResult.name
+    }${this.buildWhere()}${limitClause}`;
   }
 
   //    PRIVATE
 
   private isToolingObject(): boolean {
     return this.describeResult.urls.sobject.includes('/tooling/sobjects/');
+  }
+
+  private readQueryConfig(queryConfig: ZQueryObjectType): void {
+    if (queryConfig.fetchAllFields) {
+      this.addAllFields();
+    }
+    if (queryConfig.filter) {
+      this.setWhere(queryConfig.filter);
+    }
+    if (queryConfig.limit) {
+      this.setLimit(queryConfig.limit);
+    }
+    if (queryConfig.parent && PlanCache.isSet(queryConfig.parent.bind)) {
+      this.parentBind = this.resolveParentBind(queryConfig.parent.field, queryConfig.parent.bind);
+    }
+  }
+
+  private buildWhere(): string {
+    if (this.parentBind) {
+      return this.filter ? ` WHERE (${this.filter}) AND ${this.parentBind}` : ` WHERE ${this.parentBind}`;
+    } else {
+      return this.filter ? ` WHERE ${this.filter}` : '';
+    }
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private resolveParentBind(parentField: string, variableName: string): string {
+    const ids = PlanCache.get(variableName)!;
+    const idFilter = ids.reduce(
+      (prevValue, currentVal, index) => (index === 0 ? `'${currentVal}'` : `${prevValue},'${currentVal}'`),
+      ''
+    );
+    return `${parentField} IN (${idFilter})`;
   }
 }

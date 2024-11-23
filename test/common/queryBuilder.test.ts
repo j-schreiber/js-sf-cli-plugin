@@ -5,7 +5,13 @@ import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import QueryBuilder from '../../src/common/utils/queryBuilder.js';
 import { GenericRejection, GenericSuccess } from '../data/api/queryResults.js';
-import { MockAccountDescribeResult, MockPackageMemberDescribeResult } from '../data/describes/mockDescribeResults.js';
+import {
+  MockAccountDescribeResult,
+  MockOrderDescribeResult,
+  MockPackageMemberDescribeResult,
+} from '../data/describes/mockDescribeResults.js';
+import { ZQueryObjectType } from '../../src/types/migrationPlanObjectData.js';
+import PlanCache from '../../src/common/planCache.js';
 
 describe('query builder', () => {
   const $$ = new TestContext();
@@ -18,6 +24,7 @@ describe('query builder', () => {
   afterEach(async () => {
     $$.SANDBOX.restore();
     sinon.restore();
+    PlanCache.flush();
   });
 
   it('make validator query > has LIMIT with line breaks => replaces with LIMIT 1', async () => {
@@ -34,7 +41,7 @@ describe('query builder', () => {
     );
   });
 
-  it('to SOQL > add all fields => builds with all fields from describe', async () => {
+  it('to SOQL > add all fields > builds with all fields from describe', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockAccountDescribeResult as DescribeSObjectResult);
 
@@ -62,5 +69,64 @@ describe('query builder', () => {
 
     // Assert
     expect(isValid).to.be.true;
+  });
+
+  it('formats soql with parent-child bind > exported variable is cached > adds to filter', async () => {
+    // Arrange
+    const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
+    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
+    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+
+    // Act
+    const queryString = testBuilder.toSOQL(queryObj);
+
+    // Assert
+    expect(queryString).to.equal(
+      "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN ('1','2','3','4')"
+    );
+  });
+
+  it('formats soql with parent-child bind > variable not cached > ignores bind', async () => {
+    // Arrange
+    const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
+    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+
+    // Act
+    const queryString = testBuilder.toSOQL(queryObj);
+
+    // Assert
+    expect(queryString).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
+  });
+
+  it('formats soql with parent-child bind > empty ids cached > adds to filter', async () => {
+    // Arrange
+    const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
+    PlanCache.set('myAccountIds', []);
+    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+
+    // Act
+    const queryString = testBuilder.toSOQL(queryObj);
+
+    // Assert
+    expect(queryString).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN ()');
+  });
+
+  it('formats soql with parent-child bind and filter > variable is cached > adds to filter with AND', async () => {
+    // Arrange
+    const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
+    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
+    const queryObj = {
+      fetchAllFields: true,
+      parent: { field: 'AccountId', bind: 'myAccountIds' },
+      filter: "Status = 'Draft'",
+    } as ZQueryObjectType;
+
+    // Act
+    const queryString = testBuilder.toSOQL(queryObj);
+
+    // Assert
+    expect(queryString).to.equal(
+      "SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE (Status = 'Draft') AND AccountId IN ('1','2','3','4')"
+    );
   });
 });
