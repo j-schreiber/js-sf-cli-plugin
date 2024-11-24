@@ -98,8 +98,8 @@ export default class QueryBuilder {
     if (queryConfig.limit) {
       this.setLimit(queryConfig.limit);
     }
-    if (queryConfig.parent && PlanCache.isSet(queryConfig.parent.bind)) {
-      this.parentBind = this.resolveParentBind(queryConfig.parent.field, queryConfig.parent.bind);
+    if (queryConfig.parent) {
+      this.parentBind = this.resolveParentBind(queryConfig.parent);
     }
   }
 
@@ -112,10 +112,17 @@ export default class QueryBuilder {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  private resolveParentBind(parentField: string, variableName: string): string {
-    const ids = PlanCache.get(variableName)!;
-    const quotedIds = ids.map((id) => `'${id}'`);
-    const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
-    return `${parentField} IN ${listInFilter} AND ${parentField} != NULL`;
+  private resolveParentBind(parentBindMapping: Record<string, string>): string {
+    const parentBinds: string[] = [];
+    Object.keys(parentBindMapping).forEach((parentField) => {
+      if (!PlanCache.isSet(parentBindMapping[parentField])) {
+        return;
+      }
+      const ids = PlanCache.getNullSafe(parentBindMapping[parentField]);
+      const quotedIds = ids.map((id) => `'${id}'`);
+      const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
+      parentBinds.push(`${parentField} IN ${listInFilter} AND ${parentField} != NULL`);
+    });
+    return parentBinds.join(' AND ');
   }
 }

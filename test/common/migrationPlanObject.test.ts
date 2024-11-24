@@ -301,7 +301,7 @@ describe('migration plan object', () => {
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
         objectName: 'Order',
-        query: { fetchAllFields: true, parent: { field: 'AccountId', bind: 'mockedAccountIds' } },
+        query: { fetchAllFields: true, parent: { AccountId: 'mockedAccountIds' } },
       },
       await testOrg.getConnection()
     );

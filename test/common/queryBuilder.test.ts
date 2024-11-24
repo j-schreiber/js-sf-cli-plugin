@@ -85,7 +85,7 @@ describe('query builder', () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
-    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
 
     // Act
     const queryString = testBuilder.toSOQL(queryObj);
@@ -99,7 +99,7 @@ describe('query builder', () => {
   it('formats soql with parent-child bind > variable not cached > ignores bind', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
 
     // Act
     const queryString = testBuilder.toSOQL(queryObj);
@@ -112,7 +112,7 @@ describe('query builder', () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     PlanCache.set('myAccountIds', []);
-    const queryObj = { fetchAllFields: true, parent: { field: 'AccountId', bind: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
 
     // Act
     const queryString = testBuilder.toSOQL(queryObj);
@@ -127,7 +127,7 @@ describe('query builder', () => {
     PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', bind: 'myAccountIds' },
+      parent: { AccountId: 'myAccountIds' },
       filter: "Status = 'Draft'",
     } as ZQueryObjectType;
 
@@ -146,7 +146,7 @@ describe('query builder', () => {
     PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', bind: 'myAccountIds' },
+      parent: { AccountId: 'myAccountIds' },
       filter: "Status = 'Draft'",
       limit: 1000,
     } as ZQueryObjectType;

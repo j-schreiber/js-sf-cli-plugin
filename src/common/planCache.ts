@@ -9,6 +9,13 @@ export default class PlanCache {
     return this.cache.get(key);
   }
 
+  public static getNullSafe(key: string): string[] {
+    if (this.isSet(key)) {
+      return this.cache.get(key)!;
+    }
+    return [];
+  }
+
   public static set(key: string, ids: string[]): void {
     this.cache.set(key, ids);
   }

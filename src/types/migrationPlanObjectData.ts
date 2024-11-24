@@ -19,7 +19,7 @@ const ZQueryObject = z.object({
   fetchAllFields: z.boolean(),
   limit: z.number().optional(),
   filter: z.string().optional(),
-  parent: z.object({ field: z.string(), bind: z.string() }).optional(),
+  parent: z.record(z.string()).optional(),
 });
 
 const ZMigrationPlanObjectData = z.object({
