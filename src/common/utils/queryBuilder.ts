@@ -2,8 +2,7 @@ import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { Connection } from '@salesforce/core';
 import { QueryError } from '../../types/sfStandardApiTypes.js';
-import { ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
-import PlanCache from '../planCache.js';
+import { ZParentBindType, ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
 
 export default class QueryBuilder {
   private selectFields: Set<string> = new Set<string>();
@@ -21,7 +20,6 @@ export default class QueryBuilder {
     }
     if (fs.existsSync(filePath)) {
       const queryString = fs.readFileSync(filePath, 'utf8');
-
       const cleanesFromSpaces = queryString
         .replace(/\s+/g, ' ')
         .replace(/(?<=SELECT ).*(?= FROM)/gi, (_): string => _.replaceAll(' ', ''));
@@ -72,9 +70,9 @@ export default class QueryBuilder {
     return this;
   }
 
-  public toSOQL(queryConfig?: ZQueryObjectType): string {
+  public toSOQL(queryConfig?: ZQueryObjectType, parentIds?: string[]): string {
     if (queryConfig) {
-      this.readQueryConfig(queryConfig);
+      this.readQueryConfig(queryConfig, parentIds);
     }
     const limitClause = this.limit ? ` LIMIT ${this.limit}` : '';
     return `SELECT ${[...this.selectFields].join(',')} FROM ${
@@ -88,7 +86,7 @@ export default class QueryBuilder {
     return this.describeResult.urls.sobject.includes('/tooling/sobjects/');
   }
 
-  private readQueryConfig(queryConfig: ZQueryObjectType): void {
+  private readQueryConfig(queryConfig: ZQueryObjectType, parentIds?: string[]): void {
     if (queryConfig.fetchAllFields) {
       this.addAllFields();
     }
@@ -99,7 +97,7 @@ export default class QueryBuilder {
       this.setLimit(queryConfig.limit);
     }
     if (queryConfig.parent) {
-      this.parentBind = this.resolveParentBind(queryConfig.parent);
+      this.parentBind = this.resolveParentBind(queryConfig.parent, parentIds);
     }
   }
 
@@ -112,17 +110,12 @@ export default class QueryBuilder {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  private resolveParentBind(parentBindMapping: Record<string, string>): string {
-    const parentBinds: string[] = [];
-    Object.keys(parentBindMapping).forEach((parentField) => {
-      if (!PlanCache.isSet(parentBindMapping[parentField])) {
-        return;
-      }
-      const ids = PlanCache.getNullSafe(parentBindMapping[parentField]);
-      const quotedIds = ids.map((id) => `'${id}'`);
-      const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
-      parentBinds.push(`${parentField} IN ${listInFilter} AND ${parentField} != NULL`);
-    });
-    return parentBinds.join(' AND ');
+  private resolveParentBind(parentConfig: ZParentBindType, parentIdChunk?: string[]): string | undefined {
+    if (parentIdChunk === undefined) {
+      return;
+    }
+    const quotedIds = parentIdChunk.map((id) => `'${id}'`);
+    const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
+    return `${parentConfig.field} IN ${listInFilter} AND ${parentConfig.field} != NULL`;
   }
 }

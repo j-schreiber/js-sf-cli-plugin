@@ -86,9 +86,7 @@ describe('jsc plan export', () => {
     expect(result.exports?.length).equals(4);
     expect(result.exports![0].queryString).equals('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
     // we have mocked describe calls, that's why contact is resolved to AnyObject
-    expect(result.exports![1].queryString).equals(
-      "SELECT Id,Name FROM AnyObject WHERE AccountId IN ('') AND AccountId != NULL"
-    );
+    expect(result.exports![1].queryString).equals('SELECT Id,Name FROM AnyObject');
     expect(result.exports![2].queryString).equals('SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100');
     expect(result.exports![3].queryString).equals('SELECT Id,AccountId FROM Opportunity LIMIT 10');
   });

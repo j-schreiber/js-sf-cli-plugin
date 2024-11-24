@@ -1,8 +1,17 @@
 export default class PlanCache {
+  public static CHUNK_SIZE = 400;
   private static cache: Map<string, string[]> = new Map<string, []>();
 
   public static isSet(key: string): boolean {
     return this.cache.has(key);
+  }
+
+  public static getChunks(key: string): string[][] {
+    const chunks = [];
+    for (let i = 0; i < this.getNullSafe(key).length; i += PlanCache.CHUNK_SIZE) {
+      chunks.push(this.getNullSafe(key).slice(i, i + PlanCache.CHUNK_SIZE));
+    }
+    return chunks;
   }
 
   public static get(key: string): string[] | undefined {

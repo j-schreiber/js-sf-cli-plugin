@@ -15,11 +15,13 @@ export type MigrationPlanObjectQueryResult = {
   files: string[];
 };
 
+const ZParentBind = z.object({ field: z.string(), variable: z.string() });
+
 const ZQueryObject = z.object({
   fetchAllFields: z.boolean(),
   limit: z.number().optional(),
   filter: z.string().optional(),
-  parent: z.record(z.string()).optional(),
+  parent: ZParentBind.optional(),
 });
 
 const ZMigrationPlanObjectData = z.object({
@@ -31,5 +33,6 @@ const ZMigrationPlanObjectData = z.object({
   query: ZQueryObject.optional(),
 });
 
+export type ZParentBindType = z.infer<typeof ZParentBind>;
 export type ZQueryObjectType = z.infer<typeof ZQueryObject>;
 export type ZMigrationPlanObjectDataType = z.infer<typeof ZMigrationPlanObjectData>;

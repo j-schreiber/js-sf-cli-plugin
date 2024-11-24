@@ -7,7 +7,8 @@ objects:
     query:
       fetchAllFields: true
       parent:
-        AccountId: myAccountIds
+        field: AccountId
+        variable: myAccountIds
   - objectName: Order
     queryString: SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100
   - objectName: Opportunity

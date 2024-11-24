@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
 import { Connection, Messages } from '@salesforce/core';
@@ -31,32 +32,34 @@ export default class MigrationPlanObject {
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
-    const queryString = this.resolveQueryString();
     this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
-    // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryResult = await this.runQuery(queryString);
-    const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
     const result: MigrationPlanObjectQueryResult = {
-      isSuccess: queryResult.done,
-      queryString,
-      totalSize: queryResult.records.length,
+      isSuccess: false,
+      queryString: this.resolveQueryString(),
+      totalSize: 0,
       files: [],
     };
-    let isDone = queryResult.done;
-    let nextRecordsUrl = queryResult.nextRecordsUrl;
-    let incrementer = 1;
-    this.emitQueryProgress(incrementer, totalBatches);
-    result.files.push(this.processResults(queryResult.records, exportPath, incrementer));
-    while (!isDone) {
-      incrementer++;
-      this.emitQueryProgress(incrementer, totalBatches);
-      // eslint-disable-next-line no-await-in-loop
-      const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
-      isDone = moreResults.done;
-      nextRecordsUrl = moreResults.nextRecordsUrl;
-      result.files.push(this.processResults(moreResults.records, exportPath, incrementer));
-      result.totalSize += moreResults.records.length;
+    const queries = this.resolveAllQueries();
+    let totalRequestCount = 0;
+    for (const queryString of queries) {
+      totalRequestCount++;
+      const queryResult = await this.runQuery(queryString);
+      result.totalSize += queryResult.records.length;
+      const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
+      let isDone = queryResult.done;
+      let nextRecordsUrl = queryResult.nextRecordsUrl;
+      this.emitQueryProgress(totalRequestCount, totalBatches);
+      result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      while (!isDone) {
+        totalRequestCount++;
+        this.emitQueryProgress(totalRequestCount, totalBatches);
+        const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
+        isDone = moreResults.done;
+        nextRecordsUrl = moreResults.nextRecordsUrl;
+        result.files.push(this.processResults(moreResults.records, exportPath, totalRequestCount));
+        result.totalSize += moreResults.records.length;
+      }
     }
     return result;
   }
@@ -82,6 +85,17 @@ export default class MigrationPlanObject {
       return this.queryBuilder!.toSOQL(this.data.query);
     }
     throw new Error(`No query defined for: ${this.getObjectName()}`);
+  }
+
+  public resolveAllQueries(): string[] {
+    if (this.data.query?.parent && PlanCache.isSet(this.data.query.parent.variable)) {
+      const chunkedParentQueries: string[] = [];
+      PlanCache.getChunks(this.data.query.parent.variable).forEach((parentIdsChunk) =>
+        chunkedParentQueries.push(this.queryBuilder!.toSOQL(this.data.query, parentIdsChunk))
+      );
+      return chunkedParentQueries;
+    }
+    return [this.resolveQueryString()];
   }
 
   //        PRIVATE

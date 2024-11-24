@@ -81,14 +81,16 @@ describe('query builder', () => {
     expect(isValid).to.be.true;
   });
 
-  it('formats soql with parent-child bind > exported variable is cached > adds to filter', async () => {
+  it('formats soql with parent-child bind > exported variable has values > adds to filter', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
-    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = {
+      fetchAllFields: true,
+      parent: { field: 'AccountId', variable: 'myAccountIds' },
+    } as ZQueryObjectType;
 
     // Act
-    const queryString = testBuilder.toSOQL(queryObj);
+    const queryString = testBuilder.toSOQL(queryObj, ['1', '2', '3', '4']);
 
     // Assert
     expect(queryString).to.equal(
@@ -99,7 +101,10 @@ describe('query builder', () => {
   it('formats soql with parent-child bind > variable not cached > ignores bind', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = {
+      fetchAllFields: true,
+      parent: { field: 'AccountId', variable: 'myAccountIds' },
+    } as ZQueryObjectType;
 
     // Act
     const queryString = testBuilder.toSOQL(queryObj);
@@ -111,28 +116,29 @@ describe('query builder', () => {
   it('formats soql with parent-child bind > empty ids cached > adds to filter', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    PlanCache.set('myAccountIds', []);
-    const queryObj = { fetchAllFields: true, parent: { AccountId: 'myAccountIds' } } as ZQueryObjectType;
+    const queryObj = {
+      fetchAllFields: true,
+      parent: { field: 'AccountId', variable: 'myAccountIds' },
+    } as ZQueryObjectType;
 
     // Act
-    const queryString = testBuilder.toSOQL(queryObj);
+    const queryString = testBuilder.toSOQL(queryObj, []);
 
     // Assert
     expect(queryString).to.contains("WHERE AccountId IN ('') AND AccountId != NULL");
   });
 
-  it('formats soql with parent-child bind and filter > variable is cached > adds to filter with AND', async () => {
+  it('formats soql with parent-child bind and filter > exported variable has values > adds to filter with AND', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
     const queryObj = {
       fetchAllFields: true,
-      parent: { AccountId: 'myAccountIds' },
+      parent: { field: 'AccountId', variable: 'myAccountIds' },
       filter: "Status = 'Draft'",
     } as ZQueryObjectType;
 
     // Act
-    const queryString = testBuilder.toSOQL(queryObj);
+    const queryString = testBuilder.toSOQL(queryObj, ['1', '2', '3', '4']);
 
     // Assert
     expect(queryString).to.contains(
@@ -143,16 +149,15 @@ describe('query builder', () => {
   it('formats soql with parent bind, filter, and limit > all elements in SOQL', async () => {
     // Arrange
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
-    PlanCache.set('myAccountIds', ['1', '2', '3', '4']);
     const queryObj = {
       fetchAllFields: true,
-      parent: { AccountId: 'myAccountIds' },
+      parent: { field: 'AccountId', variable: 'myAccountIds' },
       filter: "Status = 'Draft'",
       limit: 1000,
     } as ZQueryObjectType;
 
     // Act
-    const queryString = testBuilder.toSOQL(queryObj);
+    const queryString = testBuilder.toSOQL(queryObj, ['1', '2', '3', '4']);
 
     // Assert
     expect(queryString).to.contains(
