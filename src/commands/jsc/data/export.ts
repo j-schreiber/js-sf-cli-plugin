@@ -29,6 +29,7 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
       summary: messages.getMessage('flags.source-org.summary'),
       char: 'o',
       required: true,
+      default: undefined,
     }),
     plan: Flags.file({
       summary: messages.getMessage('flags.plan.summary'),

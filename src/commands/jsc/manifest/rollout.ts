@@ -42,6 +42,7 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     verbose: Flags.boolean({
       summary: messages.getMessage('flags.verbose.summary'),
       char: 'v',
+      hidden: true,
     }),
     'validate-only': Flags.boolean({
       summary: messages.getMessage('flags.validate-only.summary'),
