@@ -4,10 +4,11 @@ import { Config } from '@oclif/core';
 import MigrationPlanLoader from '../../../common/migrationPlanLoader.js';
 import { eventBus } from '../../../common/comms/eventBus.js';
 import {
-  PlanObjectEvent,
+  CommandStatusEvent,
   PlanObjectValidationEvent,
   ProcessingStatus,
 } from '../../../common/comms/processingEvents.js';
+import { MigrationPlanObjectQueryResult } from '../../../types/migrationPlanObjectData.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.export');
@@ -15,6 +16,7 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.expor
 export type JscDataExportResult = {
   'source-org-id': string;
   plan: string;
+  exports?: MigrationPlanObjectQueryResult[];
 };
 
 export default class JscDataExport extends SfCommand<JscDataExportResult> {
@@ -27,6 +29,7 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
       summary: messages.getMessage('flags.source-org.summary'),
       char: 'o',
       required: true,
+      default: undefined,
     }),
     plan: Flags.file({
       summary: messages.getMessage('flags.plan.summary'),
@@ -41,12 +44,13 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
     'validate-only': Flags.boolean({
       summary: messages.getMessage('flags.validate-only.summary'),
     }),
+    'api-version': Flags.orgApiVersion(),
   };
 
   public constructor(argv: string[], config: Config) {
     // Call the parent constructor with the required arguments
     super(argv, config);
-    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handleRecordRetrieveEvents(payload));
+    eventBus.on('planObjectStatus', (payload: CommandStatusEvent) => this.handleRecordRetrieveEvents(payload));
     eventBus.on('planValidationEvent', (payload: PlanObjectValidationEvent) =>
       this.handlePlanValidationEvents(payload)
     );
@@ -54,27 +58,32 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
 
   public async run(): Promise<JscDataExportResult> {
     const { flags } = await this.parse(JscDataExport);
-    const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
+    const plan = await MigrationPlanLoader.loadPlan(
+      flags['plan'],
+      flags['source-org'].getConnection(flags['api-version'])
+    );
+    let results;
     if (!flags['validate-only']) {
-      await plan.execute(flags['output-dir']);
+      results = await plan.execute(flags['output-dir']);
     }
     return {
       'source-org-id': flags['source-org'].getOrgId(),
       plan: flags['plan'],
+      exports: results,
     };
   }
 
   //    PRIVATE ZONE
 
-  private handleRecordRetrieveEvents(payload: PlanObjectEvent): void {
+  private handleRecordRetrieveEvents(payload: CommandStatusEvent): void {
     if (payload.status === ProcessingStatus.Started) {
-      this.spinner.start(`Exporting ${payload.objectName}`);
+      this.spinner.start(payload.message!);
     }
     if (payload.status === ProcessingStatus.InProgress) {
-      this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
+      this.spinner.status = payload.message;
     }
     if (payload.status === ProcessingStatus.Completed) {
-      this.spinner.stop(`Retrieved ${payload.totalRecords} records in ${payload.files.length} files.`);
+      this.spinner.stop(payload.message);
     }
   }
 
