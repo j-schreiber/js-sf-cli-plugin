@@ -43,6 +43,7 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
     'validate-only': Flags.boolean({
       summary: messages.getMessage('flags.validate-only.summary'),
     }),
+    'api-version': Flags.orgApiVersion(),
   };
 
   public constructor(argv: string[], config: Config) {
@@ -56,7 +57,10 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
 
   public async run(): Promise<JscDataExportResult> {
     const { flags } = await this.parse(JscDataExport);
-    const plan = await MigrationPlanLoader.loadPlan(flags['plan'], flags['source-org']);
+    const plan = await MigrationPlanLoader.loadPlan(
+      flags['plan'],
+      flags['source-org'].getConnection(flags['api-version'])
+    );
     let results;
     if (!flags['validate-only']) {
       results = await plan.execute(flags['output-dir']);

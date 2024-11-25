@@ -18,6 +18,12 @@ export const GenericSuccess = {
   records: [],
 };
 
+export const EmptyQueryResult = {
+  done: true,
+  totalSize: 0,
+  records: [],
+};
+
 export const MockAccounts = [
   {
     attributes: {

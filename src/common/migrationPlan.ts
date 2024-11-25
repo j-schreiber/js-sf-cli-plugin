@@ -1,8 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
-import { Org } from '@salesforce/core';
-import { MigrationPlanData } from '../types/migrationPlanData.js';
-import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
+import { Connection } from '@salesforce/core';
+import { MigrationPlanObjectQueryResult, ZMigrationPlanType } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import { eventBus } from './comms/eventBus.js';
 import { CommandStatusEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
@@ -10,9 +9,9 @@ import { CommandStatusEvent, PlanObjectValidationEvent, ProcessingStatus } from 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
 
-  public constructor(public data: MigrationPlanData, public org: Org) {
+  public constructor(public data: ZMigrationPlanType, public sourceOrgConnection: Connection) {
     this.data.objects.forEach((objectData) => {
-      this.objects.push(new MigrationPlanObject(objectData, org.getConnection()));
+      this.objects.push(new MigrationPlanObject(objectData, sourceOrgConnection));
     });
   }
 

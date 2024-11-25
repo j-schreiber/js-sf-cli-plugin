@@ -33,6 +33,12 @@ const ZMigrationPlanObjectData = z.object({
   query: ZQueryObject.optional(),
 });
 
+export const ZMigrationPlan = z.object({
+  name: z.string(),
+  objects: z.array(ZMigrationPlanObjectData),
+});
+
 export type ZParentBindType = z.infer<typeof ZParentBind>;
 export type ZQueryObjectType = z.infer<typeof ZQueryObject>;
 export type ZMigrationPlanObjectDataType = z.infer<typeof ZMigrationPlanObjectData>;
+export type ZMigrationPlanType = z.infer<typeof ZMigrationPlan>;

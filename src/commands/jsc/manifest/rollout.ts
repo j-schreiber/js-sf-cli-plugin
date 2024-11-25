@@ -46,6 +46,7 @@ export default class JscManifestRollout extends SfCommand<JscManifestRolloutResu
     'validate-only': Flags.boolean({
       summary: messages.getMessage('flags.validate-only.summary'),
     }),
+    'api-version': Flags.orgApiVersion(),
   };
 
   public constructor(argv: string[], config: Config) {
