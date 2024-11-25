@@ -2,7 +2,7 @@
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
-import { stubSpinner } from '@salesforce/sf-plugins-core';
+import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import { cleanSourceDirectories, initSourceDirectories } from '../../../mock-utils/releaseManifestMockUtils.js';
 import { eventBus } from '../../../../src/common/comms/eventBus.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
@@ -14,10 +14,12 @@ describe('jsc manifest validate', () => {
   const testDevHub = new MockTestOrgData();
   const testTargetOrg = new MockTestOrgData();
   let oclifWrapperStub: SinonStub;
+  let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
   beforeEach(async () => {
     testDevHub.isDevHub = true;
+    sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.SANDBOX);
     initSourceDirectories();
     oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
@@ -68,6 +70,10 @@ describe('jsc manifest validate', () => {
 
     // Assert
     expect(process.exitCode).to.equal(0);
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([
+      `Target org for rollout: ${testTargetOrg.username}`,
+      `Devhub to resolve packages: ${testDevHub.username}`,
+    ]);
     expect(result).to.be.ok;
     expect(sfSpinnerStub.start.args.flat()).to.deep.equal(
       ['Resolving manifest: 1 artifacts found'],

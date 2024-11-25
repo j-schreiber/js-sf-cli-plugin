@@ -1,0 +1,11 @@
+name: Invalid Parent Binds
+objects:
+  - objectName: Account
+    query:
+      fetchAllFields: true
+  - objectName: Contact
+    query:
+      fetchAllFields: true
+      parent:
+        variable: myAccountIds
+        field: AccountId

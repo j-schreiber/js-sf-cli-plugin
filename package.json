@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -93,8 +93,7 @@
       "dependencies": [
         "clean-deps",
         "compile",
-        "lint",
-        "gen-readme"
+        "lint"
       ]
     },
     "gen-readme": {

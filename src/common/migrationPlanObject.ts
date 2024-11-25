@@ -1,11 +1,14 @@
+/* eslint-disable class-methods-use-this */
+/* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
 import { Connection, Messages } from '@salesforce/core';
-import { MigrationPlanObjectData, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
+import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
-import { ProcessingStatus, PlanObjectEvent } from './comms/processingEvents.js';
+import { ProcessingStatus, CommandStatusEvent } from './comms/processingEvents.js';
+import PlanCache from './planCache.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
@@ -13,9 +16,8 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
   private queryBuilder?: QueryBuilder;
-  private queryString?: string;
 
-  public constructor(private data: MigrationPlanObjectData, private conn: Connection) {}
+  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {}
 
   //      PUBLIC API
 
@@ -26,38 +28,48 @@ export default class MigrationPlanObject {
   public async load(): Promise<MigrationPlanObject> {
     this.describeResult = await this.describeObject();
     this.assertQueryDefinitions();
-    this.queryBuilder = new QueryBuilder(this.describeResult);
-    this.queryString = this.resolveQueryString();
-    await this.queryBuilder.assertSyntax(this.conn, this.queryString);
+    await this.assertQuerySyntax(this.describeResult);
     return this;
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
-    this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
-    // fetchSize & autoFetch = true do not work with queryMore, 2000 already is the max number
-    const queryResult = await this.runQuery(this.queryString!);
-    const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
     const result: MigrationPlanObjectQueryResult = {
-      isSuccess: queryResult.done,
-      queryString: this.queryString!,
-      totalSize: queryResult.records.length,
+      isSuccess: false,
+      queryString: this.resolveQueryString(),
+      totalSize: 0,
       files: [],
     };
-    let isDone = queryResult.done;
-    let nextRecordsUrl = queryResult.nextRecordsUrl;
-    let incrementer = 1;
-    this.emitQueryProgress(incrementer, totalBatches);
-    result.files.push(this.writeResultsToFile(queryResult.records, exportPath, incrementer));
-    while (!isDone) {
-      incrementer++;
-      this.emitQueryProgress(incrementer, totalBatches);
-      // eslint-disable-next-line no-await-in-loop
-      const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
-      isDone = moreResults.done;
-      nextRecordsUrl = moreResults.nextRecordsUrl;
-      result.files.push(this.writeResultsToFile(moreResults.records, exportPath, incrementer));
-      result.totalSize += moreResults.records.length;
+    const queries = this.resolveAllQueries();
+    let totalRequestCount = 0;
+    for (const queryString of queries) {
+      let thisChunkRequestsCount = 1;
+      eventBus.emit('planObjectStatus', {
+        message: `Processing chunk ${queries.indexOf(queryString) + 1} of ${queries.length}: 1st request`,
+        status: ProcessingStatus.InProgress,
+      } as CommandStatusEvent);
+      totalRequestCount++;
+      const queryResult = await this.runQuery(queryString);
+      result.totalSize += queryResult.records.length;
+      const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
+      let isDone = queryResult.done;
+      let nextRecordsUrl = queryResult.nextRecordsUrl;
+      result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      while (!isDone) {
+        thisChunkRequestsCount++;
+        totalRequestCount++;
+        eventBus.emit('planObjectStatus', {
+          message: `Processing chunk ${queries.indexOf(queryString) + 1} of ${
+            queries.length
+          }: ${thisChunkRequestsCount}/${totalBatches} requests`,
+          status: ProcessingStatus.InProgress,
+        } as CommandStatusEvent);
+        const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
+        isDone = moreResults.done;
+        nextRecordsUrl = moreResults.nextRecordsUrl;
+        result.files.push(this.processResults(moreResults.records, exportPath, totalRequestCount));
+        result.totalSize += moreResults.records.length;
+      }
     }
     return result;
   }
@@ -80,16 +92,39 @@ export default class MigrationPlanObject {
     } else if (this.hasValidFile()) {
       return QueryBuilder.loadFromFile(this.data.queryFile);
     } else if (this.hasQueryConstructor()) {
-      this.queryBuilder!.setLimit(this.data.query?.limit).setWhere(this.data.query?.filter);
-      if (this.data.query?.fetchAllFields) {
-        this.queryBuilder!.addAllFields();
-      }
-      return this.queryBuilder!.toSOQL();
+      return this.queryBuilder!.toSOQL(this.data.query);
     }
     throw new Error(`No query defined for: ${this.getObjectName()}`);
   }
 
+  public resolveAllQueries(): string[] {
+    if (this.data.query?.parent && PlanCache.isSet(this.data.query.parent.variable)) {
+      const chunkedParentQueries: string[] = [];
+      const chunks = PlanCache.getChunks(this.data.query.parent.variable);
+      eventBus.emit('planObjectStatus', {
+        message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
+        status: ProcessingStatus.InProgress,
+      } as CommandStatusEvent);
+      chunks.forEach((parentIdsChunk) =>
+        chunkedParentQueries.push(this.queryBuilder!.toSOQL(this.data.query, parentIdsChunk))
+      );
+      return chunkedParentQueries;
+    }
+    return [this.resolveQueryString()];
+  }
+
   //        PRIVATE
+
+  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string {
+    if (this.data.exportIds) {
+      const recordIds: string[] = [];
+      queryRecords.forEach((record) => {
+        if (record.Id) recordIds.push(record.Id);
+      });
+      PlanCache.push(this.data.exportIds, recordIds);
+    }
+    return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+  }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
     const fullFilePath = `${exportPath}/${this.data.objectName}/${incrementer}.json`;
@@ -130,12 +165,8 @@ export default class MigrationPlanObject {
     }
   }
 
-  private emitQueryProgress(currentCompleted: number, totalNumber?: number): void {
-    eventBus.emit('planObjectEvent', {
-      status: ProcessingStatus.InProgress,
-      totalBatches: totalNumber,
-      batchesCompleted: currentCompleted,
-      objectName: this.getObjectName(),
-    } as PlanObjectEvent);
+  private async assertQuerySyntax(describe: DescribeSObjectResult): Promise<void> {
+    this.queryBuilder = new QueryBuilder(describe);
+    await this.queryBuilder.assertSyntax(this.conn, this.resolveQueryString());
   }
 }

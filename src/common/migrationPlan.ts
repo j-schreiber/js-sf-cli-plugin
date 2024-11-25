@@ -1,18 +1,17 @@
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
-import { Org } from '@salesforce/core';
-import { MigrationPlanData } from '../types/migrationPlanData.js';
-import { MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
+import { Connection } from '@salesforce/core';
+import { MigrationPlanObjectQueryResult, ZMigrationPlanType } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import { eventBus } from './comms/eventBus.js';
-import { PlanObjectEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
+import { CommandStatusEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
 
-  public constructor(public data: MigrationPlanData, public org: Org) {
+  public constructor(public data: ZMigrationPlanType, public sourceOrgConnection: Connection) {
     this.data.objects.forEach((objectData) => {
-      this.objects.push(new MigrationPlanObject(objectData, org.getConnection()));
+      this.objects.push(new MigrationPlanObject(objectData, sourceOrgConnection));
     });
   }
 
@@ -49,21 +48,15 @@ export default class MigrationPlan {
     const results: MigrationPlanObjectQueryResult[] = [];
     const exportPath: string = this.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
-      eventBus.emit('planObjectEvent', {
+      eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Started,
-        totalBatches: 10,
-        batchesCompleted: 0,
-        objectName: planObject.getObjectName(),
-      } as PlanObjectEvent);
+        message: `Starting ${planObject.getObjectName()}`,
+      } as CommandStatusEvent);
       const objectResults = await planObject.retrieveRecords(exportPath);
-      eventBus.emit('planObjectEvent', {
+      eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Completed,
-        totalBatches: 10,
-        batchesCompleted: 10,
-        totalRecords: objectResults.totalSize,
-        files: objectResults.files,
-        objectName: planObject.getObjectName(),
-      } as PlanObjectEvent);
+        message: `Retrieved ${objectResults.totalSize} records in ${objectResults.files.length} batches.`,
+      } as CommandStatusEvent);
       results.push(objectResults);
     }
     return results;

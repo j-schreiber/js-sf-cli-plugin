@@ -2,11 +2,13 @@ import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { Connection } from '@salesforce/core';
 import { QueryError } from '../../types/sfStandardApiTypes.js';
+import { ZParentBindType, ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
 
 export default class QueryBuilder {
   private selectFields: Set<string> = new Set<string>();
   private limit?: number;
   private filter?: string;
+  private parentBind?: string;
 
   public constructor(private describeResult: DescribeSObjectResult) {
     this.selectFields.add('Id');
@@ -18,7 +20,10 @@ export default class QueryBuilder {
     }
     if (fs.existsSync(filePath)) {
       const queryString = fs.readFileSync(filePath, 'utf8');
-      return queryString.trim().replace(/\s+/g, ' ');
+      const cleanesFromSpaces = queryString
+        .replace(/\s+/g, ' ')
+        .replace(/(?<=SELECT ).*(?= FROM)/gi, (_): string => _.replaceAll(' ', ''));
+      return cleanesFromSpaces.trim();
     } else {
       throw new Error(`Cannot load query. ${filePath} does not exist.`);
     }
@@ -65,15 +70,52 @@ export default class QueryBuilder {
     return this;
   }
 
-  public toSOQL(): string {
-    const whereFilter = this.filter ? ` WHERE ${this.filter}` : '';
+  public toSOQL(queryConfig?: ZQueryObjectType, parentIds?: string[]): string {
+    if (queryConfig) {
+      this.readQueryConfig(queryConfig, parentIds);
+    }
     const limitClause = this.limit ? ` LIMIT ${this.limit}` : '';
-    return `SELECT ${[...this.selectFields].join(',')} FROM ${this.describeResult.name}${whereFilter}${limitClause}`;
+    return `SELECT ${[...this.selectFields].join(',')} FROM ${
+      this.describeResult.name
+    }${this.buildWhere()}${limitClause}`;
   }
 
   //    PRIVATE
 
   private isToolingObject(): boolean {
     return this.describeResult.urls.sobject.includes('/tooling/sobjects/');
+  }
+
+  private readQueryConfig(queryConfig: ZQueryObjectType, parentIds?: string[]): void {
+    if (queryConfig.fetchAllFields) {
+      this.addAllFields();
+    }
+    if (queryConfig.filter) {
+      this.setWhere(queryConfig.filter);
+    }
+    if (queryConfig.limit) {
+      this.setLimit(queryConfig.limit);
+    }
+    if (queryConfig.parent) {
+      this.parentBind = this.resolveParentBind(queryConfig.parent, parentIds);
+    }
+  }
+
+  private buildWhere(): string {
+    if (this.parentBind) {
+      return this.filter ? ` WHERE (${this.filter}) AND ${this.parentBind}` : ` WHERE ${this.parentBind}`;
+    } else {
+      return this.filter ? ` WHERE ${this.filter}` : '';
+    }
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private resolveParentBind(parentConfig: ZParentBindType, parentIdChunk?: string[]): string | undefined {
+    if (parentIdChunk === undefined) {
+      return;
+    }
+    const quotedIds = parentIdChunk.map((id) => `'${id}'`);
+    const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
+    return `${parentConfig.field} IN ${listInFilter} AND ${parentConfig.field} != NULL`;
   }
 }
