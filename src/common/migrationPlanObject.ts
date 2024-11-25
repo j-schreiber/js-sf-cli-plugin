@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
@@ -6,7 +7,7 @@ import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '..
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
-import { ProcessingStatus, PlanObjectEvent } from './comms/processingEvents.js';
+import { ProcessingStatus, CommandStatusEvent } from './comms/processingEvents.js';
 import PlanCache from './planCache.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -32,7 +33,6 @@ export default class MigrationPlanObject {
   }
 
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
-    this.emitQueryProgress(0, undefined);
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
     const result: MigrationPlanObjectQueryResult = {
       isSuccess: false,
@@ -43,17 +43,27 @@ export default class MigrationPlanObject {
     const queries = this.resolveAllQueries();
     let totalRequestCount = 0;
     for (const queryString of queries) {
+      let thisChunkRequestsCount = 1;
+      eventBus.emit('planObjectStatus', {
+        message: `Processing chunk ${queries.indexOf(queryString) + 1} of ${queries.length}: 1st request`,
+        status: ProcessingStatus.InProgress,
+      } as CommandStatusEvent);
       totalRequestCount++;
       const queryResult = await this.runQuery(queryString);
       result.totalSize += queryResult.records.length;
       const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
       let isDone = queryResult.done;
       let nextRecordsUrl = queryResult.nextRecordsUrl;
-      this.emitQueryProgress(totalRequestCount, totalBatches);
       result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
       while (!isDone) {
+        thisChunkRequestsCount++;
         totalRequestCount++;
-        this.emitQueryProgress(totalRequestCount, totalBatches);
+        eventBus.emit('planObjectStatus', {
+          message: `Processing chunk ${queries.indexOf(queryString) + 1} of ${
+            queries.length
+          }: ${thisChunkRequestsCount}/${totalBatches} requests`,
+          status: ProcessingStatus.InProgress,
+        } as CommandStatusEvent);
         const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
         isDone = moreResults.done;
         nextRecordsUrl = moreResults.nextRecordsUrl;
@@ -90,7 +100,12 @@ export default class MigrationPlanObject {
   public resolveAllQueries(): string[] {
     if (this.data.query?.parent && PlanCache.isSet(this.data.query.parent.variable)) {
       const chunkedParentQueries: string[] = [];
-      PlanCache.getChunks(this.data.query.parent.variable).forEach((parentIdsChunk) =>
+      const chunks = PlanCache.getChunks(this.data.query.parent.variable);
+      eventBus.emit('planObjectStatus', {
+        message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
+        status: ProcessingStatus.InProgress,
+      } as CommandStatusEvent);
+      chunks.forEach((parentIdsChunk) =>
         chunkedParentQueries.push(this.queryBuilder!.toSOQL(this.data.query, parentIdsChunk))
       );
       return chunkedParentQueries;
@@ -153,14 +168,5 @@ export default class MigrationPlanObject {
   private async assertQuerySyntax(describe: DescribeSObjectResult): Promise<void> {
     this.queryBuilder = new QueryBuilder(describe);
     await this.queryBuilder.assertSyntax(this.conn, this.resolveQueryString());
-  }
-
-  private emitQueryProgress(currentCompleted: number, totalNumber?: number): void {
-    eventBus.emit('planObjectEvent', {
-      status: ProcessingStatus.InProgress,
-      totalBatches: totalNumber,
-      batchesCompleted: currentCompleted,
-      objectName: this.getObjectName(),
-    } as PlanObjectEvent);
   }
 }

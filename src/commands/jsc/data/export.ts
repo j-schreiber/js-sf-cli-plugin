@@ -4,7 +4,7 @@ import { Config } from '@oclif/core';
 import MigrationPlanLoader from '../../../common/migrationPlanLoader.js';
 import { eventBus } from '../../../common/comms/eventBus.js';
 import {
-  PlanObjectEvent,
+  CommandStatusEvent,
   PlanObjectValidationEvent,
   ProcessingStatus,
 } from '../../../common/comms/processingEvents.js';
@@ -48,7 +48,7 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
   public constructor(argv: string[], config: Config) {
     // Call the parent constructor with the required arguments
     super(argv, config);
-    eventBus.on('planObjectEvent', (payload: PlanObjectEvent) => this.handleRecordRetrieveEvents(payload));
+    eventBus.on('planObjectStatus', (payload: CommandStatusEvent) => this.handleRecordRetrieveEvents(payload));
     eventBus.on('planValidationEvent', (payload: PlanObjectValidationEvent) =>
       this.handlePlanValidationEvents(payload)
     );
@@ -70,15 +70,15 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
 
   //    PRIVATE ZONE
 
-  private handleRecordRetrieveEvents(payload: PlanObjectEvent): void {
+  private handleRecordRetrieveEvents(payload: CommandStatusEvent): void {
     if (payload.status === ProcessingStatus.Started) {
-      this.spinner.start(`Exporting ${payload.objectName}`);
+      this.spinner.start(payload.message!);
     }
     if (payload.status === ProcessingStatus.InProgress) {
-      this.spinner.status = `Completed ${payload.batchesCompleted} of ${payload.totalBatches} batches`;
+      this.spinner.status = payload.message;
     }
     if (payload.status === ProcessingStatus.Completed) {
-      this.spinner.stop(`Retrieved ${payload.totalRecords} records in ${payload.files.length} files.`);
+      this.spinner.stop(payload.message);
     }
   }
 

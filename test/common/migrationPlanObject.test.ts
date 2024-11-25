@@ -10,6 +10,8 @@ import { GenericSuccess, InvalidFieldInQuery, MockAccounts, MockOrders } from '.
 import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
 import PlanCache from '../../src/common/planCache.js';
 import QueryBuilder from '../../src/common/utils/queryBuilder.js';
+import { eventBus } from '../../src/common/comms/eventBus.js';
+import { mockQueryResponseWithQueryMore } from '../mock-utils/sfQueryApiMocks.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
@@ -317,11 +319,46 @@ describe('migration plan object', () => {
     expect(result.totalSize).to.equal(1);
   });
 
+  it('retrieves records with multiple parent batches and emits useful status information', async () => {
+    // Arrange
+    PlanCache.CHUNK_SIZE = 2;
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Order',
+        query: { fetchAllFields: true, parent: { field: 'AccountId', variable: 'mockedAccountIds' } },
+      },
+      await testOrg.getConnection()
+    );
+    await testObj.load();
+    sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
+    PlanCache.set('mockedAccountIds', [
+      '0019Q00000eC8UKQA0',
+      '0019Q00000eDKbNQAW',
+      '0019Q00000eDKbOQAW',
+      '0019Q00000eDKbPQAW',
+    ]);
+    const statusListener = sinon.stub();
+    eventBus.addListener('planObjectStatus', statusListener);
+
+    // Act
+    $$.fakeConnectionRequest = mockQueryResponseWithQueryMore;
+    await testObj.retrieveRecords(ExportPath);
+
+    // Assert
+    // 1 event to init, then 1 events per batch (2 batches)
+    // expect(statusListener.callCount).equals(5);
+    expect(statusListener.args[0][0]).contains({ message: 'Fetching records in 2 chunks of 2 parent ids each' });
+    expect(statusListener.args[1][0]).contains({ message: 'Processing chunk 1 of 2: 1st request' });
+    expect(statusListener.args[2][0]).contains({ message: 'Processing chunk 1 of 2: 2/2 requests' });
+    expect(statusListener.args[3][0]).contains({ message: 'Processing chunk 2 of 2: 1st request' });
+    expect(statusListener.args[4][0]).contains({ message: 'Processing chunk 2 of 2: 2/2 requests' });
+  });
+
   function mockQueryResults(mockResult: AnyJson, expectedUriString: string) {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const url = (request as { url: string }).url;
       if (url.includes(expectedUriString)) {
-        return Promise.resolve({ status: 0, records: mockResult });
+        return Promise.resolve({ totalSize: 1, records: mockResult, done: true });
       }
       return Promise.reject({ data: { message: 'Unexpected query was executed' } });
     };
