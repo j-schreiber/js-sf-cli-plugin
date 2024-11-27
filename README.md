@@ -86,7 +86,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.3.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -120,7 +120,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.3.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -152,6 +152,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.3.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->
