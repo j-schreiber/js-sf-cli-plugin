@@ -1,11 +1,11 @@
-name: Invalid Parent Binds
+name: Duplicate Exports
 objects:
   - objectName: Account
-    exportIds: myIds
+    queryString: SELECT Id FROM Account
+    exports:
+      Id: accIds
   - objectName: Contact
     query:
       fetchAllFields: true
-      parent:
-        variable: myIds
-        field: AccountId
-    exportIds: myIds
+    exports:
+      AccountId: accIds

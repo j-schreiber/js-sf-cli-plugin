@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { type AnyJson } from '@salesforce/ts-types';
+import { SfError } from '@salesforce/core';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
@@ -251,6 +252,36 @@ describe('migration plan object', () => {
     expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
   });
 
+  it('fails to load when invalid field is specified for export', async () => {
+    // Arrange
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryFile: 'test/data/soql/accounts.sql',
+        exports: { Id: 'myAccIds', CreatedDate: 'dateExport' },
+      },
+      await testOrg.getConnection()
+    );
+
+    // Act
+    try {
+      await testObj.load();
+      expect.fail('Expected to throw an exception, but succeeded');
+    } catch (err) {
+      if (err instanceof SfError) {
+        expect(err.name).to.equal('InvalidPlanFileSyntax');
+        expect(err.message).to.equal(
+          'Exported field CreatedDate has invalid type: datetime. Valid types are: id,reference,int,string'
+        );
+      } else {
+        expect.fail('Expected SfError, but got: ' + JSON.stringify(err));
+      }
+    }
+
+    // Assert
+    expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
+  });
+
   it('retrieves records from query and exports ids > exports all ids to cache', async () => {
     // Arrange
     mockQueryResults(MockAccounts, 'query');
@@ -258,7 +289,7 @@ describe('migration plan object', () => {
       {
         objectName: 'Account',
         queryFile: 'test/data/soql/accounts.sql',
-        exportIds: 'myAccountIds',
+        exports: { Id: 'myAccountIds' },
       },
       await testOrg.getConnection()
     );
@@ -303,13 +334,13 @@ describe('migration plan object', () => {
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
         objectName: 'Order',
-        query: { fetchAllFields: true, parent: { field: 'AccountId', variable: 'mockedAccountIds' } },
+        query: { fetchAllFields: true, bind: { field: 'AccountId', variable: 'mockedAccountIds' } },
       },
       await testOrg.getConnection()
     );
     await testObj.load();
     sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
-    PlanCache.set('mockedAccountIds', ['0019Q00000eC8UKQA0']);
+    PlanCache.push('mockedAccountIds', ['0019Q00000eC8UKQA0']);
 
     // Act
     mockQueryResults(MockOrders, 'WHERE%20AccountId%20IN%20(');
@@ -325,7 +356,7 @@ describe('migration plan object', () => {
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
         objectName: 'Order',
-        query: { fetchAllFields: true, parent: { field: 'AccountId', variable: 'mockedAccountIds' } },
+        query: { fetchAllFields: true, bind: { field: 'AccountId', variable: 'mockedAccountIds' } },
       },
       await testOrg.getConnection()
     );
@@ -352,6 +383,36 @@ describe('migration plan object', () => {
     expect(statusListener.args[2][0]).contains({ message: 'Processing chunk 1 of 2: 2/2 requests' });
     expect(statusListener.args[3][0]).contains({ message: 'Processing chunk 2 of 2: 1st request' });
     expect(statusListener.args[4][0]).contains({ message: 'Processing chunk 2 of 2: 2/2 requests' });
+  });
+
+  it('retrieves records and exports multiple ids > exports all ids to cache', async () => {
+    // Arrange
+    sinon.restore();
+    sinon
+      .stub(MigrationPlanObject.prototype, 'describeObject')
+      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
+    $$.fakeConnectionRequest = mockQueryResponseWithQueryMore;
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Order',
+        queryString: 'SELECT Id,AccountId,BillToContactId FROM Order',
+        exports: { Id: 'orderIds', AccountId: 'accountIds', BillToContactId: 'billingContactIds' },
+      },
+      await testOrg.getConnection()
+    );
+    await testObj.load();
+
+    // Act
+    const result = await testObj.retrieveRecords(ExportPath);
+
+    // Assert
+    expect(result.totalSize).to.equal(40);
+    expect(PlanCache.isSet('orderIds')).to.be.true;
+    expect(PlanCache.isSet('accountIds')).to.be.true;
+    expect(PlanCache.isSet('billingContactIds')).to.be.true;
+    expect(PlanCache.getNullSafe('orderIds').length).to.equal(40);
+    expect(PlanCache.getNullSafe('accountIds').length).to.equal(20);
+    expect(PlanCache.getNullSafe('billingContactIds').length).to.equal(2);
   });
 
   function mockQueryResults(mockResult: AnyJson, expectedUriString: string) {

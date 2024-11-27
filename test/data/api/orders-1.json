@@ -20,7 +20,8 @@
       "OrderNumber": "00000392",
       "AccountId": "0019O00000cfZjyQAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -31,7 +32,8 @@
       "OrderNumber": "00000393",
       "AccountId": "0019O00000cfZjzQAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -42,7 +44,8 @@
       "OrderNumber": "00000394",
       "AccountId": "0019O00000cfZjzQAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -53,7 +56,8 @@
       "OrderNumber": "00000395",
       "AccountId": "0019O00000cfZk0QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": "0030X000032DS33QAG"
     },
     {
       "attributes": {
@@ -64,7 +68,8 @@
       "OrderNumber": "00000396",
       "AccountId": "0019O00000cfZk0QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": "0030X000032DS33QAG"
     },
     {
       "attributes": {
@@ -75,7 +80,8 @@
       "OrderNumber": "00000397",
       "AccountId": "0019O00000cfZk1QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": "0030X00003223hLQAQ"
     },
     {
       "attributes": {
@@ -86,7 +92,8 @@
       "OrderNumber": "00000398",
       "AccountId": "0019O00000cfZk1QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": "0030X00003223hLQAQ"
     },
     {
       "attributes": {
@@ -97,7 +104,8 @@
       "OrderNumber": "00000399",
       "AccountId": "0019O00000cfZk2QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -108,7 +116,8 @@
       "OrderNumber": "00000400",
       "AccountId": "0019O00000cfZk2QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -119,7 +128,8 @@
       "OrderNumber": "00000401",
       "AccountId": "0019O00000cfZk3QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -130,7 +140,8 @@
       "OrderNumber": "00000402",
       "AccountId": "0019O00000cfZk3QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -141,7 +152,8 @@
       "OrderNumber": "00000403",
       "AccountId": "0019O00000cfZk4QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -152,7 +164,8 @@
       "OrderNumber": "00000404",
       "AccountId": "0019O00000cfZk4QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -163,7 +176,8 @@
       "OrderNumber": "00000405",
       "AccountId": "0019O00000cfZk5QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -174,7 +188,8 @@
       "OrderNumber": "00000406",
       "AccountId": "0019O00000cfZk5QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -185,7 +200,8 @@
       "OrderNumber": "00000407",
       "AccountId": "0019O00000cfZk6QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -196,7 +212,8 @@
       "OrderNumber": "00000408",
       "AccountId": "0019O00000cfZk6QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -207,7 +224,8 @@
       "OrderNumber": "00000409",
       "AccountId": "0019O00000cfZk7QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-11-25"
+      "EffectiveDate": "2024-11-25",
+      "BillToContactId": null
     },
     {
       "attributes": {
@@ -218,7 +236,8 @@
       "OrderNumber": "00000410",
       "AccountId": "0019O00000cfZk7QAE",
       "Status": "Draft",
-      "EffectiveDate": "2024-12-05"
+      "EffectiveDate": "2024-12-05",
+      "BillToContactId": null
     }
   ],
   "totalSize": 40,

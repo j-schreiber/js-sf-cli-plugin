@@ -1,0 +1,37 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "AccountRef1"
+      },
+      "Name": "Starship Galactica Ltd.",
+      "Type": "Warship",
+      "BillingStreet": "Allersberger Str. 8-10",
+      "BillingPostalCode": "90461",
+      "BillingCity": "Nürnberg"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "AccountRef2"
+      },
+      "Name": "Colonial One",
+      "Type": "Civilian Ship",
+      "BillingStreet": "Bayerstraße 10",
+      "BillingPostalCode": "80335",
+      "BillingCity": "München"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "referenceId": "AccountRef3"
+      },
+      "Name": "Cloud 9 GmbH",
+      "Type": "Civilian Ship",
+      "BillingStreet": "Viktoriastraße 7-5",
+      "BillingPostalCode": "86150",
+      "BillingCity": "Augsburg"
+    }
+  ]
+}

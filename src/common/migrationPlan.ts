@@ -44,8 +44,11 @@ export default class MigrationPlan {
     return this.objects;
   }
 
-  public async execute(outputDir?: string): Promise<MigrationPlanObjectQueryResult[]> {
+  public async execute(outputDir?: string, validateOnly?: boolean): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
+    if (validateOnly) {
+      return results;
+    }
     const exportPath: string = this.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
       eventBus.emit('planObjectStatus', {

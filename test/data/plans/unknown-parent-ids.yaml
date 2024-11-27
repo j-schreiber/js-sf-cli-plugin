@@ -6,6 +6,6 @@ objects:
   - objectName: Contact
     query:
       fetchAllFields: true
-      parent:
+      bind:
         variable: myAccountIds
         field: AccountId

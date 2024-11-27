@@ -42,18 +42,14 @@ describe('migration plan', () => {
     }
   });
 
-  it('throws parse error if two objects export the same id', async () => {
+  it('parses plan with duplicate exports successfully', async () => {
     // Act
-    try {
-      await MigrationPlanLoader.loadPlan('test/data/plans/duplicate-parent-ids.yaml', await testOrg.getConnection());
-      expect.fail('Should throw exception');
-    } catch (err) {
-      if (err instanceof SfError) {
-        expect(err.name).to.equal('InvalidPlanFileSyntax');
-        expect(err.message).to.contain('Contact exports a bind variable that was already defined: myIds');
-      } else {
-        expect.fail('Expected SfError, but got: ' + JSON.stringify(err));
-      }
-    }
+    const plan = await MigrationPlanLoader.loadPlan(
+      'test/data/plans/duplicate-parent-ids.yaml',
+      await testOrg.getConnection()
+    );
+
+    // Assert
+    expect(plan.getObjects().length).equals(2);
   });
 });

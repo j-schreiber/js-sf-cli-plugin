@@ -1,0 +1,26 @@
+name: Test Data Export Plan
+objects:
+  - objectName: Account
+    queryString: SELECT Id,Name FROM Account WHERE Type = 'Civilian Ship'
+    exports:
+      Id: testAccIds
+  - objectName: Contact
+    query:
+      fetchAllFields: true
+      bind:
+        field: AccountId
+        variable: testAccIds
+    exports:
+      Id: contactIds
+  - objectName: Order
+    query:
+      fetchAllFields: true
+      bind:
+        field: AccountId
+        variable: testAccIds
+  - objectName: Opportunity
+    query:
+      fetchAllFields: true
+      bind:
+        field: ContactId
+        variable: contactIds
