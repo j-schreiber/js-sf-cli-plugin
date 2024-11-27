@@ -59,7 +59,7 @@ describe('query builder', () => {
     testBuilder.addAllFields();
 
     // Assert
-    expect(testBuilder.toSOQL()).to.equal('SELECT Id,Name,AccountNumber,BillingStreet FROM Account');
+    expect(testBuilder.toSOQL()).to.equal('SELECT Id,Name,AccountNumber,CreatedDate,BillingStreet FROM Account');
   });
 
   it('assert query syntax > is tooling object > runs against tooling API', async () => {
@@ -86,7 +86,7 @@ describe('query builder', () => {
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', variable: 'myAccountIds' },
+      bind: { field: 'AccountId', variable: 'myAccountIds' },
     } as ZQueryObjectType;
 
     // Act
@@ -103,7 +103,7 @@ describe('query builder', () => {
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', variable: 'myAccountIds' },
+      bind: { field: 'AccountId', variable: 'myAccountIds' },
     } as ZQueryObjectType;
 
     // Act
@@ -118,7 +118,7 @@ describe('query builder', () => {
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', variable: 'myAccountIds' },
+      bind: { field: 'AccountId', variable: 'myAccountIds' },
     } as ZQueryObjectType;
 
     // Act
@@ -133,7 +133,7 @@ describe('query builder', () => {
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', variable: 'myAccountIds' },
+      bind: { field: 'AccountId', variable: 'myAccountIds' },
       filter: "Status = 'Draft'",
     } as ZQueryObjectType;
 
@@ -151,7 +151,7 @@ describe('query builder', () => {
     const testBuilder = new QueryBuilder(MockOrderDescribeResult as DescribeSObjectResult);
     const queryObj = {
       fetchAllFields: true,
-      parent: { field: 'AccountId', variable: 'myAccountIds' },
+      bind: { field: 'AccountId', variable: 'myAccountIds' },
       filter: "Status = 'Draft'",
       limit: 1000,
     } as ZQueryObjectType;

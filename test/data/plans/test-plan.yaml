@@ -2,11 +2,12 @@ name: Test Plan
 objects:
   - objectName: Account
     queryFile: test/data/soql/accounts.sql
-    exportIds: myAccountIds
+    exports:
+      Id: myAccountIds
   - objectName: Contact
     query:
       fetchAllFields: true
-      parent:
+      bind:
         field: AccountId
         variable: myAccountIds
   - objectName: Order

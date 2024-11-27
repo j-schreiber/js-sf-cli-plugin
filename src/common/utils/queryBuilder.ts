@@ -96,8 +96,8 @@ export default class QueryBuilder {
     if (queryConfig.limit) {
       this.setLimit(queryConfig.limit);
     }
-    if (queryConfig.parent) {
-      this.parentBind = this.resolveParentBind(queryConfig.parent, parentIds);
+    if (queryConfig.bind) {
+      this.parentBind = this.resolveParentBind(queryConfig.bind, parentIds);
     }
   }
 

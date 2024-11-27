@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
-import { Connection, Messages } from '@salesforce/core';
+import { Connection, Messages, SfError } from '@salesforce/core';
 import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
@@ -28,6 +28,7 @@ export default class MigrationPlanObject {
   public async load(): Promise<MigrationPlanObject> {
     this.describeResult = await this.describeObject();
     this.assertQueryDefinitions();
+    this.assertExports(this.describeResult);
     await this.assertQuerySyntax(this.describeResult);
     return this;
   }
@@ -98,9 +99,9 @@ export default class MigrationPlanObject {
   }
 
   public resolveAllQueries(): string[] {
-    if (this.data.query?.parent && PlanCache.isSet(this.data.query.parent.variable)) {
+    if (this.data.query?.bind && PlanCache.isSet(this.data.query.bind.variable)) {
       const chunkedParentQueries: string[] = [];
-      const chunks = PlanCache.getChunks(this.data.query.parent.variable);
+      const chunks = PlanCache.getChunks(this.data.query.bind.variable);
       eventBus.emit('planObjectStatus', {
         message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
         status: ProcessingStatus.InProgress,
@@ -113,15 +114,23 @@ export default class MigrationPlanObject {
     return [this.resolveQueryString()];
   }
 
+  public hasExports(): boolean {
+    return Boolean(this.data.exports);
+  }
+
   //        PRIVATE
 
   private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string {
-    if (this.data.exportIds) {
-      const recordIds: string[] = [];
-      queryRecords.forEach((record) => {
-        if (record.Id) recordIds.push(record.Id);
+    if (this.data.exports) {
+      Object.keys(this.data.exports).forEach((exportFieldName) => {
+        const recordIds: string[] = [];
+        for (const record of queryRecords) {
+          if (record[exportFieldName]) {
+            recordIds.push(record[exportFieldName] as string);
+          }
+        }
+        PlanCache.push(this.data.exports![exportFieldName], recordIds);
       });
-      PlanCache.push(this.data.exportIds, recordIds);
     }
     return this.writeResultsToFile(queryRecords, exportPath, incrementer);
   }
@@ -162,6 +171,29 @@ export default class MigrationPlanObject {
   private assertQueryDefinitions(): void {
     if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
       throw messages.createError('too-many-query-sources-defined');
+    }
+  }
+
+  private assertExports(describe: DescribeSObjectResult): void {
+    if (this.hasExports()) {
+      Object.keys(this.data.exports!).forEach((exportFieldName) => {
+        const fieldDescribe = describe.fields.find((element) => element.name === exportFieldName);
+        if (fieldDescribe === undefined) {
+          throw new SfError(
+            `Exported field ${exportFieldName} does not exist on ${this.getObjectName()}.`,
+            'InvalidPlanFileSyntax'
+          );
+        }
+        const validTypes = ['id', 'reference', 'int', 'string'];
+        if (!validTypes.includes(fieldDescribe.type)) {
+          throw new SfError(
+            `Exported field ${exportFieldName} has invalid type: ${
+              fieldDescribe.type
+            }. Valid types are: ${validTypes.join(',')}`,
+            'InvalidPlanFileSyntax'
+          );
+        }
+      });
     }
   }
 

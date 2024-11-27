@@ -15,24 +15,24 @@ export default class MigrationPlanLoader {
   }
 
   private static assertVariableExports(plan: ZMigrationPlanType): void {
-    const exportedIds: string[] = [];
+    const exportedVariables: string[] = [];
     plan.objects.forEach((objectDef) => {
-      if (objectDef.query?.parent) {
-        if (!exportedIds.includes(objectDef.query.parent.variable)) {
+      if (objectDef.query?.bind) {
+        if (!exportedVariables.includes(objectDef.query.bind.variable)) {
           throw new SfError(
-            `${objectDef.objectName} references a parent bind that was not defined: ${objectDef.query.parent.variable}`,
+            `${objectDef.objectName} references a parent bind that was not defined: ${objectDef.query.bind.variable}`,
             'InvalidPlanFileSyntax'
           );
         }
       }
-      if (objectDef.exportIds) {
-        if (exportedIds.includes(objectDef.exportIds)) {
-          throw new SfError(
-            `${objectDef.objectName} exports a bind variable that was already defined: ${objectDef.exportIds}`,
-            'InvalidPlanFileSyntax'
-          );
-        }
-        exportedIds.push(objectDef.exportIds);
+      if (objectDef.exports) {
+        // if (exportedIds.includes(objectDef.exportIds)) {
+        //   throw new SfError(
+        //     `${objectDef.objectName} exports a bind variable that was already defined: ${objectDef.exportIds}`,
+        //     'InvalidPlanFileSyntax'
+        //   );
+        // }
+        Object.values(objectDef.exports).forEach((exportedVars) => exportedVariables.push(exportedVars));
       }
     });
   }

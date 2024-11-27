@@ -1,15 +1,13 @@
 import fs from 'node:fs';
 import Sinon from 'sinon';
-import { type AnyJson } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import JscDataExport from '../../../../src/commands/jsc/data/export.js';
-import { MockAnyObjectResult } from '../../../data/describes/mockDescribeResults.js';
-import { GenericSuccess } from '../../../data/api/queryResults.js';
 import { LOCAL_CACHE_DIR } from '../../../../src/common/constants.js';
 import { eventBus } from '../../../../src/common/comms/eventBus.js';
+import { mockAnySObjectDescribe } from '../../../mock-utils/sfQueryApiMocks.js';
 
 const TEST_PATH = 'exports/export-test-ts';
 
@@ -24,6 +22,7 @@ describe('jsc plan export', () => {
     testOrg.orgId = '00Dxx0000000000AAA';
     sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.SANDBOX);
+    $$.fakeConnectionRequest = mockAnySObjectDescribe;
   });
 
   afterEach(() => {
@@ -40,7 +39,6 @@ describe('jsc plan export', () => {
   it('runs command with required params => exits OK', async () => {
     // Arrange
     await $$.stubAuths(testOrg);
-    mockDescribeCalls();
 
     // Act
     const result = await JscDataExport.run([
@@ -67,7 +65,6 @@ describe('jsc plan export', () => {
   it('runs command with --json and valid plan => has query details in result', async () => {
     // Arrange
     await $$.stubAuths(testOrg);
-    mockDescribeCalls();
 
     // Act
     const result = await JscDataExport.run([
@@ -85,8 +82,7 @@ describe('jsc plan export', () => {
     expect(result.exports).to.not.be.undefined;
     expect(result.exports?.length).equals(4);
     expect(result.exports![0].queryString).equals('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
-    // we have mocked describe calls, that's why contact is resolved to AnyObject
-    expect(result.exports![1].queryString).equals('SELECT Id,Name FROM AnyObject');
+    expect(result.exports![1].queryString).equals('SELECT Id,Name,AccountId FROM Contact');
     expect(result.exports![2].queryString).equals('SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100');
     expect(result.exports![3].queryString).equals('SELECT Id,AccountId FROM Opportunity LIMIT 10');
   });
@@ -118,13 +114,4 @@ describe('jsc plan export', () => {
     Sinon.assert.callCount(sfSpinnerStub.start, 1);
     Sinon.assert.callCount(sfSpinnerStub.stop, 1);
   });
-
-  function mockDescribeCalls() {
-    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-      if (request?.toString().endsWith('/describe')) {
-        return Promise.resolve(MockAnyObjectResult as AnyJson);
-      }
-      return Promise.resolve(GenericSuccess);
-    };
-  }
 });
