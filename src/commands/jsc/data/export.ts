@@ -15,8 +15,7 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.expor
 
 export type JscDataExportResult = {
   'source-org-id': string;
-  plan: string;
-  exports?: MigrationPlanObjectQueryResult[];
+  exports: MigrationPlanObjectQueryResult[];
 };
 
 export default class JscDataExport extends SfCommand<JscDataExportResult> {
@@ -62,13 +61,9 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
       flags['plan'],
       flags['source-org'].getConnection(flags['api-version'])
     );
-    let results;
-    if (!flags['validate-only']) {
-      results = await plan.execute(flags['output-dir']);
-    }
+    const results = await plan.execute(flags['output-dir'], flags['validate-only']);
     return {
       'source-org-id': flags['source-org'].getOrgId(),
-      plan: flags['plan'],
       exports: results,
     };
   }

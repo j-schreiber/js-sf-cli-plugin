@@ -1,4 +1,4 @@
-name: Invalid Parent Binds
+name: Duplicate Exports
 objects:
   - objectName: Account
     queryString: SELECT Id FROM Account
