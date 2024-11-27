@@ -33,14 +33,12 @@ describe('jsc data NUTs*', () => {
   });
 
   after(async () => {
-    // await session?.clean();
-    // fs.rmSync('exports', { recursive: true, force: true });
+    await session?.clean();
+    fs.rmSync('exports', { recursive: true, force: true });
   });
 
   describe('data export', () => {
     it('export data from valid plan file', () => {
-      // Arrange
-
       // Act
       const result = execCmd<JscDataExportResult>(
         `jsc:data:export --plan ${path.join('export-plans', 'test-plan.yml')} --source-org ${scratchOrgAlias} --json`,
