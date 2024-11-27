@@ -55,7 +55,9 @@ export default class MigrationPlanObject {
       const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
       let isDone = queryResult.done;
       let nextRecordsUrl = queryResult.nextRecordsUrl;
-      result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      if (queryResult.records.length > 0) {
+        result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      }
       while (!isDone) {
         thisChunkRequestsCount++;
         totalRequestCount++;
@@ -72,6 +74,7 @@ export default class MigrationPlanObject {
         result.totalSize += moreResults.records.length;
       }
     }
+    result.isSuccess = true;
     return result;
   }
 

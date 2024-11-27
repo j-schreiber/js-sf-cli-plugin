@@ -1,0 +1,26 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef1"
+      },
+      "Salutation": "Mr.",
+      "FirstName": "William",
+      "LastName": "Adama",
+      "Email": "w.adama@galactica.com",
+      "AccountId": "@AccountRef1"
+    },
+    {
+      "attributes": {
+        "type": "Contact",
+        "referenceId": "ContactRef2"
+      },
+      "Salutation": "Ms.",
+      "FirstName": "Laura",
+      "LastName": "Roslin",
+      "Email": "l.roslin@colonial-one.com",
+      "AccountId": "@AccountRef2"
+    }
+  ]
+}

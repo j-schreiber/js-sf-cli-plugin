@@ -1,7 +1,7 @@
 name: Test Data Export Plan
 objects:
   - objectName: Account
-    queryString: SELECT Id,Name FROM Account
+    queryString: SELECT Id,Name FROM Account WHERE Type = 'Civilian Ship'
     exports:
       Id: testAccIds
   - objectName: Contact

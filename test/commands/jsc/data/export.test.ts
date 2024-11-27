@@ -85,6 +85,11 @@ describe('jsc plan export', () => {
     expect(result.exports[1].queryString).equals('SELECT Id,Name,AccountId FROM Contact');
     expect(result.exports[2].queryString).equals('SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100');
     expect(result.exports[3].queryString).equals('SELECT Id,AccountId FROM Opportunity LIMIT 10');
+    result.exports.forEach((exportObject) => {
+      expect(exportObject.isSuccess).to.equal(true, 'isSuccess of: ' + JSON.stringify(exportObject));
+      expect(exportObject.files.length).to.equal(0, 'files.length of: ' + JSON.stringify(exportObject));
+      expect(exportObject.totalSize).to.equal(0, 'totalSize of: ' + JSON.stringify(exportObject));
+    });
   });
 
   it('runs command with invalid plan file => exits error', async () => {
