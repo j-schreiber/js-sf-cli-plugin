@@ -1,4 +1,5 @@
 /* eslint-disable camelcase */
+import EventEmitter from 'node:events';
 import { Connection } from '@salesforce/core';
 import { ZAggregatedArtifactResult, ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
@@ -10,10 +11,23 @@ import UnpackagedDeployStep from './unpackagedDeployStep.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 import UnlockedPackageInstallStep from './unlockedPackageInstallStep.js';
 
-export default class ArtifactDeployJob {
+export default class ArtifactDeployJob extends EventEmitter {
+  public skipAll = false;
   private deploySteps: ArtifactDeployStrategy[] = [];
 
-  public constructor(public name: string, public definition: ZArtifactType, private parentManifest: OrgManifest) {}
+  public constructor(public name: string, public definition: ZArtifactType, private parentManifest: OrgManifest) {
+    super();
+    switch (this.definition.type) {
+      case 'Unpackaged':
+        this.deploySteps.push(new UnpackagedDeployStep(this.definition, this.parentManifest));
+        break;
+      case 'UnlockedPackage':
+        this.deploySteps.push(new UnlockedPackageInstallStep(this.definition, this.parentManifest.data.options));
+        break;
+      default:
+        break;
+    }
+  }
 
   /**
    * Prepares the artifact to be deployed against the target org. Resolves
@@ -23,19 +37,53 @@ export default class ArtifactDeployJob {
    * @param devhubOrg
    */
   public async resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZArtifactDeployResultType[]> {
-    eventBus.emit('manifestRollout', {
-      status: ProcessingStatus.InProgress,
-      message: `Resolving ${this.name}`,
-    } as CommandStatusEvent);
+    this.emitResolveInProgress(`Resolving ${this.name}`);
     const results: ZArtifactDeployResultType[] = [];
     for (const element of this.getSteps()) {
       // eslint-disable-next-line no-await-in-loop
       results.push(await element.resolve(targetOrg, devhubOrg));
     }
-    eventBus.emit('manifestRollout', {
-      status: ProcessingStatus.InProgress,
-      message: `Completed ${this.name}`,
-    } as CommandStatusEvent);
+    this.emitResolveInProgress(`Completed ${this.name}`);
+    return results;
+  }
+
+  /**
+   * Deploys all steps in this artifact. Must have been resolved first.
+   * If artifact is set to be skipped, no steps are executed.
+   *
+   * @returns
+   */
+  public async deploy(): Promise<ZArtifactDeployResultType[]> {
+    let isFailing = false;
+    let failDetails;
+    const results = new Array<ZArtifactDeployResultType>();
+    this.emitDeployStart(`Rolling out ${this.name} (${this.deploySteps.length} steps).`);
+    for (const deployStep of this.deploySteps) {
+      const i = this.deploySteps.indexOf(deployStep) + 1;
+      const stepStatus = deployStep.getStatus() as ZArtifactDeployResultType;
+      this.emitDeployProgress(`Running ${stepStatus.deployStrategy} (Step ${i} of ${this.deploySteps.length})`);
+      if (!isFailing && !this.skipAll) {
+        // eslint-disable-next-line no-await-in-loop
+        const stepResult = await deployStep.deploy();
+        if (stepResult.status === DeployStatus.Enum.Failed) {
+          isFailing = true;
+          failDetails = stepResult.errorDetails;
+        }
+        results.push(stepResult);
+      } else {
+        stepStatus.status = DeployStatus.Enum.Skipped;
+        stepStatus.displayMessage =
+          isFailing && !this.skipAll
+            ? 'Skipped, because the previous step failed'
+            : 'Skipped, because a previous artifact failed.';
+        results.push(stepStatus);
+      }
+    }
+    if (isFailing) {
+      this.emitDeployFailed(failDetails);
+    } else {
+      this.emitDeployCompleted(this.getAggregatedStatus().message!);
+    }
     return results;
   }
 
@@ -47,8 +95,7 @@ export default class ArtifactDeployJob {
   public getAggregatedStatus(): ZAggregatedArtifactResult {
     let ordinalStatusValue = 0;
     const msgs: string[] = [];
-    this.getSteps().forEach((step) => {
-      const stepStatus = step.getStatus();
+    this.getStepStatus().forEach((stepStatus) => {
       if (stepStatus.displayMessage) {
         msgs.push(stepStatus.displayMessage);
       }
@@ -58,6 +105,19 @@ export default class ArtifactDeployJob {
       }
     });
     return { status: DeployStatus.options[ordinalStatusValue], message: msgs.join(', ') };
+  }
+
+  /**
+   * List of all status of the artifacts steps
+   *
+   * @returns
+   */
+  public getStepStatus(): Array<Partial<ZArtifactDeployResultType>> {
+    const stepStatus = new Array<Partial<ZArtifactDeployResultType>>();
+    for (const deployStep of this.deploySteps) {
+      stepStatus.push(deployStep.getStatus());
+    }
+    return stepStatus;
   }
 
   /**
@@ -74,23 +134,42 @@ export default class ArtifactDeployJob {
     return false;
   }
 
+  //              PRIVATE ZONE
+
   public getSteps(): ArtifactDeployStrategy[] {
-    if (this.deploySteps.length > 0) {
-      return this.deploySteps;
-    }
-    // in the future, a single job can have multiple steps, e.g.
-    // package artifact: install package, then remove deprecated components, then data cleanup
-    // unpackaged artifact: deploy source, then delete removed source (destructive changes)
-    switch (this.definition.type) {
-      case 'Unpackaged':
-        this.deploySteps.push(new UnpackagedDeployStep(this.definition, this.parentManifest));
-        break;
-      case 'UnlockedPackage':
-        this.deploySteps.push(new UnlockedPackageInstallStep(this.definition, this.parentManifest.data.options));
-        break;
-      default:
-        break;
-    }
     return this.deploySteps;
+  }
+
+  private emitResolveInProgress(message: string): void {
+    eventBus.emit('manifestRollout', {
+      status: ProcessingStatus.InProgress,
+      message,
+    } as CommandStatusEvent);
+    this.emit('artifactStatus', { status: ProcessingStatus.InProgress, message } as CommandStatusEvent);
+  }
+
+  private emitDeployStart(message: string): void {
+    this.emit('artifactDeployStart', { status: ProcessingStatus.Started, message } as CommandStatusEvent);
+  }
+
+  private emitDeployProgress(message: string): void {
+    this.emit('artifactDeployProgress', { status: ProcessingStatus.InProgress, message } as CommandStatusEvent);
+  }
+
+  private emitDeployCompleted(message: string): void {
+    this.emit('artifactDeployCompleted', {
+      status: ProcessingStatus.Completed,
+      message,
+      exitCode: 0,
+    } as CommandStatusEvent);
+  }
+
+  private emitDeployFailed(failDetails: unknown): void {
+    this.emit('artifactDeployCompleted', {
+      status: ProcessingStatus.Completed,
+      message: 'Failed with errors',
+      exitDetails: failDetails,
+      exitCode: 2,
+    } as CommandStatusEvent);
   }
 }
