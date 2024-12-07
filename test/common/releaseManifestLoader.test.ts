@@ -30,6 +30,7 @@ import OrgManifest from '../../src/release-manifest/OrgManifest.js';
 import { eventBus } from '../../src/common/comms/eventBus.js';
 import OclifUtils from '../../src/common/utils/wrapChildprocess.js';
 import { DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
+import { ProcessingStatus } from '../../src/common/comms/processingEvents.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -232,7 +233,7 @@ describe('org manifest', () => {
     });
   });
 
-  describe('resolve package deploy jobs', () => {
+  describe('resolve package install jobs', () => {
     let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
     let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
     const testPackageId = '0Ho0X0000000001AAA';
@@ -359,6 +360,7 @@ describe('org manifest', () => {
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
       expect(installStep.status).to.equal('Skipped');
+      expect(installStep.displayMessage).to.equal('Installed version matches requested version (1.2.2)');
     });
 
     it('package has no released version > throws error', async () => {
@@ -492,6 +494,21 @@ describe('org manifest', () => {
       expect(installStep.installationKey).to.equal('123testkey');
     });
 
+    it('should install new version > status generates useful display message', async () => {
+      // Arrange
+      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Act
+      const resolveResult = await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+
+      // Assert
+      expect(resolveResult.length).to.equal(1, resolveResult.toString());
+      const installStep = resolveResult[0] as ZPackageInstallResultType;
+      expect(installStep.displayMessage).to.equal('Installing 1.2.3 over 1.2.2');
+    });
+
     it('should install package version > delegates to sf package install', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
@@ -499,19 +516,33 @@ describe('org manifest', () => {
         status: 0,
         result: { status: 0, message: 'Success' },
       });
+      const statusListener = $$.SANDBOX.stub();
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
+      packageJob.on('artifactDeployStart', statusListener);
+      packageJob.on('artifactDeployProgress', statusListener);
+      packageJob.on('artifactDeployCompleted', statusListener);
+      const targetConnection = await mockTargetOrg.getConnection();
 
       // Act
-      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
-      const targetConnection = await mockTargetOrg.getConnection();
       await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
-      const installResult = await packageJob.getSteps()[0].deploy();
+      const jobResults = await packageJob.deploy();
 
       // Assert
-      expect(installResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(jobResults.length).to.equal(1);
+      for (const res of jobResults) {
+        expect(res.status).to.equal(DeployStatus.Enum.Success);
+      }
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'package:install',
         args: ['--target-org', mockTargetOrg.username, '--package', testNewVersionId, '--wait', '10', '--no-prompt'],
       });
+      expect(statusListener.callCount).to.equal(3);
+      expect(statusListener.args[0][0]).to.deep.contain({ status: ProcessingStatus.Started });
+      expect(statusListener.args[1][0]).to.deep.contain({
+        status: ProcessingStatus.InProgress,
+        message: 'Running step 1 of 1 (PackageInstall): Installing 1.2.3 over 1.2.2',
+      });
+      expect(statusListener.args[2][0]).to.deep.contain({ status: ProcessingStatus.Completed });
     });
 
     it('should skip installation package version > step is skipped and command informed', async () => {

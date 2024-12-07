@@ -5,8 +5,10 @@ export enum ProcessingStatus {
 }
 
 export type CommandStatusEvent = {
-  message?: string;
   status: ProcessingStatus;
+  message?: string;
+  exitCode?: number;
+  exitDetails?: unknown;
 };
 
 export type PlanObjectEvent = CommandStatusEvent & {
