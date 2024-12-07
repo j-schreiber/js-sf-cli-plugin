@@ -44,6 +44,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
     this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
+    this.internalState.displayMessage = `Deploying ${this.internalState.sourcePath}`;
     return Promise.resolve(this.internalState);
   }
 

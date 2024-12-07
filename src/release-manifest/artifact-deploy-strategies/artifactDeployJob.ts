@@ -61,7 +61,9 @@ export default class ArtifactDeployJob extends EventEmitter {
     for (const deployStep of this.deploySteps) {
       const i = this.deploySteps.indexOf(deployStep) + 1;
       const stepStatus = deployStep.getStatus() as ZArtifactDeployResultType;
-      this.emitDeployProgress(`Running ${stepStatus.deployStrategy} (Step ${i} of ${this.deploySteps.length})`);
+      this.emitDeployProgress(
+        `Running step ${i} of ${this.deploySteps.length} (${stepStatus.deployStrategy}): ${stepStatus.displayMessage!}`
+      );
       if (!isFailing && !this.skipAll) {
         // eslint-disable-next-line no-await-in-loop
         const stepResult = await deployStep.deploy();

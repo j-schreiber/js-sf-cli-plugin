@@ -360,6 +360,7 @@ describe('org manifest', () => {
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
       expect(installStep.status).to.equal('Skipped');
+      expect(installStep.displayMessage).to.equal('Installed version matches requested version (1.2.2)');
     });
 
     it('package has no released version > throws error', async () => {
@@ -493,6 +494,21 @@ describe('org manifest', () => {
       expect(installStep.installationKey).to.equal('123testkey');
     });
 
+    it('should install new version > status generates useful display message', async () => {
+      // Arrange
+      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
+      const targetConnection = await mockTargetOrg.getConnection();
+
+      // Act
+      const resolveResult = await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+
+      // Assert
+      expect(resolveResult.length).to.equal(1, resolveResult.toString());
+      const installStep = resolveResult[0] as ZPackageInstallResultType;
+      expect(installStep.displayMessage).to.equal('Installing 1.2.3 over 1.2.2');
+    });
+
     it('should install package version > delegates to sf package install', async () => {
       // Arrange
       mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
@@ -522,7 +538,10 @@ describe('org manifest', () => {
       });
       expect(statusListener.callCount).to.equal(3);
       expect(statusListener.args[0][0]).to.deep.contain({ status: ProcessingStatus.Started });
-      expect(statusListener.args[1][0]).to.deep.contain({ status: ProcessingStatus.InProgress });
+      expect(statusListener.args[1][0]).to.deep.contain({
+        status: ProcessingStatus.InProgress,
+        message: 'Running step 1 of 1 (PackageInstall): Installing 1.2.3 over 1.2.2',
+      });
       expect(statusListener.args[2][0]).to.deep.contain({ status: ProcessingStatus.Completed });
     });
 

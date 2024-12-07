@@ -59,7 +59,17 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     const installedVersionDetails = await resolveInstalledVersionId(versionDetails.subscriberPackageId!, targetOrg);
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
-    this.internalState.status = this.isResolved() ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
+    if (this.isResolved()) {
+      this.internalState.status = DeployStatus.Enum.Resolved;
+      if (this.internalState.installedVersion) {
+        this.internalState.displayMessage = `Installing ${this.internalState.requestedVersion} over ${this.internalState.installedVersion}`;
+      } else {
+        this.internalState.displayMessage = `Package not installed. Installing ${this.internalState.requestedVersion}`;
+      }
+    } else {
+      this.internalState.status = DeployStatus.Enum.Skipped;
+      this.internalState.displayMessage = `Installed version matches requested version (${this.internalState.installedVersion})`;
+    }
     return this.internalState as ZPackageInstallResultType;
   }
 
