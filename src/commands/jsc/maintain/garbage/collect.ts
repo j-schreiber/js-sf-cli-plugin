@@ -1,11 +1,14 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
+import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
+import { PackageGarbageContainer } from '../../../../garbage-collection/packageGarbage.js';
+import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
 
 export type JscMaintainGarbageCollectResult = {
-  path: string;
+  deprecatedMembers: PackageGarbageContainer;
 };
 
 export default class JscMaintainGarbageCollect extends SfCommand<JscMaintainGarbageCollectResult> {
@@ -26,15 +29,19 @@ export default class JscMaintainGarbageCollect extends SfCommand<JscMaintainGarb
       char: 't',
       required: true,
     }),
+    'api-version': Flags.orgApiVersion(),
   };
 
   public async run(): Promise<JscMaintainGarbageCollectResult> {
     const { flags } = await this.parse(JscMaintainGarbageCollect);
-    this.info(`Package: ${flags.package!}`);
-    this.info(flags['target-org'].getUsername()!);
+    const collector = new GarbageCollector(flags['target-org'].getConnection(flags['api-version']));
+    collector.on('resolveMemberStatus', (payload: CommandStatusEvent) => {
+      this.info(payload.message!);
+    });
+    const deprecatedPackageMembers = await collector.export();
     process.exitCode = 0;
     return {
-      path: 'src/commands/jsc/maintain/garbage/collect.ts',
+      deprecatedMembers: deprecatedPackageMembers,
     };
   }
 }

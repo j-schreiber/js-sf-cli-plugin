@@ -164,4 +164,12 @@ describe('query builder', () => {
       "FROM Order WHERE (Status = 'Draft') AND AccountId IN ('1','2','3','4') AND AccountId != NULL LIMIT 1000"
     );
   });
+
+  it('build list filter with valid name and non-empty list', async () => {
+    // Assert
+    expect(QueryBuilder.buildParamListFilter('Id', [1, 2, 3, 4])).to.equal("Id IN ('1','2','3','4') AND Id != NULL");
+    expect(QueryBuilder.buildParamListFilter('MyField__c', ['a', 'b', 'c'])).to.equal(
+      "MyField__c IN ('a','b','c') AND MyField__c != NULL"
+    );
+  });
 });

@@ -23,3 +23,22 @@ export type InstalledSubscriberPackage = {
   SubscriberPackageVersionId: string;
   SubscriberPackageVersion: SubscriberPackageVersion;
 };
+
+export type Package2Member = {
+  Id: string;
+  CurrentPackageVersionId: string;
+  MaxPackageVersionId: string;
+  SubjectId: string;
+  SubjectKeyPrefix: string;
+  SubjectManageableState: 'deprecated' | 'deprecatedEditable';
+};
+
+export type EntityDefinition = {
+  Id: string;
+  DurableId: string;
+  QualifiedApiName: string;
+  DeveloperName: string;
+  MasterLabel: string;
+  KeyPrefix: string;
+  IsRetrievable: string;
+};

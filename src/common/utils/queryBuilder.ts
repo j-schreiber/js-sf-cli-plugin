@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { Connection } from '@salesforce/core';
 import { QueryError } from '../../types/sfStandardApiTypes.js';
-import { ZParentBindType, ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
+import { ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
 
 export default class QueryBuilder {
   private selectFields: Set<string> = new Set<string>();
@@ -36,6 +36,15 @@ export default class QueryBuilder {
     } else {
       return `${rawQuery} LIMIT 1`;
     }
+  }
+
+  public static buildParamListFilter(paramName: string, paramList?: string[] | number[]): string {
+    if (paramList === undefined) {
+      return '';
+    }
+    const quotedParamList = paramList.map((val) => `'${val}'`);
+    const listInFilter = quotedParamList.length > 0 ? `(${quotedParamList.join(',')})` : "('')";
+    return `${paramName} IN ${listInFilter} AND ${paramName} != NULL`;
   }
 
   public async assertSyntax(conn: Connection, queryString?: string): Promise<boolean> {
@@ -97,7 +106,7 @@ export default class QueryBuilder {
       this.setLimit(queryConfig.limit);
     }
     if (queryConfig.bind) {
-      this.parentBind = this.resolveParentBind(queryConfig.bind, parentIds);
+      this.parentBind = QueryBuilder.buildParamListFilter(queryConfig.bind.field, parentIds);
     }
   }
 
@@ -107,15 +116,5 @@ export default class QueryBuilder {
     } else {
       return this.filter ? ` WHERE ${this.filter}` : '';
     }
-  }
-
-  // eslint-disable-next-line class-methods-use-this
-  private resolveParentBind(parentConfig: ZParentBindType, parentIdChunk?: string[]): string | undefined {
-    if (parentIdChunk === undefined) {
-      return;
-    }
-    const quotedIds = parentIdChunk.map((id) => `'${id}'`);
-    const listInFilter = quotedIds.length > 0 ? `(${quotedIds.join(',')})` : "('')";
-    return `${parentConfig.field} IN ${listInFilter} AND ${parentConfig.field} != NULL`;
   }
 }

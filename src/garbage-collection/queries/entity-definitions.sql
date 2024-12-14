@@ -1,0 +1,10 @@
+SELECT
+  Id,
+  DurableId,
+  QualifiedApiName,
+  DeveloperName,
+  MasterLabel,
+  KeyPrefix,
+  IsRetrieveable
+FROM
+  EntityDefinition
