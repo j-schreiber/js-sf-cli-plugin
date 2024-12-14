@@ -57,22 +57,20 @@ export default class GarbageCollector extends EventEmitter {
         } as CommandStatusEvent);
         continue;
       }
+      const packageMembers = container[keyPrefix];
       if (handlers[entityName]) {
-        // only process this
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
-          message: `Resolving deprecated members for ${entityName}`,
+          message: `Resolving ${packageMembers.length} members for ${entityName}`,
         } as CommandStatusEvent);
-        const packageMembers = container[keyPrefix];
         // eslint-disable-next-line no-await-in-loop
         garbageContainer[entityName] = await handlers[entityName].resolve(packageMembers);
       } else {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
-          message: `No handler registered to resolve ${entityName} with prefix ${keyPrefix}`,
+          message: `Skipping ${packageMembers.length} members for ${entityName} with prefix ${keyPrefix}, no handler registered.`,
         } as CommandStatusEvent);
       }
-      // emit info that prefix + entity name were unknown
     }
     return garbageContainer;
   }
