@@ -1,17 +1,17 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
-import { PackageGarbageContainer } from '../../../../garbage-collection/packageGarbage.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
+import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbage.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
 
-export type JscMaintainGarbageCollectResult = {
-  deprecatedMembers: PackageGarbageContainer;
-};
+// export type JscMaintainGarbageCollectResult = {
+//   deprecatedMembers: PackageGar;
+// };
 
-export default class JscMaintainGarbageCollect extends SfCommand<JscMaintainGarbageCollectResult> {
+export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageResult> {
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
@@ -32,7 +32,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<JscMaintainGarb
     'api-version': Flags.orgApiVersion(),
   };
 
-  public async run(): Promise<JscMaintainGarbageCollectResult> {
+  public async run(): Promise<PackageGarbageResult> {
     const { flags } = await this.parse(JscMaintainGarbageCollect);
     const collector = new GarbageCollector(flags['target-org'].getConnection(flags['api-version']));
     collector.on('resolveMemberStatus', (payload: CommandStatusEvent) => {
@@ -40,8 +40,6 @@ export default class JscMaintainGarbageCollect extends SfCommand<JscMaintainGarb
     });
     const deprecatedPackageMembers = await collector.export();
     process.exitCode = 0;
-    return {
-      deprecatedMembers: deprecatedPackageMembers,
-    };
+    return deprecatedPackageMembers;
   }
 }

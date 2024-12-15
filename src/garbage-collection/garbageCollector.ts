@@ -7,7 +7,7 @@ import QueryRunner from '../common/utils/queryRunner.js';
 import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
-import { PackageGarbageContainer } from './packageGarbage.js';
+import { PackageGarbageResult } from './packageGarbage.js';
 import { loadHandlers } from './entity-handlers/index.js';
 
 export default class GarbageCollector extends EventEmitter {
@@ -29,18 +29,18 @@ export default class GarbageCollector extends EventEmitter {
     // this.sobjectsRunner = new QueryRunner(this.targetOrgConnection);
   }
 
-  public async export(): Promise<PackageGarbageContainer> {
+  public async export(): Promise<PackageGarbageResult> {
     // retrieve package2members & analyse key prefixes
     const packageMembersContainer = await this.fetchPackageMembers();
     const garbageContainer = await this.resolvePackageMembers(packageMembersContainer);
     return garbageContainer;
   }
 
-  private async resolvePackageMembers(container: PackageMembersContainer): Promise<PackageGarbageContainer> {
+  private async resolvePackageMembers(container: PackageMembersContainer): Promise<PackageGarbageResult> {
     const entitiesMap = await this.fetchEntityDefinitions(Object.keys(container));
     // load definition handlers
     const handlers = loadHandlers(this.targetOrgConnection);
-    const garbageContainer: PackageGarbageContainer = {};
+    const garbageContainer: PackageGarbageResult = { deprecatedMembers: {}, unsupportedTypes: {}, unknownTypes: [] };
     for (const keyPrefix of Object.keys(container)) {
       const entityName = entitiesMap[keyPrefix].QualifiedApiName;
       if (keyPrefix.startsWith('m')) {
@@ -58,18 +58,26 @@ export default class GarbageCollector extends EventEmitter {
         continue;
       }
       const packageMembers = container[keyPrefix];
-      if (handlers[entityName]) {
+      if (handlers.supported[entityName]) {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
           message: `Resolving ${packageMembers.length} members for ${entityName}`,
         } as CommandStatusEvent);
         // eslint-disable-next-line no-await-in-loop
-        garbageContainer[entityName] = await handlers[entityName].resolve(packageMembers);
+        garbageContainer.deprecatedMembers[entityName] = await handlers.supported[entityName].resolve(packageMembers);
+      } else if (handlers.unsupported[entityName]) {
+        this.emit('resolveMemberStatus', {
+          status: ProcessingStatus.InProgress,
+          message: `Skipping ${packageMembers.length} members for ${entityName}, metadata currently not supported by tooling API.`,
+        } as CommandStatusEvent);
+        // eslint-disable-next-line no-await-in-loop
+        garbageContainer.unsupportedTypes[entityName] = await handlers.unsupported[entityName].resolve(packageMembers);
       } else {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
           message: `Skipping ${packageMembers.length} members for ${entityName} with prefix ${keyPrefix}, no handler registered.`,
         } as CommandStatusEvent);
+        garbageContainer.unknownTypes.push({ keyPrefix, entityName });
       }
     }
     return garbageContainer;

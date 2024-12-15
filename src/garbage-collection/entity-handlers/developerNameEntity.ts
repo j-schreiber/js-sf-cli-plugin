@@ -6,29 +6,33 @@ import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefiniti
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
-export class ExternalString implements EntityDefinitionHandler {
+export class DeveloperNameEntity implements EntityDefinitionHandler {
   private queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection | Connection['tooling']) {
+  public constructor(
+    private queryConnection: Connection | Connection['tooling'],
+    private entityName: string,
+    private metadataTypeName?: string
+  ) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
 
   public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
-    const labelDefinitions = await this.queryRunner.fetchRecords<LabelDefinition>(
-      `SELECT Id,Name FROM ExternalString WHERE ${buildSubjectIdFilter(packageMembers)}`
+    const entityDefs = await this.queryRunner.fetchRecords<EntityDef>(
+      `SELECT Id,DeveloperName FROM ${this.entityName} WHERE ${buildSubjectIdFilter(packageMembers)}`
     );
-    labelDefinitions.forEach((def) => {
+    entityDefs.forEach((def) => {
       garbageList.push({
-        developerName: def.Name,
-        fullyQualifiedName: def.Name,
+        developerName: def.DeveloperName,
+        fullyQualifiedName: def.DeveloperName,
         subjectId: def.Id!,
       });
     });
-    return { components: garbageList, metadataType: 'CustomLabel' };
+    return { components: garbageList, metadataType: this.metadataTypeName ?? this.entityName };
   }
 }
 
-type LabelDefinition = Record & {
-  Name: string;
+type EntityDef = Record & {
+  DeveloperName: string;
 };

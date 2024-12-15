@@ -15,6 +15,6 @@ describe('entity definition handlers', () => {
     const handlers = loadHandlers(await testOrg.getConnection());
 
     // Assert
-    expect(handlers['ExternalString']).to.not.be.undefined;
+    expect(handlers.supported['ExternalString']).to.not.be.undefined;
   });
 });

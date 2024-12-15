@@ -3,7 +3,7 @@ import { Connection } from '@salesforce/core';
 import { Record } from '@jsforce/jsforce-node';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
 import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
-import { PackageGarbage } from '../packageGarbage.js';
+import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class CustomObject implements EntityDefinitionHandler {
@@ -13,7 +13,7 @@ export class CustomObject implements EntityDefinitionHandler {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
 
-  public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbage[]> {
+  public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
     const labelDefinitions = await this.queryRunner.fetchRecords<CustomObjectDefinition>(
       `SELECT Id,DeveloperName FROM CustomObject WHERE ${buildSubjectIdFilter(packageMembers)}`
@@ -21,11 +21,11 @@ export class CustomObject implements EntityDefinitionHandler {
     labelDefinitions.forEach((def) => {
       garbageList.push({
         developerName: def.DeveloperName,
+        fullyQualifiedName: def.DeveloperName,
         subjectId: def.Id!,
-        metadataType: 'CustomObject',
       });
     });
-    return garbageList;
+    return { components: garbageList, metadataType: 'CustomObject' };
   }
 }
 

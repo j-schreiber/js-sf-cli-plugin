@@ -1,9 +1,25 @@
 export type PackageGarbage = {
+  subjectId: string;
   developerName: string;
-  metadataType: string;
+  fullyQualifiedName: string;
+};
+
+export type UnknownPackageGarbage = {
   subjectId: string;
 };
 
 export type PackageGarbageContainer = {
-  [x: string]: PackageGarbage[];
+  components: PackageGarbage[] | UnknownPackageGarbage[];
+  metadataType: string;
+};
+
+export type PackageGarbageResult = {
+  deprecatedMembers: { [x: string]: PackageGarbageContainer };
+  unsupportedTypes: { [x: string]: PackageGarbageContainer };
+  unknownTypes: UnknownEntityPrefix[];
+};
+
+type UnknownEntityPrefix = {
+  keyPrefix: string;
+  entityName: string;
 };
