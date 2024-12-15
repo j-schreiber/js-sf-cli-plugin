@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
-import { Record } from '@jsforce/jsforce-node';
-import { Package2Member } from '../../types/sfToolingApiTypes.js';
+import { NamedRecord, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
@@ -15,7 +14,7 @@ export class ExternalString implements EntityDefinitionHandler {
 
   public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
-    const labelDefinitions = await this.queryRunner.fetchRecords<LabelDefinition>(
+    const labelDefinitions = await this.queryRunner.fetchRecords<NamedRecord>(
       `SELECT Id,Name FROM ExternalString WHERE ${buildSubjectIdFilter(packageMembers)}`
     );
     labelDefinitions.forEach((def) => {
@@ -28,7 +27,3 @@ export class ExternalString implements EntityDefinitionHandler {
     return { components: garbageList, metadataType: 'CustomLabel' };
   }
 }
-
-type LabelDefinition = Record & {
-  Name: string;
-};

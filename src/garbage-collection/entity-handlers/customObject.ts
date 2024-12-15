@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
-import { Record } from '@jsforce/jsforce-node';
-import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
+import { EntityDefinition, Package2Member } from '../../types/sfToolingApiTypes.js';
+import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
+import { ALL_CUSTOM_OBJECTS } from '../queries/queries.js';
 
 export class CustomObject implements EntityDefinitionHandler {
   private queryRunner: QueryRunner;
@@ -15,20 +15,21 @@ export class CustomObject implements EntityDefinitionHandler {
 
   public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
-    const labelDefinitions = await this.queryRunner.fetchRecords<CustomObjectDefinition>(
-      `SELECT Id,DeveloperName FROM CustomObject WHERE ${buildSubjectIdFilter(packageMembers)}`
-    );
-    labelDefinitions.forEach((def) => {
-      garbageList.push({
-        developerName: def.DeveloperName,
-        fullyQualifiedName: def.DeveloperName,
-        subjectId: def.Id!,
-      });
+    const objectsByDurableId = new Map<string, EntityDefinition>();
+    const entityDefinitions = await this.queryRunner.fetchRecords<EntityDefinition>(ALL_CUSTOM_OBJECTS);
+    entityDefinitions.forEach((entityDef) => {
+      objectsByDurableId.set(entityDef.DurableId, entityDef);
+    });
+    packageMembers.forEach((pm) => {
+      const definition = objectsByDurableId.get(pm.SubjectId.substring(0, 15));
+      if (definition) {
+        garbageList.push({
+          developerName: definition.DeveloperName,
+          fullyQualifiedName: definition.QualifiedApiName,
+          subjectId: pm.SubjectId,
+        });
+      }
     });
     return { components: garbageList, metadataType: 'CustomObject' };
   }
 }
-
-type CustomObjectDefinition = Record & {
-  DeveloperName: string;
-};

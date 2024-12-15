@@ -22,4 +22,5 @@ export type PackageGarbageResult = {
 type UnknownEntityPrefix = {
   keyPrefix: string;
   entityName: string;
+  memberCount: number;
 };

@@ -1,3 +1,5 @@
+import { Record } from '@jsforce/jsforce-node';
+
 export type Package2Version = {
   SubscriberPackageVersionId: string;
   SubscriberPackageVersion: SubscriberPackageVersion;
@@ -24,7 +26,7 @@ export type InstalledSubscriberPackage = {
   SubscriberPackageVersion: SubscriberPackageVersion;
 };
 
-export type Package2Member = {
+export type Package2Member = Record & {
   Id: string;
   CurrentPackageVersionId: string;
   MaxPackageVersionId: string;
@@ -33,7 +35,7 @@ export type Package2Member = {
   SubjectManageableState: 'deprecated' | 'deprecatedEditable';
 };
 
-export type EntityDefinition = {
+export type EntityDefinition = Record & {
   Id: string;
   DurableId: string;
   QualifiedApiName: string;
@@ -41,4 +43,12 @@ export type EntityDefinition = {
   MasterLabel: string;
   KeyPrefix: string;
   IsRetrievable: string;
+};
+
+export type NamedRecord = Record & {
+  Name: string;
+};
+
+export type DeveloperNamedRecord = Record & {
+  DeveloperName: string;
 };

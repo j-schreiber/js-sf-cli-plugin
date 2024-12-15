@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
-import { Record } from '@jsforce/jsforce-node';
-import { Package2Member } from '../../types/sfToolingApiTypes.js';
+import { DeveloperNamedRecord, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
@@ -19,7 +18,7 @@ export class DeveloperNameEntity implements EntityDefinitionHandler {
 
   public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
-    const entityDefs = await this.queryRunner.fetchRecords<EntityDef>(
+    const entityDefs = await this.queryRunner.fetchRecords<DeveloperNamedRecord>(
       `SELECT Id,DeveloperName FROM ${this.entityName} WHERE ${buildSubjectIdFilter(packageMembers)}`
     );
     entityDefs.forEach((def) => {
@@ -32,7 +31,3 @@ export class DeveloperNameEntity implements EntityDefinitionHandler {
     return { components: garbageList, metadataType: this.metadataTypeName ?? this.entityName };
   }
 }
-
-type EntityDef = Record & {
-  DeveloperName: string;
-};
