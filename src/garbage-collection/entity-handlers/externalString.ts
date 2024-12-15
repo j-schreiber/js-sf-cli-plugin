@@ -24,6 +24,6 @@ export class ExternalString implements EntityDefinitionHandler {
         subjectId: def.Id!,
       });
     });
-    return { components: garbageList, metadataType: 'CustomLabel' };
+    return { metadataType: 'CustomLabel', componentCount: garbageList.length, components: garbageList };
   }
 }

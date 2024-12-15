@@ -30,6 +30,6 @@ export class CustomObject implements EntityDefinitionHandler {
         });
       }
     });
-    return { components: garbageList, metadataType: 'CustomObject' };
+    return { metadataType: 'CustomObject', componentCount: garbageList.length, components: garbageList };
   }
 }

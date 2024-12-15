@@ -28,6 +28,10 @@ export class DeveloperNameEntity implements EntityDefinitionHandler {
         subjectId: def.Id!,
       });
     });
-    return { components: garbageList, metadataType: this.metadataTypeName ?? this.entityName };
+    return {
+      metadataType: this.metadataTypeName ?? this.entityName,
+      componentCount: garbageList.length,
+      components: garbageList,
+    };
   }
 }

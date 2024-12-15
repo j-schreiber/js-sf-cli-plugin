@@ -9,8 +9,9 @@ export type UnknownPackageGarbage = {
 };
 
 export type PackageGarbageContainer = {
-  components: PackageGarbage[] | UnknownPackageGarbage[];
   metadataType: string;
+  componentCount: number;
+  components: PackageGarbage[] | UnknownPackageGarbage[];
 };
 
 export type PackageGarbageResult = {

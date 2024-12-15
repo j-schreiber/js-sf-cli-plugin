@@ -13,6 +13,6 @@ export class UnsupportedEntity implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       garbageList.push({ subjectId: member.SubjectId });
     });
-    return { components: garbageList, metadataType: this.metadataType };
+    return { metadataType: this.metadataType, componentCount: garbageList.length, components: garbageList };
   }
 }
