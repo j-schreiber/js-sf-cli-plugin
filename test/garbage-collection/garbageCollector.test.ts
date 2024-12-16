@@ -9,38 +9,45 @@ import {
   ENTITY_DEFINITION_QUERY,
   PACKAGE_MEMBER_QUERY,
 } from '../../src/garbage-collection/queries/queries.js';
-import { EntityDefinition, FieldDefinition, NamedRecord, Package2Member } from '../../src/types/sfToolingApiTypes.js';
+import {
+  EntityDefinition,
+  FieldDefinition,
+  FlowVersionDefinition,
+  NamedRecord,
+  Package2Member,
+} from '../../src/types/sfToolingApiTypes.js';
 import { PackageGarbage } from '../../src/garbage-collection/packageGarbage.js';
 
 const testDataPath = 'test/garbage-collection/data';
-
-let PACKAGE_2_MEMBERS = JSON.parse(
-  fs.readFileSync(`${testDataPath}/package-members/mixed.json`, 'utf8')
-) as QueryResult<Package2Member>;
-const ENTITY_DEFINITIONS = JSON.parse(
-  fs.readFileSync(testDataPath + '/entity-definitions.json', 'utf8')
-) as QueryResult<EntityDefinition>;
-const CUSTOM_LABELS = JSON.parse(
-  fs.readFileSync(testDataPath + '/custom-labels.json', 'utf8')
-) as QueryResult<NamedRecord>;
-const CUSTOM_OBJECT_ENTITY_DEFS = JSON.parse(
-  fs.readFileSync(testDataPath + '/custom-object-entity-defs.json', 'utf8')
-) as QueryResult<NamedRecord>;
-const ALL_CUSTOM_FIELDS = JSON.parse(
-  fs.readFileSync(testDataPath + '/all-custom-fields.json', 'utf8')
-) as QueryResult<FieldDefinition>;
-const ALL_QUICK_ACTIONS = JSON.parse(
-  fs.readFileSync(testDataPath + '/all-quick-actions.json', 'utf8')
-) as QueryResult<FieldDefinition>;
-const ALL_LAYOUTS = JSON.parse(fs.readFileSync(testDataPath + '/layouts.json', 'utf8')) as QueryResult<FieldDefinition>;
 
 describe('garbage collector', () => {
   const $$ = new TestContext();
   const testOrg = new MockTestOrgData();
 
+  let PACKAGE_2_MEMBERS: QueryResult<Package2Member>;
+  let OBSOLETE_FLOW_VERSIONS: QueryResult<FlowVersionDefinition>;
+  let ENTITY_DEFINITIONS: QueryResult<EntityDefinition>;
+  let CUSTOM_LABELS: QueryResult<NamedRecord>;
+  let CUSTOM_OBJECT_ENTITY_DEFS: QueryResult<NamedRecord>;
+  let ALL_CUSTOM_FIELDS: QueryResult<FieldDefinition>;
+  let ALL_QUICK_ACTIONS: QueryResult<FieldDefinition>;
+  let ALL_LAYOUTS: QueryResult<FieldDefinition>;
+
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed.json');
+    OBSOLETE_FLOW_VERSIONS = parseMockResult<FlowVersionDefinition>('outdated-flow-versions.json');
+    ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('entity-definitions.json');
+    CUSTOM_LABELS = parseMockResult<NamedRecord>('custom-labels.json');
+    CUSTOM_OBJECT_ENTITY_DEFS = parseMockResult<NamedRecord>('custom-object-entity-defs.json');
+    ALL_CUSTOM_FIELDS = parseMockResult<FieldDefinition>('all-custom-fields.json');
+    ALL_QUICK_ACTIONS = parseMockResult<FieldDefinition>('all-quick-actions.json');
+    ALL_LAYOUTS = parseMockResult<FieldDefinition>('layouts.json');
   });
+
+  function parseMockResult<T extends Record>(filePath: string) {
+    return JSON.parse(fs.readFileSync(`${testDataPath}/${filePath}`, 'utf8')) as QueryResult<T>;
+  }
 
   it('has all queries initialised', async () => {
     expect(PACKAGE_MEMBER_QUERY).to.contain('FROM Package2Member');
@@ -50,6 +57,7 @@ describe('garbage collector', () => {
 
   it('fetches package members and organizes results', async () => {
     // Arrange
+    OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
     const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
     stubMethod.callsFake(fakeFetchRecords);
 
@@ -76,6 +84,7 @@ describe('garbage collector', () => {
     expect(customObjsComponents[0].fullyQualifiedName).to.equal('Payment__c');
     expect(customObjsComponents[1].developerName).to.equal('CompanyData');
     expect(customObjsComponents[1].fullyQualifiedName).to.equal('CompanyData__mdt');
+    expect(garbage.deprecatedMembers['Flow']).to.be.undefined;
   });
 
   it('package members have custom field > resolves custom field components', async () => {
@@ -147,6 +156,32 @@ describe('garbage collector', () => {
     expect(fieldsList[2].fullyQualifiedName).to.equal('OrganizationProfile__c-Organization Profile Layout');
   });
 
+  it('org has obsolete flow versions > includes each version', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = { records: [], totalSize: 0, done: true };
+    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    stubMethod.callsFake(fakeFetchRecords);
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const flowVersions = garbage.deprecatedMembers['Flow'];
+    expect(flowVersions).to.not.be.undefined;
+    expect(flowVersions.metadataType).to.equal('Flow');
+    const flowsList = flowVersions.components as PackageGarbage[];
+    expect(flowsList.length).to.equal(8);
+    expect(flowsList[0].fullyQualifiedName).to.equal('My_First_Test_Flow-1');
+    expect(flowsList[1].fullyQualifiedName).to.equal('My_First_Test_Flow-2');
+    expect(flowsList[2].fullyQualifiedName).to.equal('My_First_Test_Flow-3');
+    expect(flowsList[3].fullyQualifiedName).to.equal('My_First_Test_Flow-4');
+    expect(flowsList[4].fullyQualifiedName).to.equal('My_First_Test_Flow-5');
+    expect(flowsList[5].fullyQualifiedName).to.equal('My_Second_Test_Flow-1');
+    expect(flowsList[6].fullyQualifiedName).to.equal('My_Second_Test_Flow-2');
+    expect(flowsList[7].fullyQualifiedName).to.equal('My_Second_Test_Flow-3');
+  });
+
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2Member')) {
       return Promise.resolve(PACKAGE_2_MEMBERS.records);
@@ -168,6 +203,9 @@ describe('garbage collector', () => {
     }
     if (queryString.includes('FROM Layout WHERE Id IN')) {
       return Promise.resolve(ALL_LAYOUTS.records);
+    }
+    if (queryString.includes("FROM Flow WHERE Status = 'Obsolete'")) {
+      return Promise.resolve(OBSOLETE_FLOW_VERSIONS.records);
     }
     return Promise.resolve(new Array<T>());
   }

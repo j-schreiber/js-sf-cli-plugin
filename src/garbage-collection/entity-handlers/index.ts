@@ -14,6 +14,11 @@ export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandler
   handlers.supported['ApexClass'] = new NameEntity(orgConnection.tooling, 'ApexClass');
   handlers.supported['BusinessProcess'] = new NameEntity(orgConnection.tooling, 'BusinessProcess');
   handlers.supported['AuraDefinitionBundle'] = new DeveloperNameEntity(orgConnection.tooling, 'AuraDefinitionBundle');
+  handlers.supported['FlowDefinition'] = new DeveloperNameEntity(orgConnection.tooling, 'FlowDefinition');
+  handlers.supported['LightningComponentBundle'] = new DeveloperNameEntity(
+    orgConnection.tooling,
+    'LightningComponentBundle'
+  );
   handlers.supported['FlexiPage'] = new DeveloperNameEntity(orgConnection.tooling, 'FlexiPage');
   handlers.supported['Layout'] = new Layout(orgConnection);
   handlers.supported['CustomObject'] = new CustomObject(orgConnection);

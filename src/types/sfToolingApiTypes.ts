@@ -68,3 +68,10 @@ export type QuickActionDefinitionType = DeveloperNamedRecord & {
   EntityDefinitionId: string;
   SobjectType: string;
 };
+
+export type FlowVersionDefinition = {
+  Id: string;
+  Status: string;
+  VersionNumber: number;
+  Definition: DeveloperNamedRecord;
+};

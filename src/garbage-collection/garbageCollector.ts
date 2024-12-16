@@ -2,11 +2,11 @@
 import EventEmitter from 'node:events';
 import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { Package2Member } from '../types/sfToolingApiTypes.js';
+import { FlowVersionDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
-import { PackageGarbageResult } from './packageGarbage.js';
+import { PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbage.js';
 import { loadHandlers } from './entity-handlers/index.js';
-import { PACKAGE_MEMBER_QUERY } from './queries/queries.js';
+import { OBSOLETE_FLOWS, PACKAGE_MEMBER_QUERY } from './queries/queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
 export default class GarbageCollector extends EventEmitter {
@@ -25,6 +25,10 @@ export default class GarbageCollector extends EventEmitter {
     const packageMembersContainer = await this.fetchPackageMembers();
     await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
     const garbageContainer = await this.resolvePackageMembers(packageMembersContainer);
+    const outdatedFlows = await this.fetchOutdatedFlowVersions();
+    if (outdatedFlows.componentCount > 0) {
+      garbageContainer.deprecatedMembers['Flow'] = outdatedFlows;
+    }
     return garbageContainer;
   }
 
@@ -73,6 +77,19 @@ export default class GarbageCollector extends EventEmitter {
       container[member.SubjectKeyPrefix].push(member);
     });
     return container;
+  }
+
+  private async fetchOutdatedFlowVersions(): Promise<PackageGarbageContainer> {
+    const garbageList: PackageGarbage[] = [];
+    const outdatedVersions = await this.toolingObjectsRunner.fetchRecords<FlowVersionDefinition>(OBSOLETE_FLOWS);
+    outdatedVersions.forEach((flowVersion) => {
+      garbageList.push({
+        developerName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
+        fullyQualifiedName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
+        subjectId: flowVersion.Id,
+      });
+    });
+    return { metadataType: 'Flow', componentCount: garbageList.length, components: garbageList };
   }
 }
 
