@@ -12,24 +12,27 @@ import {
 import { EntityDefinition, FieldDefinition, NamedRecord, Package2Member } from '../../src/types/sfToolingApiTypes.js';
 import { PackageGarbage } from '../../src/garbage-collection/packageGarbage.js';
 
+const testDataPath = 'test/garbage-collection/data';
+
 let PACKAGE_2_MEMBERS = JSON.parse(
-  fs.readFileSync('test/data/api/package-members.json', 'utf8')
+  fs.readFileSync(`${testDataPath}/package-members/mixed.json`, 'utf8')
 ) as QueryResult<Package2Member>;
 const ENTITY_DEFINITIONS = JSON.parse(
-  fs.readFileSync('test/data/api/entity-definitions.json', 'utf8')
+  fs.readFileSync(testDataPath + '/entity-definitions.json', 'utf8')
 ) as QueryResult<EntityDefinition>;
 const CUSTOM_LABELS = JSON.parse(
-  fs.readFileSync('test/data/api/custom-labels.json', 'utf8')
+  fs.readFileSync(testDataPath + '/custom-labels.json', 'utf8')
 ) as QueryResult<NamedRecord>;
 const CUSTOM_OBJECT_ENTITY_DEFS = JSON.parse(
-  fs.readFileSync('test/data/api/custom-object-entity-defs.json', 'utf8')
+  fs.readFileSync(testDataPath + '/custom-object-entity-defs.json', 'utf8')
 ) as QueryResult<NamedRecord>;
 const ALL_CUSTOM_FIELDS = JSON.parse(
-  fs.readFileSync('test/data/api/all-custom-fields.json', 'utf8')
+  fs.readFileSync(testDataPath + '/all-custom-fields.json', 'utf8')
 ) as QueryResult<FieldDefinition>;
 const ALL_QUICK_ACTIONS = JSON.parse(
-  fs.readFileSync('test/data/api/all-quick-actions.json', 'utf8')
+  fs.readFileSync(testDataPath + '/all-quick-actions.json', 'utf8')
 ) as QueryResult<FieldDefinition>;
+const ALL_LAYOUTS = JSON.parse(fs.readFileSync(testDataPath + '/layouts.json', 'utf8')) as QueryResult<FieldDefinition>;
 
 describe('garbage collector', () => {
   const $$ = new TestContext();
@@ -57,6 +60,7 @@ describe('garbage collector', () => {
     // Assert
     const labels = garbage.deprecatedMembers['ExternalString'];
     expect(labels).to.not.be.undefined;
+    expect(labels.metadataType).to.equal('CustomLabel');
     const labelComponents = labels.components as PackageGarbage[];
     expect(labelComponents.length).to.equal(2);
     expect(labelComponents[0].developerName).to.equal('Test_Label_1');
@@ -65,6 +69,7 @@ describe('garbage collector', () => {
     expect(labelComponents[1].fullyQualifiedName).to.equal('Test_Label_2');
     const customObjs = garbage.deprecatedMembers['CustomObject'];
     expect(customObjs).to.not.be.undefined;
+    expect(customObjs.metadataType).to.equal('CustomObject');
     const customObjsComponents = customObjs.components as PackageGarbage[];
     expect(customObjsComponents.length).to.equal(2);
     expect(customObjsComponents[0].developerName).to.equal('Payment');
@@ -76,7 +81,7 @@ describe('garbage collector', () => {
   it('package members have custom field > resolves custom field components', async () => {
     // Arrange
     PACKAGE_2_MEMBERS = JSON.parse(
-      fs.readFileSync('test/data/api/custom-fields-package-members.json', 'utf8')
+      fs.readFileSync(testDataPath + '/package-members/custom-fields.json', 'utf8')
     ) as QueryResult<Package2Member>;
     const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
     stubMethod.callsFake(fakeFetchRecords);
@@ -88,6 +93,7 @@ describe('garbage collector', () => {
     // Assert
     const customFields = garbage.deprecatedMembers['CustomField'];
     expect(customFields).to.not.be.undefined;
+    expect(customFields.metadataType).to.equal('CustomField');
     const fieldsList = customFields.components as PackageGarbage[];
     expect(fieldsList.length).to.equal(2);
     expect(fieldsList[0].developerName).to.equal('HoursPerDay');
@@ -99,7 +105,7 @@ describe('garbage collector', () => {
   it('package members have quick action > resolves quick action components', async () => {
     // Arrange
     PACKAGE_2_MEMBERS = JSON.parse(
-      fs.readFileSync('test/data/api/quick-action-package-members.json', 'utf8')
+      fs.readFileSync(testDataPath + '/package-members/quick-action.json', 'utf8')
     ) as QueryResult<Package2Member>;
     const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
     stubMethod.callsFake(fakeFetchRecords);
@@ -109,12 +115,36 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    const customFields = garbage.deprecatedMembers['QuickActionDefinition'];
-    expect(customFields).to.not.be.undefined;
-    const fieldsList = customFields.components as PackageGarbage[];
+    const quickActions = garbage.deprecatedMembers['QuickActionDefinition'];
+    expect(quickActions).to.not.be.undefined;
+    expect(quickActions.metadataType).to.equal('QuickAction');
+    const fieldsList = quickActions.components as PackageGarbage[];
     expect(fieldsList.length).to.equal(1);
     expect(fieldsList[0].developerName).to.equal('New_ChargePilot_Contract');
     expect(fieldsList[0].fullyQualifiedName).to.equal('Account.New_ChargePilot_Contract');
+  });
+
+  it('package members have layouts > resolves layout components', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = JSON.parse(
+      fs.readFileSync(testDataPath + '/package-members/layouts.json', 'utf8')
+    ) as QueryResult<Package2Member>;
+    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    stubMethod.callsFake(fakeFetchRecords);
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const quickActions = garbage.deprecatedMembers['Layout'];
+    expect(quickActions).to.not.be.undefined;
+    expect(quickActions.metadataType).to.equal('Layout');
+    const fieldsList = quickActions.components as PackageGarbage[];
+    expect(fieldsList.length).to.equal(3);
+    expect(fieldsList[0].fullyQualifiedName).to.equal('ServiceContract-Service Contract Layout');
+    expect(fieldsList[1].fullyQualifiedName).to.equal('Pricebook2-Price Book Layout');
+    expect(fieldsList[2].fullyQualifiedName).to.equal('OrganizationProfile__c-Organization Profile Layout');
   });
 
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
@@ -135,6 +165,9 @@ describe('garbage collector', () => {
     }
     if (queryString.includes('FROM QuickActionDefinition WHERE Id IN')) {
       return Promise.resolve(ALL_QUICK_ACTIONS.records);
+    }
+    if (queryString.includes('FROM Layout WHERE Id IN')) {
+      return Promise.resolve(ALL_LAYOUTS.records);
     }
     return Promise.resolve(new Array<T>());
   }

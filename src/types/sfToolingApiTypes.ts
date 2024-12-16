@@ -46,6 +46,7 @@ export type EntityDefinition = Record & {
 };
 
 export type NamedRecord = Record & {
+  Id: string;
   Name: string;
 };
 
@@ -55,6 +56,10 @@ export type DeveloperNamedRecord = Record & {
 
 export type FieldDefinition = DeveloperNamedRecord & {
   Id: string;
+  TableEnumOrId: string;
+};
+
+export type NamedSObjectChildType = NamedRecord & {
   TableEnumOrId: string;
 };
 

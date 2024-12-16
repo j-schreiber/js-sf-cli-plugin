@@ -1,0 +1,33 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Layout",
+        "url": "/services/data/v62.0/tooling/sobjects/Layout/00h0X00000XRV9HQAX"
+      },
+      "Id": "00h0X00000XRV9HQAX",
+      "Name": "Service Contract Layout",
+      "TableEnumOrId": "ServiceContract"
+    },
+    {
+      "attributes": {
+        "type": "Layout",
+        "url": "/services/data/v62.0/tooling/sobjects/Layout/00h0X00000Y4ruHQAR"
+      },
+      "Id": "00h0X00000Y4ruHQAR",
+      "Name": "Organization Profile Layout",
+      "TableEnumOrId": "01I4P000000wXoVUAU"
+    },
+    {
+      "attributes": {
+        "type": "Layout",
+        "url": "/services/data/v62.0/tooling/sobjects/Layout/00h0X00000Y4ruhQAB"
+      },
+      "Id": "00h0X00000Y4ruhQAB",
+      "Name": "Price Book Layout",
+      "TableEnumOrId": "Pricebook2"
+    }
+  ],
+  "totalSize": 3,
+  "done": true
+}
