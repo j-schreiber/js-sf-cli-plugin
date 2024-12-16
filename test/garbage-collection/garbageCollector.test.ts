@@ -27,6 +27,9 @@ const CUSTOM_OBJECT_ENTITY_DEFS = JSON.parse(
 const ALL_CUSTOM_FIELDS = JSON.parse(
   fs.readFileSync('test/data/api/all-custom-fields.json', 'utf8')
 ) as QueryResult<FieldDefinition>;
+const ALL_QUICK_ACTIONS = JSON.parse(
+  fs.readFileSync('test/data/api/all-quick-actions.json', 'utf8')
+) as QueryResult<FieldDefinition>;
 
 describe('garbage collector', () => {
   const $$ = new TestContext();
@@ -93,6 +96,27 @@ describe('garbage collector', () => {
     expect(fieldsList[1].fullyQualifiedName).to.equal('Resource__c.HourlyRate__c');
   });
 
+  it('package members have quick action > resolves quick action components', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = JSON.parse(
+      fs.readFileSync('test/data/api/quick-action-package-members.json', 'utf8')
+    ) as QueryResult<Package2Member>;
+    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    stubMethod.callsFake(fakeFetchRecords);
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const customFields = garbage.deprecatedMembers['QuickActionDefinition'];
+    expect(customFields).to.not.be.undefined;
+    const fieldsList = customFields.components as PackageGarbage[];
+    expect(fieldsList.length).to.equal(1);
+    expect(fieldsList[0].developerName).to.equal('New_ChargePilot_Contract');
+    expect(fieldsList[0].fullyQualifiedName).to.equal('Account.New_ChargePilot_Contract');
+  });
+
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2Member')) {
       return Promise.resolve(PACKAGE_2_MEMBERS.records);
@@ -108,6 +132,9 @@ describe('garbage collector', () => {
     }
     if (queryString.includes('FROM CustomField WHERE Id IN')) {
       return Promise.resolve(ALL_CUSTOM_FIELDS.records);
+    }
+    if (queryString.includes('FROM QuickActionDefinition WHERE Id IN')) {
+      return Promise.resolve(ALL_QUICK_ACTIONS.records);
     }
     return Promise.resolve(new Array<T>());
   }

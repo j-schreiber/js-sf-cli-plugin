@@ -5,6 +5,7 @@ import { CustomObject } from './customObject.js';
 import { DeveloperNameEntity } from './developerNameEntity.js';
 import { UnsupportedEntity } from './unsupportedEntity.js';
 import { CustomField } from './customField.js';
+import { QuickActionDefinition } from './quickActionDefinition.js';
 
 export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandlers => {
   const handlers: EntityDefinitionHandlers = { supported: {}, unsupported: {} };
@@ -12,12 +13,7 @@ export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandler
   handlers.supported['FlexiPage'] = new DeveloperNameEntity(orgConnection.tooling, 'FlexiPage');
   handlers.supported['CustomObject'] = new CustomObject(orgConnection);
   handlers.supported['CustomField'] = new CustomField(orgConnection);
-  // not correctly implemented yet, does not resolve object
-  // handlers.supported['QuickActionDefinition'] = new DeveloperNameEntity(
-  //   orgConnection.tooling,
-  //   'QuickActionDefinition',
-  //   'QuickAction'
-  // );
+  handlers.supported['QuickActionDefinition'] = new QuickActionDefinition(orgConnection);
   handlers.unsupported['ListView'] = new UnsupportedEntity('ListView');
   handlers.unsupported['CustomTab'] = new UnsupportedEntity('CustomTab');
   return handlers;

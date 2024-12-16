@@ -1,0 +1,16 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "QuickActionDefinition",
+        "url": "/services/data/v62.0/tooling/sobjects/QuickActionDefinition/09D0X000002XMPUUA4"
+      },
+      "Id": "09D0X000002XMPUUA4",
+      "DeveloperName": "New_ChargePilot_Contract",
+      "EntityDefinitionId": "Account",
+      "SobjectType": "Account"
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}

@@ -57,3 +57,9 @@ export type FieldDefinition = DeveloperNamedRecord & {
   Id: string;
   TableEnumOrId: string;
 };
+
+export type QuickActionDefinitionType = DeveloperNamedRecord & {
+  Id: string;
+  EntityDefinitionId: string;
+  SobjectType: string;
+};
