@@ -52,3 +52,8 @@ export type NamedRecord = Record & {
 export type DeveloperNamedRecord = Record & {
   DeveloperName: string;
 };
+
+export type FieldDefinition = DeveloperNamedRecord & {
+  Id: string;
+  TableEnumOrId: string;
+};

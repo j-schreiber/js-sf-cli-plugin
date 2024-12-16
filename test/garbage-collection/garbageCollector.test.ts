@@ -9,10 +9,10 @@ import {
   ENTITY_DEFINITION_QUERY,
   PACKAGE_MEMBER_QUERY,
 } from '../../src/garbage-collection/queries/queries.js';
-import { EntityDefinition, NamedRecord, Package2Member } from '../../src/types/sfToolingApiTypes.js';
+import { EntityDefinition, FieldDefinition, NamedRecord, Package2Member } from '../../src/types/sfToolingApiTypes.js';
 import { PackageGarbage } from '../../src/garbage-collection/packageGarbage.js';
 
-const PACKAGE_2_MEMBERS = JSON.parse(
+let PACKAGE_2_MEMBERS = JSON.parse(
   fs.readFileSync('test/data/api/package-members.json', 'utf8')
 ) as QueryResult<Package2Member>;
 const ENTITY_DEFINITIONS = JSON.parse(
@@ -24,6 +24,9 @@ const CUSTOM_LABELS = JSON.parse(
 const CUSTOM_OBJECT_ENTITY_DEFS = JSON.parse(
   fs.readFileSync('test/data/api/custom-object-entity-defs.json', 'utf8')
 ) as QueryResult<NamedRecord>;
+const ALL_CUSTOM_FIELDS = JSON.parse(
+  fs.readFileSync('test/data/api/all-custom-fields.json', 'utf8')
+) as QueryResult<FieldDefinition>;
 
 describe('garbage collector', () => {
   const $$ = new TestContext();
@@ -67,6 +70,29 @@ describe('garbage collector', () => {
     expect(customObjsComponents[1].fullyQualifiedName).to.equal('CompanyData__mdt');
   });
 
+  it('package members have custom field > resolves custom field components', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = JSON.parse(
+      fs.readFileSync('test/data/api/custom-fields-package-members.json', 'utf8')
+    ) as QueryResult<Package2Member>;
+    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    stubMethod.callsFake(fakeFetchRecords);
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const customFields = garbage.deprecatedMembers['CustomField'];
+    expect(customFields).to.not.be.undefined;
+    const fieldsList = customFields.components as PackageGarbage[];
+    expect(fieldsList.length).to.equal(2);
+    expect(fieldsList[0].developerName).to.equal('HoursPerDay');
+    expect(fieldsList[0].fullyQualifiedName).to.equal('Resource__c.HoursPerDay__c');
+    expect(fieldsList[1].developerName).to.equal('HourlyRate');
+    expect(fieldsList[1].fullyQualifiedName).to.equal('Resource__c.HourlyRate__c');
+  });
+
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2Member')) {
       return Promise.resolve(PACKAGE_2_MEMBERS.records);
@@ -79,6 +105,9 @@ describe('garbage collector', () => {
     }
     if (queryString.includes("FROM EntityDefinition WHERE KeyPrefix LIKE 'a%'")) {
       return Promise.resolve(CUSTOM_OBJECT_ENTITY_DEFS.records);
+    }
+    if (queryString.includes('FROM CustomField WHERE Id IN')) {
+      return Promise.resolve(ALL_CUSTOM_FIELDS.records);
     }
     return Promise.resolve(new Array<T>());
   }

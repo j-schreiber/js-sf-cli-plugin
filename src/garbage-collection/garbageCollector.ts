@@ -2,27 +2,28 @@
 import EventEmitter from 'node:events';
 import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
-import QueryBuilder from '../common/utils/queryBuilder.js';
+import { Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import { PackageGarbageResult } from './packageGarbage.js';
 import { loadHandlers } from './entity-handlers/index.js';
-import { ENTITY_DEFINITION_QUERY, PACKAGE_MEMBER_QUERY } from './queries/queries.js';
+import { PACKAGE_MEMBER_QUERY } from './queries/queries.js';
+import ToolingApiConnection from './toolingApiConnection.js';
 
 export default class GarbageCollector extends EventEmitter {
   private toolingObjectsRunner: QueryRunner;
-  // private sobjectsRunner: QueryRunner;
+  private toolingApiCache: ToolingApiConnection;
 
   public constructor(private targetOrgConnection: Connection) {
     super();
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
-    // this.sobjectsRunner = new QueryRunner(this.targetOrgConnection);
+    this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
   }
 
   //      PUBLIC API
 
   public async export(): Promise<PackageGarbageResult> {
     const packageMembersContainer = await this.fetchPackageMembers();
+    await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
     const garbageContainer = await this.resolvePackageMembers(packageMembersContainer);
     return garbageContainer;
   }
@@ -30,12 +31,14 @@ export default class GarbageCollector extends EventEmitter {
   //      PRIVATE ZONE
 
   private async resolvePackageMembers(container: PackageMembersContainer): Promise<PackageGarbageResult> {
-    const entitiesMap = await this.fetchEntityDefinitions(Object.keys(container));
-    // load definition handlers
     const handlers = loadHandlers(this.targetOrgConnection);
     const garbageContainer: PackageGarbageResult = { deprecatedMembers: {}, unsupportedTypes: {}, unknownTypes: [] };
     for (const keyPrefix of Object.keys(container)) {
-      const entityName = entitiesMap[keyPrefix].QualifiedApiName;
+      const entity = await this.toolingApiCache.getEntityDefinitionByKey(keyPrefix);
+      if (entity === undefined) {
+        continue;
+      }
+      const entityName = entity.QualifiedApiName;
       const packageMembers = container[keyPrefix];
       if (handlers.supported[entityName]) {
         this.emit('resolveMemberStatus', {
@@ -71,21 +74,8 @@ export default class GarbageCollector extends EventEmitter {
     });
     return container;
   }
-
-  private async fetchEntityDefinitions(keyPrefixes: string[]): Promise<EntitiesMap> {
-    const entityDefinitions = await this.toolingObjectsRunner.fetchRecords<EntityDefinition>(
-      `${ENTITY_DEFINITION_QUERY} WHERE ${QueryBuilder.buildParamListFilter('KeyPrefix', keyPrefixes)}`
-    );
-    const entitiesMap: EntitiesMap = {};
-    entityDefinitions.forEach((entityDef) => (entitiesMap[entityDef.KeyPrefix] = entityDef));
-    return entitiesMap;
-  }
 }
 
 type PackageMembersContainer = {
   [x: string]: Package2Member[];
-};
-
-type EntitiesMap = {
-  [x: string]: EntityDefinition;
 };

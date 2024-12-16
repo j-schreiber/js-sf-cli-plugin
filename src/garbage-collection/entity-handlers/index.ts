@@ -10,8 +10,8 @@ export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandler
   const handlers: EntityDefinitionHandlers = { supported: {}, unsupported: {} };
   handlers.supported['ExternalString'] = new ExternalString(orgConnection.tooling);
   handlers.supported['FlexiPage'] = new DeveloperNameEntity(orgConnection.tooling, 'FlexiPage');
-  handlers.supported['CustomObject'] = new CustomObject(orgConnection.tooling);
-  handlers.supported['CustomField'] = new CustomField(orgConnection.tooling);
+  handlers.supported['CustomObject'] = new CustomObject(orgConnection);
+  handlers.supported['CustomField'] = new CustomField(orgConnection);
   // not correctly implemented yet, does not resolve object
   // handlers.supported['QuickActionDefinition'] = new DeveloperNameEntity(
   //   orgConnection.tooling,

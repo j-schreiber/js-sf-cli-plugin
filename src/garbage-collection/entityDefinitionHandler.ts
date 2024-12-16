@@ -8,9 +8,13 @@ export interface EntityDefinitionHandler {
 }
 
 export function buildSubjectIdFilter(packageMembers: Package2Member[]): string {
+  return QueryBuilder.buildParamListFilter('Id', extractSubjectIds(packageMembers));
+}
+
+export function extractSubjectIds(packageMembers: Package2Member[]): string[] {
   const subjectIds: string[] = [];
   packageMembers.forEach((member) => {
     subjectIds.push(member.SubjectId);
   });
-  return QueryBuilder.buildParamListFilter('Id', subjectIds);
+  return subjectIds;
 }
