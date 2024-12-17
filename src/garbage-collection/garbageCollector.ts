@@ -42,7 +42,11 @@ export default class GarbageCollector extends EventEmitter {
 
   private async resolvePackageMembers(container: PackageMembersContainer): Promise<PackageGarbageResult> {
     const handlers = loadHandlers(this.targetOrgConnection);
-    const garbageContainer: PackageGarbageResult = { deprecatedMembers: {}, unsupportedTypes: {}, unknownTypes: [] };
+    const garbageContainer: PackageGarbageResult = {
+      deprecatedMembers: {},
+      unsupportedTypes: {},
+      notImplementedTypes: [],
+    };
     for (const keyPrefix of Object.keys(container)) {
       const entity = await this.toolingApiCache.getEntityDefinitionByKey(keyPrefix);
       if (entity === undefined) {
@@ -67,7 +71,7 @@ export default class GarbageCollector extends EventEmitter {
           status: ProcessingStatus.InProgress,
           message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}), no handler registered.`,
         } as CommandStatusEvent);
-        garbageContainer.unknownTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
+        garbageContainer.notImplementedTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
       }
     }
     return garbageContainer;

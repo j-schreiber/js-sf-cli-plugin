@@ -17,7 +17,7 @@ export type PackageGarbageContainer = {
 export type PackageGarbageResult = {
   deprecatedMembers: { [x: string]: PackageGarbageContainer };
   unsupportedTypes: { [x: string]: PackageGarbageContainer };
-  unknownTypes: UnknownEntityPrefix[];
+  notImplementedTypes: UnknownEntityPrefix[];
 };
 
 type UnknownEntityPrefix = {

@@ -22,6 +22,14 @@ Target org to analyse.
 
 Target org to analyse. All deprecated package members from this org are analysed.
 
+# flags.output-dir.summary
+
+Optionally provide the path of the manifest to create.
+
+# flags.output-dir.description
+
+When provided, the command creates a manifest file (`package.xml`) at the target location.
+
 # examples
 
 - <%= config.bin %> <%= command.id %>
