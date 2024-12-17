@@ -19,6 +19,12 @@ export default class GarbageCollector extends EventEmitter {
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
   }
 
+  //      PUBLIC STATIC
+
+  public static newInstance(targetOrgConnection: Connection): GarbageCollector {
+    return new GarbageCollector(targetOrgConnection);
+  }
+
   //      PUBLIC API
 
   public async export(): Promise<PackageGarbageResult> {

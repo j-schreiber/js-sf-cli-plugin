@@ -26,7 +26,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     'target-org': Flags.requiredOrg({
       summary: messages.getMessage('flags.target-org.summary'),
       description: messages.getMessage('flags.target-org.description'),
-      char: 't',
+      char: 'o',
       required: true,
     }),
     'api-version': Flags.orgApiVersion(),
@@ -34,7 +34,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
 
   public async run(): Promise<PackageGarbageResult> {
     const { flags } = await this.parse(JscMaintainGarbageCollect);
-    const collector = new GarbageCollector(flags['target-org'].getConnection(flags['api-version']));
+    const collector = GarbageCollector.newInstance(flags['target-org'].getConnection(flags['api-version']));
     collector.on('resolveMemberStatus', (payload: CommandStatusEvent) => {
       this.info(payload.message!);
     });

@@ -1,11 +1,10 @@
 # summary
 
-Identify and export garbage from package installs.
+Collect garbage on your org and export to package.xml for more actions.
 
 # description
 
-Identifies left-overs from package upgrades that remain on the target org. They usually happen when installing package versions that remove components.
-This commands analyses deprecated components on the target org and exports them for retrieval or removal.
+Identifies left-overs from package upgrades. This includes deprecated components (custom fields, objects, layouts, etc that were removed from package content, but not deleted on target org after install), outdated flow versions, empty test suites, etc.
 
 # flags.package.summary
 
