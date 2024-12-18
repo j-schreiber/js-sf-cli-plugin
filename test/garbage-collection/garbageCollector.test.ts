@@ -10,6 +10,7 @@ import {
   PACKAGE_MEMBER_QUERY,
 } from '../../src/garbage-collection/queries/queries.js';
 import {
+  DeveloperNamedRecord,
   EntityDefinition,
   FieldDefinition,
   FlowVersionDefinition,
@@ -32,9 +33,13 @@ describe('garbage collector', () => {
   let ALL_CUSTOM_FIELDS: QueryResult<FieldDefinition>;
   let ALL_QUICK_ACTIONS: QueryResult<FieldDefinition>;
   let ALL_LAYOUTS: QueryResult<FieldDefinition>;
+  let M00_CMDS: QueryResult<DeveloperNamedRecord>;
+  let M01_CMDS: QueryResult<DeveloperNamedRecord>;
 
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
+    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    stubMethod.callsFake(fakeFetchRecords);
     PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed.json');
     OBSOLETE_FLOW_VERSIONS = parseMockResult<FlowVersionDefinition>('outdated-flow-versions.json');
     ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('entity-definitions.json');
@@ -43,6 +48,8 @@ describe('garbage collector', () => {
     ALL_CUSTOM_FIELDS = parseMockResult<FieldDefinition>('all-custom-fields.json');
     ALL_QUICK_ACTIONS = parseMockResult<FieldDefinition>('all-quick-actions.json');
     ALL_LAYOUTS = parseMockResult<FieldDefinition>('layouts.json');
+    M00_CMDS = parseMockResult<FieldDefinition>('cmd-m00-records.json');
+    M01_CMDS = parseMockResult<FieldDefinition>('cmd-m01-records.json');
   });
 
   function parseMockResult<T extends Record>(filePath: string) {
@@ -58,8 +65,6 @@ describe('garbage collector', () => {
   it('fetches package members and organizes results', async () => {
     // Arrange
     OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
@@ -89,11 +94,7 @@ describe('garbage collector', () => {
 
   it('package members have custom field > resolves custom field components', async () => {
     // Arrange
-    PACKAGE_2_MEMBERS = JSON.parse(
-      fs.readFileSync(testDataPath + '/package-members/custom-fields.json', 'utf8')
-    ) as QueryResult<Package2Member>;
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/custom-fields.json');
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
@@ -113,11 +114,7 @@ describe('garbage collector', () => {
 
   it('package members have quick action > resolves quick action components', async () => {
     // Arrange
-    PACKAGE_2_MEMBERS = JSON.parse(
-      fs.readFileSync(testDataPath + '/package-members/quick-action.json', 'utf8')
-    ) as QueryResult<Package2Member>;
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/quick-action.json');
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
@@ -135,11 +132,7 @@ describe('garbage collector', () => {
 
   it('package members have layouts > resolves layout components', async () => {
     // Arrange
-    PACKAGE_2_MEMBERS = JSON.parse(
-      fs.readFileSync(testDataPath + '/package-members/layouts.json', 'utf8')
-    ) as QueryResult<Package2Member>;
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/layouts.json');
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
@@ -159,8 +152,6 @@ describe('garbage collector', () => {
   it('org has obsolete flow versions > includes each version', async () => {
     // Arrange
     PACKAGE_2_MEMBERS = { records: [], totalSize: 0, done: true };
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
@@ -180,6 +171,25 @@ describe('garbage collector', () => {
     expect(flowsList[5].fullyQualifiedName).to.equal('My_Second_Test_Flow-1');
     expect(flowsList[6].fullyQualifiedName).to.equal('My_Second_Test_Flow-2');
     expect(flowsList[7].fullyQualifiedName).to.equal('My_Second_Test_Flow-3');
+  });
+
+  it('has custom metadata types deprecated > includes custom metadata', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/cmd-records.json');
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const customMetadatas = garbage.deprecatedMembers['CustomMetadataRecord'];
+    expect(customMetadatas).to.not.be.undefined;
+    expect(customMetadatas.metadataType).to.equal('CustomMetadata');
+    const depComponents = customMetadatas.components as PackageGarbage[];
+    expect(depComponents.length).to.equal(3);
+    expect(depComponents[0].fullyQualifiedName).to.equal('CompanyData.NAME');
+    expect(depComponents[1].fullyQualifiedName).to.equal('CompanyData.PHONE');
+    expect(depComponents[2].fullyQualifiedName).to.equal('HandlerControl.Invoice');
   });
 
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
@@ -206,6 +216,12 @@ describe('garbage collector', () => {
     }
     if (queryString.includes("FROM Flow WHERE Status = 'Obsolete'")) {
       return Promise.resolve(OBSOLETE_FLOW_VERSIONS.records);
+    }
+    if (queryString.includes('FROM CompanyData__mdt')) {
+      return Promise.resolve(M00_CMDS.records);
+    }
+    if (queryString.includes('FROM HandlerControl__mdt')) {
+      return Promise.resolve(M01_CMDS.records);
     }
     return Promise.resolve(new Array<T>());
   }

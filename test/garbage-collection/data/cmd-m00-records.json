@@ -1,0 +1,62 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQsQAM"
+      },
+      "Id": "m004P0000009UQsQAM",
+      "DeveloperName": "CITY"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQtQAM"
+      },
+      "Id": "m004P0000009UQtQAM",
+      "DeveloperName": "COUNTRY"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQuQAM"
+      },
+      "Id": "m004P0000009UQuQAM",
+      "DeveloperName": "EMAIL"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQvQAM"
+      },
+      "Id": "m004P0000009UQvQAM",
+      "DeveloperName": "NAME"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQwQAM"
+      },
+      "Id": "m004P0000009UQwQAM",
+      "DeveloperName": "PHONE"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQxQAM"
+      },
+      "Id": "m004P0000009UQxQAM",
+      "DeveloperName": "POSTAL_CODE"
+    },
+    {
+      "attributes": {
+        "type": "CompanyData__mdt",
+        "url": "/services/data/v62.0/sobjects/CompanyData__mdt/m004P0000009UQyQAM"
+      },
+      "Id": "m004P0000009UQyQAM",
+      "DeveloperName": "STREET"
+    }
+  ],
+  "totalSize": 7,
+  "done": true
+}

@@ -57,7 +57,7 @@ export default class GarbageCollector extends EventEmitter {
       if (handlers.supported[entityName]) {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
-          message: `Resolving ${packageMembers.length} members for ${entityName} (${keyPrefix})`,
+          message: `Resolving ${packageMembers.length} ${entityName}s (${keyPrefix})`,
         } as CommandStatusEvent);
         garbageContainer.deprecatedMembers[entityName] = await handlers.supported[entityName].resolve(packageMembers);
       } else if (handlers.unsupported[entityName]) {
@@ -66,6 +66,21 @@ export default class GarbageCollector extends EventEmitter {
           message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}), metadata not supported by tooling API.`,
         } as CommandStatusEvent);
         garbageContainer.unsupportedTypes[entityName] = await handlers.unsupported[entityName].resolve(packageMembers);
+      } else if (keyPrefix.startsWith('m')) {
+        this.emit('resolveMemberStatus', {
+          status: ProcessingStatus.InProgress,
+          message: `Resolving ${packageMembers.length} ${entityName} (${keyPrefix}) as CustomMetadata records.`,
+        } as CommandStatusEvent);
+        if (garbageContainer.deprecatedMembers['CustomMetadataRecord'] === undefined) {
+          garbageContainer.deprecatedMembers['CustomMetadataRecord'] = {
+            metadataType: 'CustomMetadata',
+            componentCount: 0,
+            components: [],
+          };
+        }
+        const components = (await handlers.supported['CustomMetadataRecord'].resolve(packageMembers))
+          .components as PackageGarbage[];
+        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(...components);
       } else {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,

@@ -7,6 +7,7 @@ import { CustomField } from './customField.js';
 import { QuickActionDefinition } from './quickActionDefinition.js';
 import { NameEntity } from './nameEntity.js';
 import { Layout } from './layout.js';
+import { CustomMetadataRecord } from './customMetadataRecord.js';
 
 export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandlers => {
   const handlers: EntityDefinitionHandlers = { supported: {}, unsupported: {} };
@@ -20,6 +21,7 @@ export const loadHandlers = (orgConnection: Connection): EntityDefinitionHandler
     'LightningComponentBundle'
   );
   handlers.supported['FlexiPage'] = new DeveloperNameEntity(orgConnection.tooling, 'FlexiPage');
+  handlers.supported['CustomMetadataRecord'] = new CustomMetadataRecord(orgConnection);
   handlers.supported['Layout'] = new Layout(orgConnection);
   handlers.supported['CustomObject'] = new CustomObject(orgConnection);
   handlers.supported['CustomField'] = new CustomField(orgConnection);

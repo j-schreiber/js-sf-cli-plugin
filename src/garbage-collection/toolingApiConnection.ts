@@ -59,6 +59,13 @@ export default class ToolingApiConnection {
     return this.objectsByDurableId;
   }
 
+  public async fetchObjectDefinitionsByKeyPrefix(): Promise<Map<string, EntityDefinition>> {
+    if (!this.isInitialised) {
+      await this.loadObjects();
+    }
+    return this.objectsByKey;
+  }
+
   /**
    * Returns a entity definition by key prefix and caches the result.
    *
