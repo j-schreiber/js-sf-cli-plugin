@@ -15,12 +15,12 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
   public static readonly examples = messages.getMessages('examples');
 
   public static readonly flags = {
-    package: Flags.string({
-      summary: messages.getMessage('flags.package.summary'),
-      description: messages.getMessage('flags.package.description'),
-      char: 'p',
-      required: false,
-    }),
+    // package: Flags.string({
+    //   summary: messages.getMessage('flags.package.summary'),
+    //   description: messages.getMessage('flags.package.description'),
+    //   char: 'p',
+    //   required: false,
+    // }),
     'target-org': Flags.requiredOrg({
       summary: messages.getMessage('flags.target-org.summary'),
       description: messages.getMessage('flags.target-org.description'),
