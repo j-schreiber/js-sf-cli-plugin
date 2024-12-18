@@ -2,7 +2,7 @@ import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
 import { EntityDefinition, FieldDefinition, QuickActionDefinitionType } from '../types/sfToolingApiTypes.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
-import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries/queries.js';
+import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
 
 /**
  * Caches all custom objects from org and allows to retrieve & resolve by

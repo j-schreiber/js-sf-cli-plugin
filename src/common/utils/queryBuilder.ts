@@ -19,14 +19,17 @@ export default class QueryBuilder {
       throw new Error('Cannot load query. Invalid or empty filepath.');
     }
     if (fs.existsSync(filePath)) {
-      const queryString = fs.readFileSync(filePath, 'utf8');
-      const cleanesFromSpaces = queryString
-        .replace(/\s+/g, ' ')
-        .replace(/(?<=SELECT ).*(?= FROM)/gi, (_): string => _.replaceAll(' ', ''));
-      return cleanesFromSpaces.trim();
+      return QueryBuilder.sanitise(fs.readFileSync(filePath, 'utf8'));
     } else {
       throw new Error(`Cannot load query. ${filePath} does not exist.`);
     }
+  }
+
+  public static sanitise(rawQueryString: string): string {
+    const cleanesFromSpaces = rawQueryString
+      .replace(/\s+/g, ' ')
+      .replace(/(?<=SELECT ).*(?= FROM)/gi, (_): string => _.replaceAll(' ', ''));
+    return cleanesFromSpaces.trim();
   }
 
   public static makeValidatorQuery(rawQuery: string): string {

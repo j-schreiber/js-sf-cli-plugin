@@ -8,7 +8,7 @@ import {
   ALL_CUSTOM_OBJECTS,
   ENTITY_DEFINITION_QUERY,
   PACKAGE_MEMBER_QUERY,
-} from '../../src/garbage-collection/queries/queries.js';
+} from '../../src/garbage-collection/queries.js';
 import {
   DeveloperNamedRecord,
   EntityDefinition,

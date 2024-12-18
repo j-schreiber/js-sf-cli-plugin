@@ -6,7 +6,7 @@ import { FlowVersionDefinition, Package2Member } from '../types/sfToolingApiType
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import { PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbage.js';
 import { loadHandlers } from './entity-handlers/index.js';
-import { OBSOLETE_FLOWS, PACKAGE_MEMBER_QUERY } from './queries/queries.js';
+import { OBSOLETE_FLOWS, PACKAGE_MEMBER_QUERY } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
 export default class GarbageCollector extends EventEmitter {
