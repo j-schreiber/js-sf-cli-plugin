@@ -15,7 +15,9 @@ export default class PackageXmlBuilder {
       (input.deprecatedMembers[key].components as PackageGarbage[]).forEach((cmp) => {
         packageMembers.members.push(cmp.fullyQualifiedName);
       });
-      packageXml.Package.types.push(packageMembers);
+      if (packageMembers.members.length > 0) {
+        packageXml.Package.types.push(packageMembers);
+      }
     });
     packageXml.Package[XML_NS_KEY] = XML_NS_URL;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return

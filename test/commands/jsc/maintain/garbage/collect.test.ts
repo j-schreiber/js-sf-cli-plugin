@@ -44,6 +44,18 @@ const MOCK_GARBAGE_RESULT = {
   notImplementedTypes: [],
 };
 
+const MOCK_EMPTY_GARBAGE_RESULT = {
+  deprecatedMembers: {
+    BusinessProcess: {
+      metadataType: 'BusinessProcess',
+      componentCount: 0,
+      components: [],
+    },
+  },
+  unsupportedTypes: {},
+  notImplementedTypes: [],
+};
+
 const TEST_OUTPUT_PATH = 'tmp/tests/garbage-collection';
 
 describe('jsc maintain garbage collect', () => {
@@ -104,7 +116,7 @@ describe('jsc maintain garbage collect', () => {
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
 
-  it('runs command with package.xml flag > creates package xml from garbage collector', async () => {
+  it('runs command with packageXml flag > creates package xml from garbage collector', async () => {
     // Arrange
     const exportsStub = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
 
@@ -127,5 +139,23 @@ describe('jsc maintain garbage collect', () => {
     // because we have a single member, it is parsed as a key, not as a list
     expect(createdManifest.Package.types[1].members.length).to.equal(26);
     expect(createdManifest.Package.types[1].members).to.equal('TestObject__c.TestField__c');
+  });
+
+  it('runs command with packageXml flag > empty garbage is not present in package.xml', async () => {
+    // Arrange
+    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--output-dir', TEST_OUTPUT_PATH]);
+    const createdManifest = new XMLParser().parse(
+      fs.readFileSync(TEST_OUTPUT_PATH + '/package.xml'),
+      true
+    ) as PackageManifestObject;
+
+    // Assert
+    expect(createdManifest).to.be.ok;
+    // single type will be parsed to a key, not list
+    expect(createdManifest.Package.types).to.be.undefined;
+    expect(createdManifest.Package.version).to.equal(62);
   });
 });
