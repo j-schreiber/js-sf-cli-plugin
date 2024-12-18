@@ -1,0 +1,22 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "ExternalString",
+        "url": "/services/data/v62.0/tooling/sobjects/ExternalString/1014P00000B3laTQAR"
+      },
+      "Id": "1014P00000B3laTQAR",
+      "Name": "Test_Label_1"
+    },
+    {
+      "attributes": {
+        "type": "ExternalString",
+        "url": "/services/data/v62.0/tooling/sobjects/ExternalString/1014P00000B3v7KQAR"
+      },
+      "Id": "1014P00000B3v7KQAR",
+      "Name": "Test_Label_2"
+    }
+  ],
+  "totalSize": 2,
+  "done": true
+}

@@ -1,0 +1,42 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JJRQA2"
+      },
+      "Id": "03v4P0000004JJRQA2",
+      "CurrentPackageVersionId": "04t4P0000000002AAA",
+      "MaxPackageVersionId": "04t4P0000000002AAA",
+      "SubjectId": "m004P0000009UQvQAM",
+      "SubjectKeyPrefix": "m00",
+      "SubjectManageableState": "deprecatedEditable"
+    },
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JJSQA2"
+      },
+      "Id": "03v4P0000004JJSQA2",
+      "CurrentPackageVersionId": "04t4P0000000002AAA",
+      "MaxPackageVersionId": "04t4P0000000002AAA",
+      "SubjectId": "m004P0000009UQwQAM",
+      "SubjectKeyPrefix": "m00",
+      "SubjectManageableState": "deprecatedEditable"
+    },
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JJTQA2"
+      },
+      "Id": "03v4P0000004JJTQA2",
+      "CurrentPackageVersionId": "04t4P0000000002AAA",
+      "MaxPackageVersionId": "04t4P0000000002AAA",
+      "SubjectId": "m014P0000009mfAQAQ",
+      "SubjectKeyPrefix": "m01",
+      "SubjectManageableState": "deprecatedEditable"
+    }
+  ],
+  "totalSize": 3,
+  "done": true
+}

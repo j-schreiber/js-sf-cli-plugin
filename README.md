@@ -51,6 +51,7 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 <!-- commands -->
 
 - [`sf jsc data export`](#sf-jsc-data-export)
+- [`sf jsc maintain garbage collect`](#sf-jsc-maintain-garbage-collect)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 - [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
 
@@ -86,7 +87,48 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/data/export.ts)_
+
+## `sf jsc maintain garbage collect`
+
+Collect garbage on your org and export to json or package.xml for more actions.
+
+```
+USAGE
+  $ sf jsc maintain garbage collect -o <value> [--json] [--flags-dir <value>] [-d <value>] [--api-version <value>]
+
+FLAGS
+  -d, --output-dir=<value>   Optionally provide the path of the manifest to create.
+  -o, --target-org=<value>   (required) Target org to analyse.
+      --api-version=<value>  Override the api version used for api requests made by this command
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Collect garbage on your org and export to json or package.xml for more actions.
+
+  Identifies left-overs from package upgrades. This includes deprecated components (custom fields, objects, layouts, etc
+  that were removed from package content, but not deleted on target org after install), outdated flow versions, empty
+  test suites, etc.
+
+EXAMPLES
+  $ sf jsc maintain garbage collect -o Production --json
+
+  $ sf jsc maintain garbage collect -o Production -d my-package-dir
+
+FLAG DESCRIPTIONS
+  -d, --output-dir=<value>  Optionally provide the path of the manifest to create.
+
+    When provided, the command creates a manifest file (`package.xml`) at the target location.
+
+  -o, --target-org=<value>  Target org to analyse.
+
+    Target org to analyse. All deprecated package members from this org are analysed.
+```
+
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -120,7 +162,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -152,6 +194,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.4.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

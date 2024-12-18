@@ -1,0 +1,46 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "HandlerControl__mdt",
+        "url": "/services/data/v62.0/sobjects/HandlerControl__mdt/m014P0000009mf9QAA"
+      },
+      "Id": "m014P0000009mf9QAA",
+      "DeveloperName": "Budget"
+    },
+    {
+      "attributes": {
+        "type": "HandlerControl__mdt",
+        "url": "/services/data/v62.0/sobjects/HandlerControl__mdt/m014P0000009mfAQAQ"
+      },
+      "Id": "m014P0000009mfAQAQ",
+      "DeveloperName": "Invoice"
+    },
+    {
+      "attributes": {
+        "type": "HandlerControl__mdt",
+        "url": "/services/data/v62.0/sobjects/HandlerControl__mdt/m014P0000009ms0QAA"
+      },
+      "Id": "m014P0000009ms0QAA",
+      "DeveloperName": "InvoiceLineItem"
+    },
+    {
+      "attributes": {
+        "type": "HandlerControl__mdt",
+        "url": "/services/data/v62.0/sobjects/HandlerControl__mdt/m014P0000009mw2QAA"
+      },
+      "Id": "m014P0000009mw2QAA",
+      "DeveloperName": "InvoicePdfGeneration"
+    },
+    {
+      "attributes": {
+        "type": "HandlerControl__mdt",
+        "url": "/services/data/v62.0/sobjects/HandlerControl__mdt/m014P0000009mfBQAQ"
+      },
+      "Id": "m014P0000009mfBQAQ",
+      "DeveloperName": "TimeEntry"
+    }
+  ],
+  "totalSize": 5,
+  "done": true
+}

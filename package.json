@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
-  "description": "Salesforce plugin to make mundane maintance and migration tasks easier",
-  "version": "0.4.1",
+  "description": "Salesforce plugin to orchestrate multi-org deployments, ease org maintenance and migrate data.",
+  "version": "0.5.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -13,6 +13,7 @@
     "@salesforce/core": "^8.5.7",
     "@salesforce/kit": "^3.2.3",
     "@salesforce/sf-plugins-core": "^12.0.8",
+    "fast-xml-parser": "^4.5.1",
     "js-yaml": "^4.1.0",
     "zod": "^3.23.8"
   },
@@ -58,10 +59,18 @@
         "description": "All commands in the JSC namespace",
         "subtopics": {
           "data": {
-            "description": "Commands to import, export and migrate data"
+            "description": "Import, export and migrate data"
           },
           "manifest": {
-            "description": "Commands to generate, validate and rollout org manifests"
+            "description": "Generate, validate and rollout org manifests"
+          },
+          "maintain": {
+            "description": "Maintain a target org",
+            "subtopics": {
+              "garbage": {
+                "description": "Identify and clean up garbage from deployment processes"
+              }
+            }
           }
         }
       }
