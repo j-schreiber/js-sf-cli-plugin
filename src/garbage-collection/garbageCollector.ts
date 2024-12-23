@@ -101,9 +101,10 @@ export default class GarbageCollector extends EventEmitter {
         garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount =
           garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.length;
       } else {
+        const reason = messages.getMessage('infos.not-yet-implemented');
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
-          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}), no handler registered.`,
+          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${reason}`,
         } as CommandStatusEvent);
         garbageContainer.notImplementedTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
       }
