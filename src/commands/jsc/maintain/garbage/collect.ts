@@ -33,6 +33,12 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       description: messages.getMessage('flags.output-dir.description'),
       char: 'd',
     }),
+    'metadata-type': Flags.string({
+      multiple: true,
+      char: 'm',
+      summary: messages.getMessage('flags.metadata-type.summary'),
+      description: messages.getMessage('flags.metadata-type.description'),
+    }),
     'api-version': Flags.orgApiVersion(),
   };
 
@@ -42,7 +48,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     collector.on('resolveMemberStatus', (payload: CommandStatusEvent) => {
       this.info(payload.message!);
     });
-    const deprecatedPackageMembers = await collector.export();
+    const deprecatedPackageMembers = await collector.export({ includeOnly: flags['metadata-type'] });
     await this.writePackageXml(deprecatedPackageMembers, flags['output-dir']);
     process.exitCode = 0;
     return deprecatedPackageMembers;

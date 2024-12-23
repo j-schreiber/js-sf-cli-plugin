@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { expect } from 'chai';
 import { QueryResult, Record } from '@jsforce/jsforce-node';
+import { Messages } from '@salesforce/core';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import GarbageCollector from '../../src/garbage-collection/garbageCollector.js';
 import QueryRunner from '../../src/common/utils/queryRunner.js';
@@ -17,9 +18,15 @@ import {
   NamedRecord,
   Package2Member,
 } from '../../src/types/sfToolingApiTypes.js';
-import { PackageGarbage } from '../../src/garbage-collection/packageGarbage.js';
+import {
+  loadSupportedMetadataTypes,
+  loadUnsupportedMetadataTypes,
+} from '../../src/garbage-collection/entity-handlers/index.js';
 
 const testDataPath = 'test/garbage-collection/data';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 describe('garbage collector', () => {
   const $$ = new TestContext();
@@ -56,6 +63,20 @@ describe('garbage collector', () => {
     return JSON.parse(fs.readFileSync(`${testDataPath}/${filePath}`, 'utf8')) as QueryResult<T>;
   }
 
+  it('registry loads all supported and unsupported handlers', async () => {
+    // Act
+    const supportedTypes = loadSupportedMetadataTypes(await testOrg.getConnection());
+    const unsupportedTypes = loadUnsupportedMetadataTypes();
+
+    // Assert
+    expect(supportedTypes['ExternalString']).to.not.be.undefined;
+    expect(supportedTypes['CustomObject']).to.not.be.undefined;
+    expect(supportedTypes['CustomField']).to.not.be.undefined;
+    expect(supportedTypes['CustomMetadataRecord']).to.not.be.undefined;
+    expect(unsupportedTypes['CustomTab']).to.not.be.undefined;
+    expect(unsupportedTypes['ListView']).to.not.be.undefined;
+  });
+
   it('has all queries initialised', async () => {
     expect(PACKAGE_MEMBER_QUERY).to.contain('FROM Package2Member');
     expect(ENTITY_DEFINITION_QUERY).to.contain('FROM EntityDefinition');
@@ -74,7 +95,7 @@ describe('garbage collector', () => {
     const labels = garbage.deprecatedMembers['ExternalString'];
     expect(labels).to.not.be.undefined;
     expect(labels.metadataType).to.equal('CustomLabel');
-    const labelComponents = labels.components as PackageGarbage[];
+    const labelComponents = labels.components;
     expect(labelComponents.length).to.equal(2);
     expect(labelComponents[0].developerName).to.equal('Test_Label_1');
     expect(labelComponents[0].fullyQualifiedName).to.equal('Test_Label_1');
@@ -83,13 +104,43 @@ describe('garbage collector', () => {
     const customObjs = garbage.deprecatedMembers['CustomObject'];
     expect(customObjs).to.not.be.undefined;
     expect(customObjs.metadataType).to.equal('CustomObject');
-    const customObjsComponents = customObjs.components as PackageGarbage[];
+    const customObjsComponents = customObjs.components;
     expect(customObjsComponents.length).to.equal(2);
     expect(customObjsComponents[0].developerName).to.equal('Payment');
     expect(customObjsComponents[0].fullyQualifiedName).to.equal('Payment__c');
     expect(customObjsComponents[1].developerName).to.equal('CompanyData');
     expect(customObjsComponents[1].fullyQualifiedName).to.equal('CompanyData__mdt');
     expect(garbage.deprecatedMembers['Flow']).to.be.undefined;
+  });
+
+  it('receives mixed package members and has no export filter > includes all types', async () => {
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export({ includeOnly: undefined });
+
+    // Assert
+    expect(Object.keys(garbage.deprecatedMembers)).deep.equal([
+      'ExternalString',
+      'Layout',
+      'CustomField',
+      'CustomObject',
+      'CustomMetadataRecord',
+      'Flow',
+    ]);
+    expect(Object.keys(garbage.ignoredTypes)).deep.equal(['ListView']);
+    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
+    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+  });
+
+  it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export({ includeOnly: ['ExternalString', 'ListView'] });
+
+    // Assert
+    expect(Object.keys(garbage.ignoredTypes)).contain('ListView');
+    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
+    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
   });
 
   it('package members have custom field > resolves custom field components', async () => {
@@ -104,7 +155,7 @@ describe('garbage collector', () => {
     const customFields = garbage.deprecatedMembers['CustomField'];
     expect(customFields).to.not.be.undefined;
     expect(customFields.metadataType).to.equal('CustomField');
-    const fieldsList = customFields.components as PackageGarbage[];
+    const fieldsList = customFields.components;
     expect(fieldsList.length).to.equal(2);
     expect(fieldsList[0].developerName).to.equal('HoursPerDay');
     expect(fieldsList[0].fullyQualifiedName).to.equal('Resource__c.HoursPerDay__c');
@@ -124,7 +175,7 @@ describe('garbage collector', () => {
     const quickActions = garbage.deprecatedMembers['QuickActionDefinition'];
     expect(quickActions).to.not.be.undefined;
     expect(quickActions.metadataType).to.equal('QuickAction');
-    const fieldsList = quickActions.components as PackageGarbage[];
+    const fieldsList = quickActions.components;
     expect(fieldsList.length).to.equal(1);
     expect(fieldsList[0].developerName).to.equal('New_ChargePilot_Contract');
     expect(fieldsList[0].fullyQualifiedName).to.equal('Account.New_ChargePilot_Contract');
@@ -142,7 +193,7 @@ describe('garbage collector', () => {
     const quickActions = garbage.deprecatedMembers['Layout'];
     expect(quickActions).to.not.be.undefined;
     expect(quickActions.metadataType).to.equal('Layout');
-    const fieldsList = quickActions.components as PackageGarbage[];
+    const fieldsList = quickActions.components;
     expect(fieldsList.length).to.equal(3);
     expect(fieldsList[0].fullyQualifiedName).to.equal('ServiceContract-Service Contract Layout');
     expect(fieldsList[1].fullyQualifiedName).to.equal('Pricebook2-Price Book Layout');
@@ -161,7 +212,7 @@ describe('garbage collector', () => {
     const flowVersions = garbage.deprecatedMembers['Flow'];
     expect(flowVersions).to.not.be.undefined;
     expect(flowVersions.metadataType).to.equal('Flow');
-    const flowsList = flowVersions.components as PackageGarbage[];
+    const flowsList = flowVersions.components;
     expect(flowsList.length).to.equal(8);
     expect(flowsList[0].fullyQualifiedName).to.equal('My_First_Test_Flow-1');
     expect(flowsList[1].fullyQualifiedName).to.equal('My_First_Test_Flow-2');
@@ -185,11 +236,48 @@ describe('garbage collector', () => {
     const customMetadatas = garbage.deprecatedMembers['CustomMetadataRecord'];
     expect(customMetadatas).to.not.be.undefined;
     expect(customMetadatas.metadataType).to.equal('CustomMetadata');
-    const depComponents = customMetadatas.components as PackageGarbage[];
+    const depComponents = customMetadatas.components;
     expect(depComponents.length).to.equal(3);
+    expect(customMetadatas.componentCount).to.equal(3);
     expect(depComponents[0].fullyQualifiedName).to.equal('CompanyData.NAME');
     expect(depComponents[1].fullyQualifiedName).to.equal('CompanyData.PHONE');
     expect(depComponents[2].fullyQualifiedName).to.equal('HandlerControl.Invoice');
+  });
+
+  it('filters metadata present in package members > only includes requested metadata', async () => {
+    // Arrange
+    const resolveListener = $$.SANDBOX.stub();
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    collector.addListener('resolveMemberStatus', resolveListener);
+    const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
+
+    // Assert
+    expect(resolveListener.callCount).to.equal(2);
+    expect(resolveListener.args.flat()[0]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
+    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
+    expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
+      'ExternalString',
+      'ListView',
+      'Layout',
+      'Folder',
+      'CompanyData__mdt',
+    ]);
+    const expectedReason = messages.getMessage('infos.excluded-from-result-not-in-filter');
+    expect(garbage.ignoredTypes['ExternalString'].reason).to.equal(expectedReason);
+    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.ignoredTypes['CompanyData__mdt'].reason).to.equal(expectedReason);
+  });
+
+  it('filters metadata types with case-sensitive input > all matches are case-insensitive ', async () => {
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'CuStOmFIELD'] });
+
+    // Assert
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'CustomField']);
   });
 
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {

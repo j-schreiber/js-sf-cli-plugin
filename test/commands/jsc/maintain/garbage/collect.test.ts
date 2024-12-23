@@ -9,8 +9,9 @@ import JscMaintainGarbageCollect from '../../../../../src/commands/jsc/maintain/
 import GarbageCollector from '../../../../../src/garbage-collection/garbageCollector.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../../../src/common/comms/processingEvents.js';
 import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
+import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbage.js';
 
-const MOCK_GARBAGE_RESULT = {
+const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {
     ExternalString: {
       metadataType: 'CustomLabel',
@@ -40,11 +41,11 @@ const MOCK_GARBAGE_RESULT = {
       ],
     },
   },
-  unsupportedTypes: {},
+  ignoredTypes: {},
   notImplementedTypes: [],
 };
 
-const MOCK_EMPTY_GARBAGE_RESULT = {
+const MOCK_EMPTY_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {
     BusinessProcess: {
       metadataType: 'BusinessProcess',
@@ -52,7 +53,7 @@ const MOCK_EMPTY_GARBAGE_RESULT = {
       components: [],
     },
   },
-  unsupportedTypes: {},
+  ignoredTypes: {},
   notImplementedTypes: [],
 };
 
@@ -83,7 +84,7 @@ describe('jsc maintain garbage collect', () => {
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers).to.deep.equal({});
-    expect(result.unsupportedTypes).to.deep.equal({});
+    expect(result.ignoredTypes).to.deep.equal({});
     expect(result.notImplementedTypes).to.deep.equal([]);
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
@@ -109,14 +110,14 @@ describe('jsc maintain garbage collect', () => {
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers.ExternalString).to.not.be.undefined;
-    expect(result.unsupportedTypes).to.deep.equal({});
+    expect(result.ignoredTypes).to.deep.equal({});
     expect(result.notImplementedTypes).to.deep.equal([]);
     // this should display the test event, but I am not able to emit on the
     // stubbed garbage collector instance
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
 
-  it('runs command with packageXml flag > creates package xml from garbage collector', async () => {
+  it('runs command with output-dir flag > creates package xml from garbage collector', async () => {
     // Arrange
     const exportsStub = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
 
@@ -141,9 +142,9 @@ describe('jsc maintain garbage collect', () => {
     expect(createdManifest.Package.types[1].members).to.equal('TestObject__c.TestField__c');
   });
 
-  it('runs command with packageXml flag > empty garbage is not present in package.xml', async () => {
+  it('runs command with output-dir flag > empty garbage is not present in package.xml', async () => {
     // Arrange
-    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+    const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
 
     // Act
     await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--output-dir', TEST_OUTPUT_PATH]);
@@ -157,5 +158,25 @@ describe('jsc maintain garbage collect', () => {
     // single type will be parsed to a key, not list
     expect(createdManifest.Package.types).to.be.undefined;
     expect(createdManifest.Package.version).to.equal(62);
+    expect(exportMock.args.flat()).to.deep.equal([{ includeOnly: undefined }]);
+  });
+
+  it('runs command with metadata type filter > passes params to garbage collector', async () => {
+    // Arrange
+    const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testTargetOrg.username,
+      '--metadata-type',
+      'ExternalString',
+      '-m',
+      'CustomObject',
+    ]);
+
+    // Assert
+    expect(exportMock.callCount).to.equal(1);
+    expect(exportMock.args.flat()).to.deep.equal([{ includeOnly: ['ExternalString', 'CustomObject'] }]);
   });
 });

@@ -1,13 +1,16 @@
 /* eslint-disable no-await-in-loop */
 import EventEmitter from 'node:events';
-import { Connection } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
 import { FlowVersionDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
-import { PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbage.js';
-import { loadHandlers } from './entity-handlers/index.js';
+import { GarbageFilter, PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbage.js';
+import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
 import { OBSOLETE_FLOWS, PACKAGE_MEMBER_QUERY } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 export default class GarbageCollector extends EventEmitter {
   private toolingObjectsRunner: QueryRunner;
@@ -27,24 +30,30 @@ export default class GarbageCollector extends EventEmitter {
 
   //      PUBLIC API
 
-  public async export(): Promise<PackageGarbageResult> {
+  public async export(filter?: GarbageFilter): Promise<PackageGarbageResult> {
     const packageMembersContainer = await this.fetchPackageMembers();
     await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
-    const garbageContainer = await this.resolvePackageMembers(packageMembersContainer);
-    const outdatedFlows = await this.fetchOutdatedFlowVersions();
-    if (outdatedFlows.componentCount > 0) {
-      garbageContainer.deprecatedMembers['Flow'] = outdatedFlows;
+    const garbageContainer = await this.resolvePackageMembers(packageMembersContainer, filter);
+    if (filter?.includeOnly?.includes('Flow') ?? filter?.includeOnly === undefined) {
+      const outdatedFlows = await this.fetchOutdatedFlowVersions();
+      if (outdatedFlows.componentCount > 0) {
+        garbageContainer.deprecatedMembers['Flow'] = outdatedFlows;
+      }
     }
     return garbageContainer;
   }
 
   //      PRIVATE ZONE
 
-  private async resolvePackageMembers(container: PackageMembersContainer): Promise<PackageGarbageResult> {
-    const handlers = loadHandlers(this.targetOrgConnection);
+  private async resolvePackageMembers(
+    container: PackageMembersContainer,
+    filter?: GarbageFilter
+  ): Promise<PackageGarbageResult> {
+    const supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
+    const unsupportedTypes = loadUnsupportedMetadataTypes();
     const garbageContainer: PackageGarbageResult = {
       deprecatedMembers: {},
-      unsupportedTypes: {},
+      ignoredTypes: {},
       notImplementedTypes: [],
     };
     for (const keyPrefix of Object.keys(container)) {
@@ -54,18 +63,26 @@ export default class GarbageCollector extends EventEmitter {
       }
       const entityName = entity.QualifiedApiName;
       const packageMembers = container[keyPrefix];
-      if (handlers.supported[entityName]) {
+      if (!isIncludedInFilter(entityName, filter)) {
+        const reason = messages.getMessage('infos.excluded-from-result-not-in-filter');
+        garbageContainer.ignoredTypes[entityName] = {
+          reason,
+          metadataType: entityName,
+          componentCount: packageMembers.length,
+        };
+      } else if (supportedTypes[entityName] && isIncludedInFilter(entityName, filter)) {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
           message: `Resolving ${packageMembers.length} ${entityName}s (${keyPrefix})`,
         } as CommandStatusEvent);
-        garbageContainer.deprecatedMembers[entityName] = await handlers.supported[entityName].resolve(packageMembers);
-      } else if (handlers.unsupported[entityName]) {
+        garbageContainer.deprecatedMembers[entityName] = await supportedTypes[entityName].resolve(packageMembers);
+      } else if (unsupportedTypes[entityName]) {
+        const unsupported = await unsupportedTypes[entityName].resolve(packageMembers);
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
-          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}), metadata not supported by tooling API.`,
+          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${unsupported.reason}`,
         } as CommandStatusEvent);
-        garbageContainer.unsupportedTypes[entityName] = await handlers.unsupported[entityName].resolve(packageMembers);
+        garbageContainer.ignoredTypes[entityName] = unsupported;
       } else if (keyPrefix.startsWith('m')) {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
@@ -78,9 +95,11 @@ export default class GarbageCollector extends EventEmitter {
             components: [],
           };
         }
-        const components = (await handlers.supported['CustomMetadataRecord'].resolve(packageMembers))
-          .components as PackageGarbage[];
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(...components);
+        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(
+          ...(await supportedTypes['CustomMetadataRecord'].resolve(packageMembers)).components
+        );
+        garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount =
+          garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.length;
       } else {
         this.emit('resolveMemberStatus', {
           status: ProcessingStatus.InProgress,
@@ -116,6 +135,11 @@ export default class GarbageCollector extends EventEmitter {
     });
     return { metadataType: 'Flow', componentCount: garbageList.length, components: garbageList };
   }
+}
+
+function isIncludedInFilter(entityName: string, filter?: GarbageFilter): boolean {
+  const lowerCaseInclude = filter?.includeOnly?.map((str) => str.toLowerCase());
+  return lowerCaseInclude?.includes(entityName.toLowerCase()) ?? filter?.includeOnly === undefined;
 }
 
 type PackageMembersContainer = {

@@ -11,13 +11,23 @@ export type UnknownPackageGarbage = {
 export type PackageGarbageContainer = {
   metadataType: string;
   componentCount: number;
-  components: PackageGarbage[] | UnknownPackageGarbage[];
+  components: PackageGarbage[];
+};
+
+export type IgnoredPackageGarbageContainer = {
+  reason: string;
+  metadataType: string;
+  componentCount: number;
 };
 
 export type PackageGarbageResult = {
   deprecatedMembers: { [x: string]: PackageGarbageContainer };
-  unsupportedTypes: { [x: string]: PackageGarbageContainer };
+  ignoredTypes: { [x: string]: IgnoredPackageGarbageContainer };
   notImplementedTypes: UnknownEntityPrefix[];
+};
+
+export type GarbageFilter = {
+  includeOnly: string[] | undefined;
 };
 
 type UnknownEntityPrefix = {
