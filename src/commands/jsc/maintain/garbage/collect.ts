@@ -10,6 +10,18 @@ import PackageXmlBuilder from '../../../../garbage-collection/packageXmlBuilder.
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
 
+enum OutputFormats {
+  PackageXML = 'PackageXML',
+  DestructiveChangesXML = 'DestructiveChangesXML',
+}
+
+export const outputFormatFlag = Flags.custom<OutputFormats>({
+  char: 'f',
+  summary: 'testing',
+  options: Object.values(OutputFormats),
+  dependsOn: ['output-dir'],
+});
+
 export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageResult> {
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
@@ -46,6 +58,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       char: 'p',
       multiple: true,
     }),
+    'output-format': outputFormatFlag(),
     'api-version': Flags.orgApiVersion(),
   };
 
@@ -61,18 +74,34 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       includeOnly: flags['metadata-type'],
       packages: await this.resolvePackageIds(orgConnection, flags.package),
     });
-    await this.writePackageXml(deprecatedPackageMembers, flags['output-dir']);
+    await this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
     process.exitCode = 0;
     return deprecatedPackageMembers;
   }
 
-  private async writePackageXml(collectedGarbage: PackageGarbageResult, outputPath?: string): Promise<void> {
+  private async writePackageXml(
+    collectedGarbage: PackageGarbageResult,
+    outputPath?: string,
+    outputFormat?: string
+  ): Promise<void> {
     if (outputPath === undefined) {
       return;
     }
-    this.info(`Writing package.xml to: ${outputPath}`);
-    const packageXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+    this.info(`Writing output to: ${outputPath}`);
     fs.mkdirSync(outputPath, { recursive: true });
+    let packageXml;
+    if (outputFormat === 'DestructiveChangesXML') {
+      packageXml = await PackageXmlBuilder.parseGarbageResultToXml({
+        deprecatedMembers: {},
+        ignoredTypes: {},
+        notImplementedTypes: [],
+      });
+      const destructiveChangesXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+      fs.writeFileSync(`${outputPath}/destructiveChanges.xml`, destructiveChangesXml);
+    } else {
+      fs.rmSync(`${outputPath}/destructiveChanges.xml`, { force: true });
+      packageXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+    }
     fs.writeFileSync(`${outputPath}/package.xml`, packageXml);
   }
 

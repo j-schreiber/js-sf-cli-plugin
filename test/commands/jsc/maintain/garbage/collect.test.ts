@@ -165,6 +165,35 @@ describe('jsc maintain garbage collect', () => {
     expect(exportMock.args.flat()).to.deep.equal([{ includeOnly: undefined, packages: undefined }]);
   });
 
+  it('with output-dir and destructive changes flag > pipes garbage to destructiveChanges.xml', async () => {
+    // Arrange
+    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testTargetOrg.username,
+      '--output-dir',
+      TEST_OUTPUT_PATH,
+      '--output-format',
+      'DestructiveChangesXML',
+    ]);
+
+    // Assert
+    expect(fs.existsSync(TEST_OUTPUT_PATH + '/package.xml')).to.equal(true, 'package.xml exists');
+    expect(fs.existsSync(TEST_OUTPUT_PATH + '/destructiveChanges.xml')).to.equal(true, 'destructiveChanges.xml exists');
+    const packageXml = new XMLParser().parse(
+      fs.readFileSync(TEST_OUTPUT_PATH + '/package.xml'),
+      true
+    ) as PackageManifestObject;
+    expect(packageXml.Package.types).to.equal(undefined, 'types in package.xml');
+    const destructiveChangesXml = new XMLParser().parse(
+      fs.readFileSync(TEST_OUTPUT_PATH + '/destructiveChanges.xml'),
+      true
+    ) as PackageManifestObject;
+    expect(destructiveChangesXml.Package.types.length).to.equal(2, 'types in destructiveChanges.xml');
+  });
+
   it('with metadata type filter > passes params to garbage collector', async () => {
     // Arrange
     const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
