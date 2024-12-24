@@ -36,8 +36,9 @@ export type InstalledSubscriberPackage = {
 export type Package2Member = Record & {
   Id: string;
   CurrentPackageVersionId: string;
-  MaxPackageVersionId: string;
-  MaxPackageVersion: ParentSubscriberPackageVersion;
+  CurrentPackageVersion?: ParentSubscriberPackageVersion;
+  MaxPackageVersionId?: string;
+  MaxPackageVersion?: ParentSubscriberPackageVersion;
   SubjectId: string;
   SubjectKeyPrefix: string;
   SubjectManageableState: 'deprecated' | 'deprecatedEditable';
@@ -81,5 +82,6 @@ export type FlowVersionDefinition = {
   Id: string;
   Status: string;
   VersionNumber: number;
+  DefinitionId: string;
   Definition: DeveloperNamedRecord;
 };

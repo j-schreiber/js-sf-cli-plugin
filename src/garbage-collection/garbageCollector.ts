@@ -2,12 +2,12 @@
 import EventEmitter from 'node:events';
 import { Connection, Messages, SfError } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { FlowVersionDefinition, Package2, Package2Member } from '../types/sfToolingApiTypes.js';
+import { Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
-import { GarbageFilter, PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbageTypes.js';
+import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
 import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
-import { OBSOLETE_FLOWS, PACKAGE_2, PACKAGE_MEMBER_QUERY } from './queries.js';
+import { PACKAGE_2, PACKAGE_MEMBER_BASE, PACKAGE_MEMBER_QUERY } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -40,12 +40,6 @@ export default class GarbageCollector extends EventEmitter {
     const packageMembersContainer = await this.fetchPackageMembers(filter);
     await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
     const garbageContainer = await this.resolvePackageMembers(packageMembersContainer, filter);
-    if (filter?.includeOnly?.includes('Flow') ?? filter?.includeOnly === undefined) {
-      const outdatedFlows = await this.fetchOutdatedFlowVersions();
-      if (outdatedFlows.componentCount > 0) {
-        garbageContainer.deprecatedMembers['Flow'] = outdatedFlows;
-      }
-    }
     return garbageContainer;
   }
 
@@ -135,35 +129,28 @@ export default class GarbageCollector extends EventEmitter {
       subscriberPgkIds = await this.fetchSubscriberPackageVersions(filter.packages);
     }
     const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(PACKAGE_MEMBER_QUERY);
+    packageMembers.push(...(await this.buildFlowPackageMembers()));
     const container: PackageMembersContainer = {};
     packageMembers.forEach((member) => {
       if (container[member.SubjectKeyPrefix] === undefined) {
         container[member.SubjectKeyPrefix] = new Array<Package2Member>();
       }
-      if (subscriberPgkIds === undefined || subscriberPgkIds?.includes(member.MaxPackageVersion?.SubscriberPackageId)) {
+      if (memberIsIncludedInPackageFilter(member, subscriberPgkIds)) {
         container[member.SubjectKeyPrefix].push(member);
       }
     });
     return container;
   }
 
-  private async fetchOutdatedFlowVersions(): Promise<PackageGarbageContainer> {
-    const garbageList: PackageGarbage[] = [];
-    const outdatedVersions = await this.toolingObjectsRunner.fetchRecords<FlowVersionDefinition>(OBSOLETE_FLOWS);
-    outdatedVersions.forEach((flowVersion) => {
-      garbageList.push({
-        developerName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
-        fullyQualifiedName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
-        subjectId: flowVersion.Id,
-      });
+  private async buildFlowPackageMembers(): Promise<Package2Member[]> {
+    const packagedFlowDefinitions = await this.toolingObjectsRunner.fetchRecords<Package2Member>(
+      QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} WHERE SubjectKeyPrefix = '300'`)
+    );
+    const packageMembers: Package2Member[] = [];
+    packagedFlowDefinitions.forEach((flowDefMember) => {
+      packageMembers.push(flowDefMember);
     });
-    if (garbageList.length > 0) {
-      this.emit('resolveMemberStatus', {
-        status: ProcessingStatus.InProgress,
-        message: `Resolving ${garbageList.length} FlowVersions (301)`,
-      } as CommandStatusEvent);
-    }
-    return { metadataType: 'Flow', componentCount: garbageList.length, components: garbageList };
+    return packageMembers;
   }
 
   private async fetchSubscriberPackageVersions(packageIds: string[]): Promise<string[]> {
@@ -189,6 +176,18 @@ export default class GarbageCollector extends EventEmitter {
 function isIncludedInFilter(entityName: string, filter?: GarbageFilter): boolean {
   const lowerCaseInclude = filter?.includeOnly?.map((str) => str.toLowerCase());
   return lowerCaseInclude?.includes(entityName.toLowerCase()) ?? filter?.includeOnly === undefined;
+}
+
+function memberIsIncludedInPackageFilter(member: Package2Member, subscriberPgkIds?: string[]): boolean {
+  if (!subscriberPgkIds || subscriberPgkIds.length === 0) {
+    return true;
+  }
+  const subscriberPgkId =
+    member.MaxPackageVersion?.SubscriberPackageId ?? member.CurrentPackageVersion?.SubscriberPackageId;
+  if (subscriberPgkId === undefined) {
+    return false;
+  }
+  return subscriberPgkIds.includes(subscriberPgkId);
 }
 
 type PackageMembersContainer = {

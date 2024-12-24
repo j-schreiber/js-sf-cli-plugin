@@ -38,6 +38,7 @@ describe('garbage collector', () => {
   let fetchRecordsStub: SinonStub;
   let PACKAGE_2: QueryResult<Package2>;
   let PACKAGE_2_MEMBERS: QueryResult<Package2Member>;
+  let PACKAGED_FLOWS: QueryResult<Package2Member>;
   let OBSOLETE_FLOW_VERSIONS: QueryResult<FlowVersionDefinition>;
   let ENTITY_DEFINITIONS: QueryResult<EntityDefinition>;
   let CUSTOM_LABELS: QueryResult<NamedRecord>;
@@ -56,6 +57,7 @@ describe('garbage collector', () => {
     fetchRecordsStub.callsFake(fakeFetchRecords);
     PACKAGE_2 = parseMockResult<Package2>('package-2.json');
     PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed.json');
+    PACKAGED_FLOWS = parseMockResult<Package2Member>('packaged-flows.json');
     OBSOLETE_FLOW_VERSIONS = parseMockResult<FlowVersionDefinition>('outdated-flow-versions.json');
     ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('entity-definitions.json');
     CUSTOM_LABELS = parseMockResult<NamedRecord>('custom-labels.json');
@@ -133,15 +135,16 @@ describe('garbage collector', () => {
     // Assert
     expect(Object.keys(garbage.deprecatedMembers)).deep.equal([
       'ExternalString',
+      'FlowDefinition',
       'Layout',
       'CustomField',
       'CustomObject',
       'CustomMetadataRecord',
-      'Flow',
     ]);
     expect(Object.keys(garbage.ignoredTypes)).deep.equal(['ListView']);
     const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
     expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.deprecatedMembers.FlowDefinition.componentCount).to.equal(8);
   });
 
   it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {
@@ -221,7 +224,7 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    const flowVersions = garbage.deprecatedMembers['Flow'];
+    const flowVersions = garbage.deprecatedMembers['FlowDefinition'];
     expect(flowVersions).to.not.be.undefined;
     expect(flowVersions.metadataType).to.equal('Flow');
     const flowsList = flowVersions.components;
@@ -272,6 +275,7 @@ describe('garbage collector', () => {
     expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
     expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
       'ExternalString',
+      'FlowDefinition',
       'ListView',
       'Layout',
       'Folder',
@@ -314,6 +318,7 @@ describe('garbage collector', () => {
   it('filters for packages > all package members belong to other packages', async () => {
     // Arrange
     // package members are to subscriber id 0330X0000000000AAA
+    // expect flows, where first flow is 0330X0000000000AAA, second flow is 033000000000001AAA
     PACKAGE_2.records[0].SubscriberPackageId = '033000000000001AAA';
 
     // Act
@@ -327,14 +332,18 @@ describe('garbage collector', () => {
     expect(result.deprecatedMembers.CustomField.components.length).to.equal(0);
     expect(result.deprecatedMembers.CustomObject.components.length).to.equal(0);
     expect(result.deprecatedMembers.Layout.components.length).to.equal(0);
+    expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(3);
   });
 
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2 WHERE Id IN')) {
       return Promise.resolve(PACKAGE_2.records);
     }
-    if (queryString.includes('FROM Package2Member')) {
+    if (queryString.includes('FROM Package2Member WHERE SubjectManageableState IN')) {
       return Promise.resolve(PACKAGE_2_MEMBERS.records);
+    }
+    if (queryString.includes("FROM Package2Member WHERE SubjectKeyPrefix = '300'")) {
+      return Promise.resolve(PACKAGED_FLOWS.records);
     }
     if (queryString.includes('FROM EntityDefinition WHERE KeyPrefix IN')) {
       return Promise.resolve(ENTITY_DEFINITIONS.records);

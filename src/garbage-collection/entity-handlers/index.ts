@@ -8,6 +8,7 @@ import { QuickActionDefinition } from './quickActionDefinition.js';
 import { NameEntity } from './nameEntity.js';
 import { Layout } from './layout.js';
 import { CustomMetadataRecord } from './customMetadataRecord.js';
+import { OutdatedFlowVersions } from './outdatedFlowVersions.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -19,7 +20,7 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     ApexClass: new NameEntity(orgConnection.tooling, 'ApexClass'),
     BusinessProcess: new NameEntity(orgConnection.tooling, 'BusinessProcess'),
     AuraDefinitionBundle: new DeveloperNameEntity(orgConnection.tooling, 'AuraDefinitionBundle'),
-    FlowDefinition: new DeveloperNameEntity(orgConnection.tooling, 'FlowDefinition'),
+    FlowDefinition: new OutdatedFlowVersions(orgConnection),
     LightningComponentBundle: new DeveloperNameEntity(orgConnection.tooling, 'LightningComponentBundle'),
     FlexiPage: new DeveloperNameEntity(orgConnection.tooling, 'FlexiPage'),
     CustomMetadataRecord: new CustomMetadataRecord(orgConnection),

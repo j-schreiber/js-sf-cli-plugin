@@ -3,6 +3,7 @@ import QueryBuilder from '../common/utils/queryBuilder.js';
 export const PACKAGE_MEMBER_BASE = `SELECT
   Id,
   CurrentPackageVersionId,
+  CurrentPackageVersion.SubscriberPackageId,
   MaxPackageVersionId,
   MaxPackageVersion.SubscriberPackageId,
   SubjectId,
@@ -32,6 +33,7 @@ export const OBSOLETE_FLOWS: string = QueryBuilder.sanitise(`SELECT
   Id,
   VersionNumber,
   Definition.DeveloperName,
+  DefinitionId,
   Status
 FROM
   Flow
