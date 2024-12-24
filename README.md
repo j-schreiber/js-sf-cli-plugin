@@ -87,7 +87,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -95,12 +95,18 @@ Collect garbage on your org and export to json or package.xml for more actions.
 
 ```
 USAGE
-  $ sf jsc maintain garbage collect -o <value> [--json] [--flags-dir <value>] [-d <value>] [--api-version <value>]
+  $ sf jsc maintain garbage collect -o <value> [--json] [--flags-dir <value>] [-v <value>] [-m <value>...] [-p <value>...] [-f
+    PackageXML|DestructiveChangesXML -d <value>] [--api-version <value>]
 
 FLAGS
-  -d, --output-dir=<value>   Optionally provide the path of the manifest to create.
-  -o, --target-org=<value>   (required) Target org to analyse.
-      --api-version=<value>  Override the api version used for api requests made by this command
+  -d, --output-dir=<value>        Provide the path of the manifest to create.
+  -f, --output-format=<option>    Specify the type of manifest to create.
+                                  <options: PackageXML|DestructiveChangesXML>
+  -m, --metadata-type=<value>...  Only include specific metadata types in the result.
+  -o, --target-org=<value>        (required) Target org to analyse.
+  -p, --package=<value>...        Only include metadata from specific packages.
+  -v, --devhub-org=<value>        Used to resolve package ids when garbage must be filtered by package (--package).
+      --api-version=<value>       Override the api version used for api requests made by this command
 
 GLOBAL FLAGS
   --flags-dir=<value>  Import flag values from a directory.
@@ -111,24 +117,52 @@ DESCRIPTION
 
   Identifies left-overs from package upgrades. This includes deprecated components (custom fields, objects, layouts, etc
   that were removed from package content, but not deleted on target org after install), outdated flow versions, empty
-  test suites, etc.
+  test suites, etc. The structured JSON output gives you insight into the metadata types still on the org and how they
+  can be processed. You can optionally generate a package.xml or destructiveChanges.xml for further processing.
 
 EXAMPLES
   $ sf jsc maintain garbage collect -o Production --json
 
   $ sf jsc maintain garbage collect -o Production -d my-package-dir
 
-FLAG DESCRIPTIONS
-  -d, --output-dir=<value>  Optionally provide the path of the manifest to create.
+  $ sf jsc maintain garbage collect -o Production -m ExternalString -m CustomObject
 
-    When provided, the command creates a manifest file (`package.xml`) at the target location.
+  $ sf jsc maintain garbage collect -o Production -m ExternalString -p SalesCRM -d tmp/test-run
+
+FLAG DESCRIPTIONS
+  -d, --output-dir=<value>  Provide the path of the manifest to create.
+
+    When provided, the command creates a manifest file (package.xml) at the target location.
+
+  -f, --output-format=PackageXML|DestructiveChangesXML  Specify the type of manifest to create.
+
+    The default option prepares a package.xml with all deprecated components. If you specify DestructiveChangesXML, the
+    command creates an empty package.xml and writes all components into destructiveChanges. This flag only has an
+    effect, if the output directory is set. No source is retrieved or deployed.
+
+  -m, --metadata-type=<value>...  Only include specific metadata types in the result.
+
+    Only provided metadata types are processed and added to "deprecated components" result. All other will be ignored.
+    You can specify this flag multiple times. Use the developer name of the entity definition (e.g. ExternalString
+    instead of CustomLabel). Values are case insensitive.
 
   -o, --target-org=<value>  Target org to analyse.
 
-    Target org to analyse. All deprecated package members from this org are analysed.
+    The org that is queried for deprecated package members and outdated flow versions.
+
+  -p, --package=<value>...  Only include metadata from specific packages.
+
+    You can specify the package id (0Ho) or a local package alias from your sfdx-project.json to narrow down package
+    members only from a specific package. You can specify this flag multiple times.
+
+  -v, --devhub-org=<value>  Used to resolve package ids when garbage must be filtered by package (--package).
+
+    Package filters are set with the "0Ho"-Id of the Package2 container. The DevHub is needed to resolve these ids to
+    the canonical "033" Ids. If your target org is a devhub, it will automatically be used. This parameter is only
+    needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -162,7 +196,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -194,6 +228,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.5.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

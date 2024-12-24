@@ -17,7 +17,8 @@ enum OutputFormats {
 
 export const outputFormatFlag = Flags.custom<OutputFormats>({
   char: 'f',
-  summary: 'testing',
+  summary: messages.getMessage('flags.output-format.summary'),
+  description: messages.getMessage('flags.output-format.description'),
   options: Object.values(OutputFormats),
   dependsOn: ['output-dir'],
 });
