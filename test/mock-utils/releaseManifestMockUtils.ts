@@ -42,6 +42,7 @@ export const MockPackageVersionQueryResult = {
         IsPasswordProtected: false,
       },
       Package2: {
+        Id: '0Ho000000000000AAA',
         SubscriberPackageId: '033000000000000AAA',
       },
     },

@@ -4,6 +4,7 @@ export const PACKAGE_MEMBER_BASE = `SELECT
   Id,
   CurrentPackageVersionId,
   MaxPackageVersionId,
+  MaxPackageVersion.SubscriberPackageId,
   SubjectId,
   SubjectKeyPrefix,
   SubjectManageableState

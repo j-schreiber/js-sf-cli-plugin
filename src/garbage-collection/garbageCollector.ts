@@ -157,15 +157,31 @@ export default class GarbageCollector extends EventEmitter {
         subjectId: flowVersion.Id,
       });
     });
+    if (garbageList.length > 0) {
+      this.emit('resolveMemberStatus', {
+        status: ProcessingStatus.InProgress,
+        message: `Resolving ${garbageList.length} FlowVersions (301)`,
+      } as CommandStatusEvent);
+    }
     return { metadataType: 'Flow', componentCount: garbageList.length, components: garbageList };
   }
 
   private async fetchSubscriberPackageVersions(packageIds: string[]): Promise<string[]> {
+    this.emit('resolveMemberStatus', {
+      status: ProcessingStatus.InProgress,
+      message: `Packages filter active. Only include members from these packages: ${packageIds.join(',')}`,
+    } as CommandStatusEvent);
     const package2s = await this.devhubQueryRunner!.fetchRecords<Package2>(
       `${PACKAGE_2} WHERE ${QueryBuilder.buildParamListFilter('Id', packageIds)}`
     );
     const subscriberPackageIds: string[] = [];
-    package2s.forEach((p2) => subscriberPackageIds.push(p2.SubscriberPackageId));
+    package2s.forEach((p2) => {
+      this.emit('resolveMemberStatus', {
+        status: ProcessingStatus.InProgress,
+        message: `Resolved ${p2.Id} (Package2) to ${p2.SubscriberPackageId} (SubscriberPackage)`,
+      } as CommandStatusEvent);
+      subscriberPackageIds.push(p2.SubscriberPackageId);
+    });
     return subscriberPackageIds;
   }
 }

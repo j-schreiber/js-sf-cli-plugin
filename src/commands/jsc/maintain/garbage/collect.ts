@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
-import { Connection, Messages, Org, SfError } from '@salesforce/core';
+import { Connection, Messages, Org, SfError, SfProject } from '@salesforce/core';
 import { Package } from '@salesforce/packaging';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
@@ -59,7 +59,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     });
     const deprecatedPackageMembers = await collector.export({
       includeOnly: flags['metadata-type'],
-      packages: resolvePackageIds(orgConnection, flags.package),
+      packages: await this.resolvePackageIds(orgConnection, flags.package),
     });
     await this.writePackageXml(deprecatedPackageMembers, flags['output-dir']);
     process.exitCode = 0;
@@ -75,6 +75,33 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     fs.mkdirSync(outputPath, { recursive: true });
     fs.writeFileSync(`${outputPath}/package.xml`, packageXml);
   }
+
+  private async resolvePackageIds(connection: Connection, idsOrAliase?: string[]): Promise<string[] | undefined> {
+    if (idsOrAliase === undefined) {
+      return undefined;
+    }
+    const ids: string[] = [];
+    const project = await this.resolveProject();
+    idsOrAliase.forEach((idOrAlias) => {
+      const pgk = new Package({ packageAliasOrId: idOrAlias, connection, project });
+      ids.push(pgk.getId());
+    });
+    return ids;
+  }
+
+  private async resolveProject(): Promise<SfProject | undefined> {
+    try {
+      return await SfProject.resolve();
+    } catch (err) {
+      if (err instanceof SfError) {
+        this.info(`Could not initialise project with the following error: ${err.name}`);
+      } else {
+        this.info('Unknown error when trying to initialise project. Skipping.');
+      }
+      this.info("Package aliases are not supported. Use the '0Ho' Id instead.");
+    }
+    return undefined;
+  }
 }
 
 function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Connection | undefined {
@@ -85,16 +112,4 @@ function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Co
     return targetOrg.getConnection(apiVersion);
   }
   return devhubOrg?.getConnection(apiVersion);
-}
-
-function resolvePackageIds(connection: Connection, packageIdsOrAliase?: string[]): string[] | undefined {
-  if (packageIdsOrAliase === undefined) {
-    return undefined;
-  }
-  const ids: string[] = [];
-  packageIdsOrAliase.forEach((idOrAlias) => {
-    const pgk = new Package({ packageAliasOrId: idOrAlias, connection });
-    ids.push(pgk.getId());
-  });
-  return ids;
 }
