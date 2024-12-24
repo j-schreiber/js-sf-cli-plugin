@@ -2,7 +2,7 @@
 import { Connection } from '@salesforce/core';
 import { NamedSObjectChildType, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
-import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
+import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 import QueryBuilder from '../../common/utils/queryBuilder.js';

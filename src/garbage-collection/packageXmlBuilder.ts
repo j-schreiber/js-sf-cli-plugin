@@ -1,5 +1,5 @@
 import { XMLBuilder } from 'fast-xml-parser';
-import { PackageGarbageResult } from './packageGarbage.js';
+import { PackageGarbageResult } from './packageGarbageTypes.js';
 import { PackageManifestObject, XML_NS_KEY, XML_NS_URL } from './packageManifestTypes.js';
 
 export default class PackageXmlBuilder {

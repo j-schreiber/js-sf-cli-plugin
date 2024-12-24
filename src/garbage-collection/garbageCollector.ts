@@ -1,12 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import EventEmitter from 'node:events';
-import { Connection, Messages } from '@salesforce/core';
+import { Connection, Messages, SfError } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { FlowVersionDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
+import { FlowVersionDefinition, Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
-import { GarbageFilter, PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbage.js';
+import QueryBuilder from '../common/utils/queryBuilder.js';
+import { GarbageFilter, PackageGarbage, PackageGarbageContainer, PackageGarbageResult } from './packageGarbageTypes.js';
 import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
-import { OBSOLETE_FLOWS, PACKAGE_MEMBER_QUERY } from './queries.js';
+import { OBSOLETE_FLOWS, PACKAGE_2, PACKAGE_MEMBER_QUERY } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -15,23 +16,28 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollect
 export default class GarbageCollector extends EventEmitter {
   private toolingObjectsRunner: QueryRunner;
   private toolingApiCache: ToolingApiConnection;
+  private devhubQueryRunner?: QueryRunner;
 
-  public constructor(private targetOrgConnection: Connection) {
+  public constructor(private targetOrgConnection: Connection, private devhubConnection?: Connection) {
     super();
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
+    if (this.devhubConnection) {
+      this.devhubQueryRunner = new QueryRunner(this.devhubConnection.tooling);
+    }
   }
 
   //      PUBLIC STATIC
 
-  public static newInstance(targetOrgConnection: Connection): GarbageCollector {
-    return new GarbageCollector(targetOrgConnection);
+  public static newInstance(targetOrgConnection: Connection, devhubConnection?: Connection): GarbageCollector {
+    return new GarbageCollector(targetOrgConnection, devhubConnection);
   }
 
   //      PUBLIC API
 
   public async export(filter?: GarbageFilter): Promise<PackageGarbageResult> {
-    const packageMembersContainer = await this.fetchPackageMembers();
+    this.parseInputs(filter);
+    const packageMembersContainer = await this.fetchPackageMembers(filter);
     await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
     const garbageContainer = await this.resolvePackageMembers(packageMembersContainer, filter);
     if (filter?.includeOnly?.includes('Flow') ?? filter?.includeOnly === undefined) {
@@ -44,6 +50,17 @@ export default class GarbageCollector extends EventEmitter {
   }
 
   //      PRIVATE ZONE
+
+  private parseInputs(filter?: GarbageFilter): void {
+    if (filter?.packages && filter.packages.length > 0 && !this.devhubConnection) {
+      throw new SfError(
+        'Packages filter specified, but no Devhub was provided.',
+        'DevhubRequiredForPackages',
+        ['Provide a valid DevHub, when you specify a packages filter.'],
+        2
+      );
+    }
+  }
 
   private async resolvePackageMembers(
     container: PackageMembersContainer,
@@ -112,14 +129,20 @@ export default class GarbageCollector extends EventEmitter {
     return garbageContainer;
   }
 
-  private async fetchPackageMembers(): Promise<PackageMembersContainer> {
+  private async fetchPackageMembers(filter?: GarbageFilter): Promise<PackageMembersContainer> {
+    let subscriberPgkIds: string[];
+    if (filter?.packages && filter.packages.length > 0) {
+      subscriberPgkIds = await this.fetchSubscriberPackageVersions(filter.packages);
+    }
     const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(PACKAGE_MEMBER_QUERY);
     const container: PackageMembersContainer = {};
     packageMembers.forEach((member) => {
       if (container[member.SubjectKeyPrefix] === undefined) {
         container[member.SubjectKeyPrefix] = new Array<Package2Member>();
       }
-      container[member.SubjectKeyPrefix].push(member);
+      if (subscriberPgkIds === undefined || subscriberPgkIds?.includes(member.MaxPackageVersion?.SubscriberPackageId)) {
+        container[member.SubjectKeyPrefix].push(member);
+      }
     });
     return container;
   }
@@ -135,6 +158,15 @@ export default class GarbageCollector extends EventEmitter {
       });
     });
     return { metadataType: 'Flow', componentCount: garbageList.length, components: garbageList };
+  }
+
+  private async fetchSubscriberPackageVersions(packageIds: string[]): Promise<string[]> {
+    const package2s = await this.devhubQueryRunner!.fetchRecords<Package2>(
+      `${PACKAGE_2} WHERE ${QueryBuilder.buildParamListFilter('Id', packageIds)}`
+    );
+    const subscriberPackageIds: string[] = [];
+    package2s.forEach((p2) => subscriberPackageIds.push(p2.SubscriberPackageId));
+    return subscriberPackageIds;
   }
 }
 

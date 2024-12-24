@@ -18,6 +18,12 @@ export type SubscriberPackageVersion = {
   PatchVersion: string;
   IsBeta: boolean;
   IsPasswordProtected: boolean;
+  SubscriberPackageId?: string;
+};
+
+/** The one with id 04t. When used as related parent */
+export type ParentSubscriberPackageVersion = {
+  SubscriberPackageId: string;
 };
 
 export type InstalledSubscriberPackage = {
@@ -30,6 +36,7 @@ export type Package2Member = Record & {
   Id: string;
   CurrentPackageVersionId: string;
   MaxPackageVersionId: string;
+  MaxPackageVersion: ParentSubscriberPackageVersion;
   SubjectId: string;
   SubjectKeyPrefix: string;
   SubjectManageableState: 'deprecated' | 'deprecatedEditable';

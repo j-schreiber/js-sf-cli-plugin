@@ -27,7 +27,8 @@ export type PackageGarbageResult = {
 };
 
 export type GarbageFilter = {
-  includeOnly: string[] | undefined;
+  includeOnly?: string[];
+  packages?: string[];
 };
 
 type UnknownEntityPrefix = {

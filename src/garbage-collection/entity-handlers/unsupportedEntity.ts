@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionIgnorer } from '../entityDefinitionHandler.js';
-import { IgnoredPackageGarbageContainer } from '../packageGarbage.js';
+import { IgnoredPackageGarbageContainer } from '../packageGarbageTypes.js';
 
 export class UnsupportedEntity implements EntityDefinitionIgnorer {
   public constructor(private metadataType: string, private ignoreReason: string) {}

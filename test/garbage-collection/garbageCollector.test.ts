@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { expect } from 'chai';
+import { SinonStub } from 'sinon';
 import { QueryResult, Record } from '@jsforce/jsforce-node';
 import { Messages } from '@salesforce/core';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
@@ -16,6 +17,7 @@ import {
   FieldDefinition,
   FlowVersionDefinition,
   NamedRecord,
+  Package2,
   Package2Member,
 } from '../../src/types/sfToolingApiTypes.js';
 import {
@@ -31,7 +33,10 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollect
 describe('garbage collector', () => {
   const $$ = new TestContext();
   const testOrg = new MockTestOrgData();
+  const devhubOrg = new MockTestOrgData();
 
+  let fetchRecordsStub: SinonStub;
+  let PACKAGE_2: QueryResult<Package2>;
   let PACKAGE_2_MEMBERS: QueryResult<Package2Member>;
   let OBSOLETE_FLOW_VERSIONS: QueryResult<FlowVersionDefinition>;
   let ENTITY_DEFINITIONS: QueryResult<EntityDefinition>;
@@ -44,9 +49,12 @@ describe('garbage collector', () => {
   let M01_CMDS: QueryResult<DeveloperNamedRecord>;
 
   beforeEach(async () => {
-    await $$.stubAuths(testOrg);
-    const stubMethod = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    stubMethod.callsFake(fakeFetchRecords);
+    testOrg.isDevHub = false;
+    devhubOrg.isDevHub = true;
+    await $$.stubAuths(testOrg, devhubOrg);
+    fetchRecordsStub = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
+    fetchRecordsStub.callsFake(fakeFetchRecords);
+    PACKAGE_2 = parseMockResult<Package2>('package-2.json');
     PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed.json');
     OBSOLETE_FLOW_VERSIONS = parseMockResult<FlowVersionDefinition>('outdated-flow-versions.json');
     ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('entity-definitions.json');
@@ -57,6 +65,10 @@ describe('garbage collector', () => {
     ALL_LAYOUTS = parseMockResult<FieldDefinition>('layouts.json');
     M00_CMDS = parseMockResult<FieldDefinition>('cmd-m00-records.json');
     M01_CMDS = parseMockResult<FieldDefinition>('cmd-m01-records.json');
+  });
+
+  afterEach(() => {
+    $$.SANDBOX.restore();
   });
 
   function parseMockResult<T extends Record>(filePath: string) {
@@ -97,10 +109,10 @@ describe('garbage collector', () => {
     expect(labels.metadataType).to.equal('CustomLabel');
     const labelComponents = labels.components;
     expect(labelComponents.length).to.equal(2);
-    expect(labelComponents[0].developerName).to.equal('Test_Label_1');
-    expect(labelComponents[0].fullyQualifiedName).to.equal('Test_Label_1');
-    expect(labelComponents[1].developerName).to.equal('Test_Label_2');
-    expect(labelComponents[1].fullyQualifiedName).to.equal('Test_Label_2');
+    expect(labelComponents[0].developerName).to.equal('Test_Label_2');
+    expect(labelComponents[0].fullyQualifiedName).to.equal('Test_Label_2');
+    expect(labelComponents[1].developerName).to.equal('Test_Label_1');
+    expect(labelComponents[1].fullyQualifiedName).to.equal('Test_Label_1');
     const customObjs = garbage.deprecatedMembers['CustomObject'];
     expect(customObjs).to.not.be.undefined;
     expect(customObjs.metadataType).to.equal('CustomObject');
@@ -271,7 +283,7 @@ describe('garbage collector', () => {
     expect(garbage.ignoredTypes['CompanyData__mdt'].reason).to.equal(expectedReason);
   });
 
-  it('filters metadata types with case-sensitive input > all matches are case-insensitive ', async () => {
+  it('filters metadata types with case-sensitive input > all matches are case-insensitive', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'CuStOmFIELD'] });
@@ -280,7 +292,47 @@ describe('garbage collector', () => {
     expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'CustomField']);
   });
 
+  it('filters for packages > relevant queries include package ids', async () => {
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
+    const result = await collector.export({ packages: ['0Ho6f000000TN1eCAG'] });
+
+    // Assert
+    // packages are filtered - first query must be to Package2
+    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho6f000000TN1eCAG')");
+    // SubscriberPackageId' can not be filtered in a query call, therefore we must filter manually
+    expect(fetchRecordsStub.args.flat()[1]).to.contain(
+      "FROM Package2Member WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')"
+    );
+    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
+    expect(result.deprecatedMembers.ExternalString.componentCount).to.equal(1);
+    expect(result.deprecatedMembers.CustomMetadataRecord.components.length).to.equal(1);
+    expect(result.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(1);
+    expect(result.ignoredTypes.ListView.componentCount).to.equal(1);
+  });
+
+  it('filters for packages > all package members belong to other packages', async () => {
+    // Arrange
+    // package members are to subscriber id 0330X0000000000AAA
+    PACKAGE_2.records[0].SubscriberPackageId = '033000000000001AAA';
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
+    const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+
+    // Assert
+    // packages are filtered - first query must be to Package2
+    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho000000000001AAA')");
+    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(0);
+    expect(result.deprecatedMembers.CustomField.components.length).to.equal(0);
+    expect(result.deprecatedMembers.CustomObject.components.length).to.equal(0);
+    expect(result.deprecatedMembers.Layout.components.length).to.equal(0);
+  });
+
   function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
+    if (queryString.includes('FROM Package2 WHERE Id IN')) {
+      return Promise.resolve(PACKAGE_2.records);
+    }
     if (queryString.includes('FROM Package2Member')) {
       return Promise.resolve(PACKAGE_2_MEMBERS.records);
     }

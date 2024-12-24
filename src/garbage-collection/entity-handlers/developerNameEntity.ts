@@ -2,7 +2,7 @@
 import { Connection } from '@salesforce/core';
 import { DeveloperNamedRecord, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
-import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
+import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class DeveloperNameEntity implements EntityDefinitionHandler {

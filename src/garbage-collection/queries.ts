@@ -1,6 +1,6 @@
 import QueryBuilder from '../common/utils/queryBuilder.js';
 
-export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`SELECT
+export const PACKAGE_MEMBER_BASE = `SELECT
   Id,
   CurrentPackageVersionId,
   MaxPackageVersionId,
@@ -8,7 +8,9 @@ export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`SELECT
   SubjectKeyPrefix,
   SubjectManageableState
 FROM
-  Package2Member
+  Package2Member`;
+
+export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
 WHERE
   SubjectManageableState IN ('deprecatedEditable', 'deprecated')
 ORDER BY
@@ -52,3 +54,9 @@ WHERE
   KeyPrefix LIKE 'a%'
   OR KeyPrefix LIKE 'm%'
   OR KeyPrefix LIKE 'e%'`);
+
+export const PACKAGE_2: string = QueryBuilder.sanitise(`SELECT
+  Id,
+  SubscriberPackageId
+FROM
+  Package2`);

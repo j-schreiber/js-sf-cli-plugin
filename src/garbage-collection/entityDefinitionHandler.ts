@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-definitions */
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { Package2Member } from '../types/sfToolingApiTypes.js';
-import { IgnoredPackageGarbageContainer, PackageGarbageContainer } from './packageGarbage.js';
+import { IgnoredPackageGarbageContainer, PackageGarbageContainer } from './packageGarbageTypes.js';
 
 export interface EntityDefinitionHandler {
   resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer>;
