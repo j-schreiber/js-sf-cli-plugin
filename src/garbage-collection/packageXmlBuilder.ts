@@ -1,5 +1,5 @@
 import { XMLBuilder } from 'fast-xml-parser';
-import { PackageGarbage, PackageGarbageResult } from './packageGarbage.js';
+import { PackageGarbageResult } from './packageGarbageTypes.js';
 import { PackageManifestObject, XML_NS_KEY, XML_NS_URL } from './packageManifestTypes.js';
 
 export default class PackageXmlBuilder {
@@ -12,7 +12,7 @@ export default class PackageXmlBuilder {
     const packageXml: PackageManifestObject = { Package: { types: [], version: '62.0' } };
     Object.keys(input.deprecatedMembers).forEach((key) => {
       const packageMembers = { members: new Array<string>(), name: input.deprecatedMembers[key].metadataType };
-      (input.deprecatedMembers[key].components as PackageGarbage[]).forEach((cmp) => {
+      input.deprecatedMembers[key].components.forEach((cmp) => {
         packageMembers.members.push(cmp.fullyQualifiedName);
       });
       if (packageMembers.members.length > 0) {

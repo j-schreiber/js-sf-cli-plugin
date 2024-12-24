@@ -7,6 +7,7 @@
       },
       "Id": "3019Q00000OSYQlQAP",
       "VersionNumber": 1,
+      "DefinitionId": "3009Q00000EZMYfQAP",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -23,6 +24,7 @@
       },
       "Id": "3019Q00000QNTTIQA5",
       "VersionNumber": 2,
+      "DefinitionId": "3009Q00000EZMYfQAP",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -39,6 +41,7 @@
       },
       "Id": "3019Q00000XJ63fQAD",
       "VersionNumber": 3,
+      "DefinitionId": "3009Q00000EZMYfQAP",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -55,6 +58,7 @@
       },
       "Id": "3019Q00000XIzmsQAD",
       "VersionNumber": 4,
+      "DefinitionId": "3009Q00000EZMYfQAP",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -71,6 +75,7 @@
       },
       "Id": "3019Q00000ZllWDQAZ",
       "VersionNumber": 5,
+      "DefinitionId": "3009Q00000EZMYfQAP",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -87,6 +92,7 @@
       },
       "Id": "3017a000001A3omAAC",
       "VersionNumber": 1,
+      "DefinitionId": "3007a000000PIKoAAO",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -103,6 +109,7 @@
       },
       "Id": "3017a000001A9jJAAS",
       "VersionNumber": 2,
+      "DefinitionId": "3007a000000PIKoAAO",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",
@@ -119,6 +126,7 @@
       },
       "Id": "3019Q00000AOICZQA5",
       "VersionNumber": 3,
+      "DefinitionId": "3007a000000PIKoAAO",
       "Definition": {
         "attributes": {
           "type": "FlowDefinition",

@@ -1,0 +1,14 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Package2",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2/0Ho6f000000TN1eCAG"
+      },
+      "Id": "0Ho6f000000TN1eCAG",
+      "SubscriberPackageId": "0330X0000000000AAA"
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}

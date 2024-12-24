@@ -21,7 +21,7 @@ export async function resolvePackageVersionId(
       AND MinorVersion = ${versionArray[1]} 
       AND PatchVersion = ${versionArray[2]} 
       AND IsReleased = true LIMIT 1`;
-  const queryResult = await devhubCon.tooling.query(queryString);
+  const queryResult = await devhubCon.tooling.query<Package2Version>(queryString);
   if (queryResult.records.length === 0) {
     throw new SfError(
       messages.getMessage('errors.no-released-package-version', [
@@ -32,7 +32,7 @@ export async function resolvePackageVersionId(
       'NoReleasedPackageVersionFound'
     );
   }
-  const record = queryResult.records[0] as Package2Version;
+  const record = queryResult.records[0];
   return {
     id: record.SubscriberPackageVersionId,
     requiresInstallationKey: record.SubscriberPackageVersion.IsPasswordProtected,
@@ -52,11 +52,11 @@ export async function resolveInstalledVersionId(
     SubscriberPackageVersion.IsPasswordProtected
     FROM InstalledSubscriberPackage
     WHERE SubscriberPackageId = '${subscriberId}' LIMIT 1`;
-  const queryResult = await targetOrgCon.tooling.query(queryString);
+  const queryResult = await targetOrgCon.tooling.query<Package2Version>(queryString);
   if (queryResult.records.length === 0) {
     return { id: undefined };
   }
-  const record = queryResult.records[0] as Package2Version;
+  const record = queryResult.records[0];
   return {
     id: record.SubscriberPackageVersionId,
     versionName: mergeVersionName(record.SubscriberPackageVersion),

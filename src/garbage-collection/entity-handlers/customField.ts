@@ -2,7 +2,7 @@
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
-import { PackageGarbage, PackageGarbageContainer } from '../packageGarbage.js';
+import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 
 export class CustomField implements EntityDefinitionHandler {

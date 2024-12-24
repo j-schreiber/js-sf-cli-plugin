@@ -4,13 +4,15 @@ import fs from 'node:fs';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
 import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
+import { SfError } from '@salesforce/core';
 import { XMLParser } from 'fast-xml-parser';
 import JscMaintainGarbageCollect from '../../../../../src/commands/jsc/maintain/garbage/collect.js';
 import GarbageCollector from '../../../../../src/garbage-collection/garbageCollector.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../../../src/common/comms/processingEvents.js';
 import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
+import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
 
-const MOCK_GARBAGE_RESULT = {
+const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {
     ExternalString: {
       metadataType: 'CustomLabel',
@@ -40,11 +42,11 @@ const MOCK_GARBAGE_RESULT = {
       ],
     },
   },
-  unsupportedTypes: {},
+  ignoredTypes: {},
   notImplementedTypes: [],
 };
 
-const MOCK_EMPTY_GARBAGE_RESULT = {
+const MOCK_EMPTY_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {
     BusinessProcess: {
       metadataType: 'BusinessProcess',
@@ -52,7 +54,7 @@ const MOCK_EMPTY_GARBAGE_RESULT = {
       components: [],
     },
   },
-  unsupportedTypes: {},
+  ignoredTypes: {},
   notImplementedTypes: [],
 };
 
@@ -62,10 +64,13 @@ describe('jsc maintain garbage collect', () => {
   const $$ = new TestContext();
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   const testTargetOrg = new MockTestOrgData();
+  const testDevhubOrg = new MockTestOrgData();
 
   beforeEach(async () => {
     sfCommandStubs = stubSfCommandUx($$.SANDBOX);
-    await $$.stubAuths(testTargetOrg);
+    testDevhubOrg.isDevHub = true;
+    testTargetOrg.isDevHub = false;
+    await $$.stubAuths(testTargetOrg, testDevhubOrg);
   });
 
   afterEach(() => {
@@ -76,19 +81,19 @@ describe('jsc maintain garbage collect', () => {
     fs.rmSync(TEST_OUTPUT_PATH, { recursive: true, force: true });
   });
 
-  it('runs command with --json and no other params > returns result from garbage collector', async () => {
+  it('with --json and no other params > returns result from garbage collector', async () => {
     // Act
     const result = await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--json']);
 
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers).to.deep.equal({});
-    expect(result.unsupportedTypes).to.deep.equal({});
+    expect(result.ignoredTypes).to.deep.equal({});
     expect(result.notImplementedTypes).to.deep.equal([]);
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
 
-  it('runs command with no params > shows collector infos in console', async () => {
+  it('with no params > shows collector infos in console', async () => {
     // Arrange
     const collectorStub = $$.SANDBOX.createStubInstance(GarbageCollector);
     collectorStub.export.callsFake(() => {
@@ -109,14 +114,14 @@ describe('jsc maintain garbage collect', () => {
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers.ExternalString).to.not.be.undefined;
-    expect(result.unsupportedTypes).to.deep.equal({});
+    expect(result.ignoredTypes).to.deep.equal({});
     expect(result.notImplementedTypes).to.deep.equal([]);
     // this should display the test event, but I am not able to emit on the
     // stubbed garbage collector instance
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
 
-  it('runs command with packageXml flag > creates package xml from garbage collector', async () => {
+  it('with output-dir flag > creates package xml from garbage collector', async () => {
     // Arrange
     const exportsStub = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
 
@@ -141,9 +146,9 @@ describe('jsc maintain garbage collect', () => {
     expect(createdManifest.Package.types[1].members).to.equal('TestObject__c.TestField__c');
   });
 
-  it('runs command with packageXml flag > empty garbage is not present in package.xml', async () => {
+  it('with output-dir flag > empty garbage is not present in package.xml', async () => {
     // Arrange
-    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+    const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
 
     // Act
     await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--output-dir', TEST_OUTPUT_PATH]);
@@ -157,5 +162,95 @@ describe('jsc maintain garbage collect', () => {
     // single type will be parsed to a key, not list
     expect(createdManifest.Package.types).to.be.undefined;
     expect(createdManifest.Package.version).to.equal(62);
+    expect(exportMock.args.flat()).to.deep.equal([{ includeOnly: undefined, packages: undefined }]);
+  });
+
+  it('with output-dir and destructive changes flag > pipes garbage to destructiveChanges.xml', async () => {
+    // Arrange
+    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testTargetOrg.username,
+      '--output-dir',
+      TEST_OUTPUT_PATH,
+      '--output-format',
+      'DestructiveChangesXML',
+    ]);
+
+    // Assert
+    expect(fs.existsSync(TEST_OUTPUT_PATH + '/package.xml')).to.equal(true, 'package.xml exists');
+    expect(fs.existsSync(TEST_OUTPUT_PATH + '/destructiveChanges.xml')).to.equal(true, 'destructiveChanges.xml exists');
+    const packageXml = new XMLParser().parse(
+      fs.readFileSync(TEST_OUTPUT_PATH + '/package.xml'),
+      true
+    ) as PackageManifestObject;
+    expect(packageXml.Package.types).to.equal(undefined, 'types in package.xml');
+    const destructiveChangesXml = new XMLParser().parse(
+      fs.readFileSync(TEST_OUTPUT_PATH + '/destructiveChanges.xml'),
+      true
+    ) as PackageManifestObject;
+    expect(destructiveChangesXml.Package.types.length).to.equal(2, 'types in destructiveChanges.xml');
+  });
+
+  it('with metadata type filter > passes params to garbage collector', async () => {
+    // Arrange
+    const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testTargetOrg.username,
+      '--metadata-type',
+      'ExternalString',
+      '-m',
+      'CustomObject',
+    ]);
+
+    // Assert
+    expect(exportMock.callCount).to.equal(1);
+    expect(exportMock.args.flat()).to.deep.equal([
+      { includeOnly: ['ExternalString', 'CustomObject'], packages: undefined },
+    ]);
+  });
+
+  it('with direct package id filter > target org is devhub > passes target org to collector', async () => {
+    // Act
+    const result = await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testDevhubOrg.username,
+      '--package',
+      '0Ho6f000000TN1eCAG',
+    ]);
+
+    // Assert
+    expect(result.deprecatedMembers).to.deep.equal({});
+  });
+
+  it('with package filter > target org is no devhub > throws error', async () => {
+    // Act
+    try {
+      await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--package', '0Ho6f000000TN1eCAG']);
+      expect.fail('Should throw exception');
+    } catch (error) {
+      expect(error).to.be.instanceOf(SfError);
+      expect((error as SfError).name).to.equal('DevhubRequiredForPackages');
+    }
+  });
+
+  it('with package filter > target org is no devhub and supplies devhub > passes devhub to garbage collector', async () => {
+    // Act
+    const result = await JscMaintainGarbageCollect.run([
+      '--target-org',
+      testTargetOrg.username,
+      '--devhub-org',
+      testDevhubOrg.username,
+      '--package',
+      '0Ho6f000000TN1eCAG',
+    ]);
+
+    // Assert
+    expect(result.deprecatedMembers).to.deep.equal({});
   });
 });

@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to orchestrate multi-org deployments, ease org maintenance and migrate data.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -12,6 +12,7 @@
     "@oclif/core": "^4",
     "@salesforce/core": "^8.5.7",
     "@salesforce/kit": "^3.2.3",
+    "@salesforce/packaging": "^4.2.15",
     "@salesforce/sf-plugins-core": "^12.0.8",
     "fast-xml-parser": "^4.5.1",
     "js-yaml": "^4.1.0",

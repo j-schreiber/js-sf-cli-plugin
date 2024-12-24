@@ -8,6 +8,7 @@ export type Package2Version = {
 };
 
 export type Package2 = {
+  Id: string;
   SubscriberPackageId: string;
 };
 
@@ -18,6 +19,12 @@ export type SubscriberPackageVersion = {
   PatchVersion: string;
   IsBeta: boolean;
   IsPasswordProtected: boolean;
+  SubscriberPackageId?: string;
+};
+
+/** The one with id 04t. When used as related parent */
+export type ParentSubscriberPackageVersion = {
+  SubscriberPackageId: string;
 };
 
 export type InstalledSubscriberPackage = {
@@ -29,7 +36,9 @@ export type InstalledSubscriberPackage = {
 export type Package2Member = Record & {
   Id: string;
   CurrentPackageVersionId: string;
-  MaxPackageVersionId: string;
+  CurrentPackageVersion?: ParentSubscriberPackageVersion;
+  MaxPackageVersionId?: string;
+  MaxPackageVersion?: ParentSubscriberPackageVersion;
   SubjectId: string;
   SubjectKeyPrefix: string;
   SubjectManageableState: 'deprecated' | 'deprecatedEditable';
@@ -73,5 +82,6 @@ export type FlowVersionDefinition = {
   Id: string;
   Status: string;
   VersionNumber: number;
+  DefinitionId: string;
   Definition: DeveloperNamedRecord;
 };
