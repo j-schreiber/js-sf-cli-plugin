@@ -145,6 +145,7 @@ describe('garbage collector', () => {
     const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
     expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
     expect(garbage.deprecatedMembers.FlowDefinition.componentCount).to.equal(8);
+    expect(garbage.totalDeprecatedComponentCount).to.equal(23);
   });
 
   it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {

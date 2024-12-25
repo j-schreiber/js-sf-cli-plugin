@@ -44,6 +44,7 @@ const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
   },
   ignoredTypes: {},
   notImplementedTypes: [],
+  totalDeprecatedComponentCount: 3,
 };
 
 const MOCK_EMPTY_GARBAGE_RESULT: PackageGarbageResult = {
@@ -56,6 +57,7 @@ const MOCK_EMPTY_GARBAGE_RESULT: PackageGarbageResult = {
   },
   ignoredTypes: {},
   notImplementedTypes: [],
+  totalDeprecatedComponentCount: 0,
 };
 
 const TEST_OUTPUT_PATH = 'tmp/tests/garbage-collection';

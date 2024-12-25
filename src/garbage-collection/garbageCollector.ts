@@ -78,6 +78,7 @@ export default class GarbageCollector extends EventEmitter {
       deprecatedMembers: {},
       ignoredTypes: {},
       notImplementedTypes: [],
+      totalDeprecatedComponentCount: 0,
     };
     for (const keyPrefix of Object.keys(container)) {
       const entity = await this.toolingApiCache.getEntityDefinitionByKey(keyPrefix);
@@ -94,23 +95,26 @@ export default class GarbageCollector extends EventEmitter {
           componentCount: packageMembers.length,
         };
       } else if (supportedTypes[entityName] && isIncludedInFilter(entityName, filter)) {
-        this.emit('resolveMemberStatus', {
-          status: ProcessingStatus.InProgress,
-          message: `Resolving ${packageMembers.length} ${entityName}s (${keyPrefix})`,
-        } as CommandStatusEvent);
-        garbageContainer.deprecatedMembers[entityName] = await supportedTypes[entityName].resolve(packageMembers);
+        if (packageMembers.length > 0) {
+          this.emitResolveStatus(`Resolving ${packageMembers.length} ${entityName}s (${keyPrefix})`);
+        }
+        const newMembers = await supportedTypes[entityName].resolve(packageMembers);
+        garbageContainer.deprecatedMembers[entityName] = newMembers;
+        garbageContainer.totalDeprecatedComponentCount += newMembers.componentCount;
       } else if (unsupportedTypes[entityName]) {
         const unsupported = await unsupportedTypes[entityName].resolve(packageMembers);
-        this.emit('resolveMemberStatus', {
-          status: ProcessingStatus.InProgress,
-          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${unsupported.reason}`,
-        } as CommandStatusEvent);
+        if (packageMembers.length > 0) {
+          this.emitResolveStatus(
+            `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${unsupported.reason}`
+          );
+        }
         garbageContainer.ignoredTypes[entityName] = unsupported;
       } else if (keyPrefix.startsWith('m')) {
-        this.emit('resolveMemberStatus', {
-          status: ProcessingStatus.InProgress,
-          message: `Resolving ${packageMembers.length} ${entityName} (${keyPrefix}) as CustomMetadata records.`,
-        } as CommandStatusEvent);
+        if (packageMembers.length > 0) {
+          this.emitResolveStatus(
+            `Resolving ${packageMembers.length} ${entityName} (${keyPrefix}) as CustomMetadata records.`
+          );
+        }
         if (garbageContainer.deprecatedMembers['CustomMetadataRecord'] === undefined) {
           garbageContainer.deprecatedMembers['CustomMetadataRecord'] = {
             metadataType: 'CustomMetadata',
@@ -118,17 +122,17 @@ export default class GarbageCollector extends EventEmitter {
             components: [],
           };
         }
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(
-          ...(await supportedTypes['CustomMetadataRecord'].resolve(packageMembers)).components
-        );
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount =
-          garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.length;
+        const newRecords = (await supportedTypes['CustomMetadataRecord'].resolve(packageMembers)).components;
+        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(...newRecords);
+        garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount += newRecords.length;
+        garbageContainer.totalDeprecatedComponentCount += newRecords.length;
       } else {
         const reason = messages.getMessage('infos.not-yet-implemented');
-        this.emit('resolveMemberStatus', {
-          status: ProcessingStatus.InProgress,
-          message: `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${reason}`,
-        } as CommandStatusEvent);
+        if (packageMembers.length > 0) {
+          this.emitResolveStatus(
+            `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${reason}`
+          );
+        }
         garbageContainer.notImplementedTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
       }
     }
@@ -147,6 +151,7 @@ export default class GarbageCollector extends EventEmitter {
       if (container[member.SubjectKeyPrefix] === undefined) {
         container[member.SubjectKeyPrefix] = new Array<Package2Member>();
       }
+      // subscriber id cannot be filtered in SOQL, therefore we have to remove manually
       if (memberIsIncludedInPackageFilter(member, subscriberPgkIds)) {
         container[member.SubjectKeyPrefix].push(member);
       }
@@ -178,6 +183,13 @@ export default class GarbageCollector extends EventEmitter {
       subscriberPackageIds.push(p2.SubscriberPackageId);
     });
     return subscriberPackageIds;
+  }
+
+  private emitResolveStatus(message: string): void {
+    this.emit('resolveMemberStatus', {
+      status: ProcessingStatus.InProgress,
+      message,
+    } as CommandStatusEvent);
   }
 }
 

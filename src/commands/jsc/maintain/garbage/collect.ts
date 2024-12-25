@@ -97,6 +97,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
         deprecatedMembers: {},
         ignoredTypes: {},
         notImplementedTypes: [],
+        totalDeprecatedComponentCount: 0,
       });
       const destructiveChangesXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
       fs.writeFileSync(`${outputPath}/destructiveChanges.xml`, destructiveChangesXml);
