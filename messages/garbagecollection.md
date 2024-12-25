@@ -21,3 +21,11 @@ Failed to initialise project with an unknown error.
 # infos.package-aliases-not-supported
 
 To use package aliases, run this command within a valid project. You can still use package ids (0Ho).
+
+# infos.packages-filter-active
+
+Packages filter active. Only include members from these packages: %s
+
+# infos.metadata-filter-active
+
+Metadata types filter active. Only include members of these types: %s

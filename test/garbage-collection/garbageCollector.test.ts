@@ -269,9 +269,11 @@ describe('garbage collector', () => {
     const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
 
     // Assert
-    expect(resolveListener.callCount).to.equal(2);
-    expect(resolveListener.args.flat()[0]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
-    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
+    expect(resolveListener.callCount).to.equal(3);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(resolveListener.args.flat()[0].message).to.contain('CustomObject,CustomField');
+    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
+    expect(resolveListener.args.flat()[2]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
     expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
     expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
       'ExternalString',

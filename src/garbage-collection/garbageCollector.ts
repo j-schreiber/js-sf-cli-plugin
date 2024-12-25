@@ -54,6 +54,18 @@ export default class GarbageCollector extends EventEmitter {
         2
       );
     }
+    if (filter?.packages && filter.packages.length > 0) {
+      this.emit('resolveMemberStatus', {
+        status: ProcessingStatus.InProgress,
+        message: messages.getMessage('infos.packages-filter-active', [filter.packages.join(',')]),
+      } as CommandStatusEvent);
+    }
+    if (filter?.includeOnly && filter.includeOnly.length > 0) {
+      this.emit('resolveMemberStatus', {
+        status: ProcessingStatus.InProgress,
+        message: messages.getMessage('infos.metadata-filter-active', [filter.includeOnly.join(',')]),
+      } as CommandStatusEvent);
+    }
   }
 
   private async resolvePackageMembers(
@@ -154,10 +166,6 @@ export default class GarbageCollector extends EventEmitter {
   }
 
   private async fetchSubscriberPackageVersions(packageIds: string[]): Promise<string[]> {
-    this.emit('resolveMemberStatus', {
-      status: ProcessingStatus.InProgress,
-      message: `Packages filter active. Only include members from these packages: ${packageIds.join(',')}`,
-    } as CommandStatusEvent);
     const package2s = await this.devhubQueryRunner!.fetchRecords<Package2>(
       `${PACKAGE_2} WHERE ${QueryBuilder.buildParamListFilter('Id', packageIds)}`
     );
