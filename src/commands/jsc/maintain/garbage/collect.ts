@@ -9,6 +9,7 @@ import PackageXmlBuilder from '../../../../garbage-collection/packageXmlBuilder.
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
+const genericMessages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 enum OutputFormats {
   PackageXML = 'PackageXML',
@@ -124,11 +125,11 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       return await SfProject.resolve();
     } catch (err) {
       if (err instanceof SfError) {
-        this.info(`Could not initialise project with the following error: ${err.name}`);
+        this.info(genericMessages.getMessage('infos.not-a-sfdx-project', [err.name]));
       } else {
-        this.info('Unknown error when trying to initialise project. Skipping.');
+        this.info(genericMessages.getMessage('infos.unknown-error-initialising-project'));
       }
-      this.info("Package aliases are not supported. Use the '0Ho' Id instead.");
+      this.info(genericMessages.getMessage('infos.package-aliases-not-supported'));
     }
     return undefined;
   }

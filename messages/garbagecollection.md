@@ -9,3 +9,15 @@ Cannot be processed. Entity is not fully supported by Tooling API.
 # infos.not-yet-implemented
 
 Type not yet implemented. Be patient.
+
+# infos.not-a-sfdx-project
+
+Could not initialise project (%s).
+
+# infos.unknown-error-initialising-project
+
+Failed to initialise project with an unknown error.
+
+# infos.package-aliases-not-supported
+
+To use package aliases, run this command within a valid project. You can still use package ids (0Ho).
