@@ -2,7 +2,7 @@
 
 [![NPM](https://img.shields.io/npm/v/@j-schreiber/sf-plugin.svg?label=@j-schreiber/sf-plugin)](https://www.npmjs.com/package/@j-schreiber/sf-plugin) [![Downloads/week](https://img.shields.io/npm/dw/@j-schreiber/sf-plugin.svg)](https://npmjs.org/package/@j-schreiber/sf-plugin) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://raw.githubusercontent.com/salesforcecli/@j-schreiber/sf-plugin/main/LICENSE.txt)
 
-> This plugin is in early beta. Use it with care, as command signatures may change. It still lacks some functionality (but the commands are stable and bug free ;).
+> This plugin is in early beta. Be careful when integrating this into your pipeline, as command signatures may change. It still lacks some functionality (but the commands are stable and bug free :wink: ).
 
 Looking for documentation? It's still a work in progress, visit [GitHub Wiki](https://github.com/j-schreiber/js-sf-cli-plugin/wiki).
 

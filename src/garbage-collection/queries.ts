@@ -12,9 +12,11 @@ export const PACKAGE_MEMBER_BASE = `SELECT
 FROM
   Package2Member`;
 
+// flow definitions (prefix 300) are processed separately
 export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
 WHERE
   SubjectManageableState IN ('deprecatedEditable', 'deprecated')
+  AND SubjectKeyPrefix NOT IN ('300')
 ORDER BY
   SubjectKeyPrefix`);
 
@@ -41,7 +43,8 @@ WHERE
   Status = 'Obsolete'
 ORDER BY
   Definition.DeveloperName,
-  VersionNumber ASC`);
+  VersionNumber ASC
+LIMIT 2000`);
 
 export const ALL_CUSTOM_OBJECTS: string = QueryBuilder.sanitise(`SELECT
   Id,
