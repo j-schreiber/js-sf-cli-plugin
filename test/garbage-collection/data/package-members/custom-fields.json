@@ -3,6 +3,18 @@
     {
       "attributes": {
         "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JHeQAM"
+      },
+      "Id": "03v4P0000004JHeQAM",
+      "CurrentPackageVersionId": "04t4P0000000004AAA",
+      "MaxPackageVersionId": "04t4P0000000004AAA",
+      "SubjectId": "00N4P00000GRKqFUAX",
+      "SubjectKeyPrefix": "00N",
+      "SubjectManageableState": "deprecatedEditable"
+    },
+    {
+      "attributes": {
+        "type": "Package2Member",
         "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JHdQAM"
       },
       "Id": "03v4P0000004JHdQAM",
