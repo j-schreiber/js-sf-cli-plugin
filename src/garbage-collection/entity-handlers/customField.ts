@@ -18,7 +18,7 @@ export class CustomField implements EntityDefinitionHandler {
     const customFieldDefinitions = await this.apiConnection.fetchCustomFields(extractSubjectIds(packageMembers));
     packageMembers.forEach((member) => {
       const fieldDef = customFieldDefinitions.get(member.SubjectId);
-      if (fieldDef) {
+      if (fieldDef && isNotDeleted(fieldDef.DeveloperName)) {
         // field belongs to a custom object (or custom metadata, platform event, etc)
         if (fieldDef.TableEnumOrId.startsWith('01I')) {
           const customObjDef = objectsByDurableId.get(fieldDef.TableEnumOrId.substring(0, 15));
@@ -41,4 +41,8 @@ export class CustomField implements EntityDefinitionHandler {
     });
     return { metadataType: 'CustomField', componentCount: garbageList.length, components: garbageList };
   }
+}
+
+function isNotDeleted(devName: string): boolean {
+  return devName.search(/(_del)[\d]*$/) < 0;
 }

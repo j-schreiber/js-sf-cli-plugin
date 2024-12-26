@@ -144,7 +144,13 @@ describe('garbage collector', () => {
     expect(Object.keys(garbage.ignoredTypes)).deep.equal(['ListView']);
     const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
     expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.deprecatedMembers.CustomField.componentCount).to.equal(3);
+    expect(garbage.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(7);
+    expect(garbage.deprecatedMembers.CustomObject.componentCount).to.equal(2);
+    expect(garbage.deprecatedMembers.ExternalString.componentCount).to.equal(2);
     expect(garbage.deprecatedMembers.FlowDefinition.componentCount).to.equal(8);
+    expect(garbage.deprecatedMembers.Layout.componentCount).to.equal(0);
+    expect(garbage.totalDeprecatedComponentCount).to.equal(22);
   });
 
   it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {
@@ -158,7 +164,7 @@ describe('garbage collector', () => {
     expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
   });
 
-  it('package members have custom field > resolves custom field components', async () => {
+  it('package members have custom field > resolves only undeleted custom field components', async () => {
     // Arrange
     PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/custom-fields.json');
 
@@ -269,9 +275,11 @@ describe('garbage collector', () => {
     const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
 
     // Assert
-    expect(resolveListener.callCount).to.equal(2);
-    expect(resolveListener.args.flat()[0]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
-    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
+    expect(resolveListener.callCount).to.equal(3);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(resolveListener.args.flat()[0].message).to.contain('CustomObject,CustomField');
+    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
+    expect(resolveListener.args.flat()[2]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
     expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
     expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
       'ExternalString',

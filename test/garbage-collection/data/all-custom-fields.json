@@ -4641,7 +4641,7 @@
         "url": "/services/data/v62.0/tooling/sobjects/CustomField/00N4P00000GRKqFUAX"
       },
       "Id": "00N4P00000GRKqFUAX",
-      "DeveloperName": "DailyRate",
+      "DeveloperName": "DailyRate__del",
       "TableEnumOrId": "01I4P000000wXQ6UAM"
     },
     {

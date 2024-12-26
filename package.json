@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to orchestrate multi-org deployments, ease org maintenance and migrate data.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -66,10 +66,10 @@
             "description": "Generate, validate and rollout org manifests"
           },
           "maintain": {
-            "description": "Maintain a target org",
+            "description": "Maintain your orgs",
             "subtopics": {
               "garbage": {
-                "description": "Identify and clean up garbage from deployment processes"
+                "description": "Analyse and clean garbage from package installs"
               }
             }
           }

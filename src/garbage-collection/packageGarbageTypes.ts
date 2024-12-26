@@ -24,6 +24,7 @@ export type PackageGarbageResult = {
   deprecatedMembers: { [x: string]: PackageGarbageContainer };
   ignoredTypes: { [x: string]: IgnoredPackageGarbageContainer };
   notImplementedTypes: UnknownEntityPrefix[];
+  totalDeprecatedComponentCount: number;
 };
 
 export type GarbageFilter = {
