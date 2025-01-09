@@ -90,3 +90,8 @@ export type FlowVersionDefinition = {
 export type WorkflowAlertEntity = DeveloperNamedRecord & {
   EntityDefinition: Partial<EntityDefinition>;
 };
+
+export type FullNameSingleRecordEntity = {
+  Id: string;
+  FullName: string;
+};

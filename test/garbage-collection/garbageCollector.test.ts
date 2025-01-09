@@ -254,6 +254,25 @@ describe('garbage collector', () => {
     expect(depComponents[2].fullyQualifiedName).to.equal('CustomObject__c.Test_Alert_3');
   });
 
+  it('package members with workflow field updates > resolves with full name', async () => {
+    // Arrange
+    apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/workflow-field-updates.json');
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    const wfUpdate = garbage.deprecatedMembers['WorkflowFieldUpdate'];
+    expect(wfUpdate).to.not.be.undefined;
+    expect(wfUpdate.metadataType).to.equal('WorkflowFieldUpdate');
+    expect(wfUpdate.componentCount).to.equal(1);
+    const depComponents = wfUpdate.components;
+    expect(depComponents.length).to.equal(1);
+    expect(depComponents[0].fullyQualifiedName).to.equal('Account.My_Test_Field_Update');
+  });
+
   it('filters metadata present in package members > only includes requested metadata', async () => {
     // Arrange
     const resolveListener = $$.SANDBOX.stub();

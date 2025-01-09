@@ -27,6 +27,7 @@ export default class GarbageCollectionMocks {
   public M00_CMDS = parseMockResult<FieldDefinition>('cmd-m00-records.json');
   public M01_CMDS = parseMockResult<FieldDefinition>('cmd-m01-records.json');
   public WORKFLOW_ALERTS = parseMockResult<WorkflowAlertEntity>('workflow-alert-definitions.json');
+  public WORKFLOW_FIELD_UPDATES = parseMockResult<WorkflowAlertEntity>('workflow-field-update-defs.json');
 
   public fetchRecordsStub<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2 WHERE Id IN')) {
@@ -67,6 +68,9 @@ export default class GarbageCollectionMocks {
     }
     if (queryString.includes('FROM WorkflowAlert WHERE Id IN')) {
       return Promise.resolve(this.WORKFLOW_ALERTS.records);
+    }
+    if (queryString.includes("FROM WorkflowFieldUpdate WHERE Id = '04Y0X0000000gb0UAA'")) {
+      return Promise.resolve(this.WORKFLOW_FIELD_UPDATES.records);
     }
     return Promise.resolve(new Array<T>());
   }

@@ -10,6 +10,7 @@ import { Layout } from './layout.js';
 import { CustomMetadataRecord } from './customMetadataRecord.js';
 import { OutdatedFlowVersions } from './outdatedFlowVersions.js';
 import { WorkflowAlert } from './workflowAlert.js';
+import { FullNameSingleRecord } from './fullNameSingleRecord.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -30,6 +31,7 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     CustomField: new CustomField(orgConnection),
     QuickActionDefinition: new QuickActionDefinition(orgConnection),
     WorkflowAlert: new WorkflowAlert(orgConnection),
+    WorkflowFieldUpdate: new FullNameSingleRecord(orgConnection, 'WorkflowFieldUpdate'),
   };
 };
 
