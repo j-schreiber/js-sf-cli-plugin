@@ -42,12 +42,3 @@ export const loadUnsupportedMetadataTypes = (): { [x: string]: EntityDefinitionI
     CustomTab: new UnsupportedEntity('CustomTab', toolingApiMsg),
   };
 };
-
-export type EntityDefinitionHandlers = {
-  supported: {
-    [x: string]: EntityDefinitionHandler;
-  };
-  unsupported: {
-    [x: string]: EntityDefinitionHandler;
-  };
-};
