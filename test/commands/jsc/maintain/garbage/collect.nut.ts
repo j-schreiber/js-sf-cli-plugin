@@ -8,10 +8,12 @@ import { PackageManifestObject } from '../../../../../src/garbage-collection/pac
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
-const outputDir = path.join('tmp', 'pkg-manifests');
+const outputDir = path.join('tmp', 'garbage');
 
-describe('jsc data NUTs*', () => {
+describe('jsc maintain garbage NUTs*', () => {
   let session: TestSession;
+  let sessionOutputPath: string;
+
   before(async () => {
     session = await TestSession.create({
       project: {
@@ -28,11 +30,15 @@ describe('jsc data NUTs*', () => {
         },
       ],
     });
+    sessionOutputPath = path.join(session.dir, projectName, outputDir);
   });
 
   after(async () => {
     await session?.clean();
-    fs.rmSync(outputDir, { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(sessionOutputPath, { recursive: true, force: true });
   });
 
   describe('garbage collection', () => {
@@ -58,12 +64,11 @@ describe('jsc data NUTs*', () => {
       );
 
       // Assert
-      expect(fs.existsSync(outputDir + '/package.xml')).to.equal(true, 'package created');
-      expect(fs.existsSync(outputDir + '/destructiveChanges.xml')).to.equal(false, 'no destructiveChanges created');
-      const packageXml = new XMLParser().parse(
-        fs.readFileSync(outputDir + '/package.xml'),
-        true
-      ) as PackageManifestObject;
+      const expectedPackagePath = path.join(sessionOutputPath, 'package.xml');
+      const expectedDestructivePath = path.join(sessionOutputPath, 'destructiveChanges.xml');
+      expect(fs.existsSync(expectedPackagePath)).to.equal(true, 'package created');
+      expect(fs.existsSync(expectedDestructivePath)).to.equal(false, 'no destructiveChanges created');
+      const packageXml = new XMLParser().parse(fs.readFileSync(expectedPackagePath), true) as PackageManifestObject;
       expect(packageXml.Package.types).to.equal(undefined, 'package xml is empty');
     });
   });

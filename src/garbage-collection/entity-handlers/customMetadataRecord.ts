@@ -57,7 +57,7 @@ export class CustomMetadataRecord implements EntityDefinitionHandler {
       `SELECT Id,DeveloperName FROM ${objectName} WHERE ${buildSubjectIdFilter(packageMembers)}`
     );
     entityDefs.forEach((def) => {
-      result.set(def.Id!, def);
+      result.set(def.Id, def);
     });
     return result;
   }

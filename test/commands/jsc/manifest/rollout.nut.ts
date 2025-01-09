@@ -16,7 +16,7 @@ describe('jsc manifest rollout NUTs*', () => {
         name: 'manifestRolloutProject',
         sourceDir: path.join('test', 'data', 'test-sfdx-project'),
       },
-      devhubAuthStrategy: 'AUTH_URL',
+      devhubAuthStrategy: 'AUTO',
       scratchOrgs: [
         {
           alias: scratchOrgAlias,
