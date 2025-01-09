@@ -9,7 +9,7 @@ export class FullNameSingleRecord implements EntityDefinitionHandler {
   private queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection | Connection['tooling'],
+    private queryConnection: Connection['tooling'],
     private entityName: string,
     private metadataTypeName?: string
   ) {

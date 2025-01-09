@@ -1,0 +1,95 @@
+{
+  "deprecatedMembers": {
+    "ExternalString": {
+      "metadataType": "CustomLabel",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_Label_1",
+          "fullyQualifiedName": "Test_Label_1"
+        }
+      ]
+    },
+    "CustomField": {
+      "metadataType": "CustomField",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "Description",
+          "fullyQualifiedName": "TestObject__c.Description__c"
+        },
+        {
+          "developerName": "CustomerType",
+          "fullyQualifiedName": "Account.CustomerType__c"
+        }
+      ]
+    },
+    "CustomObject": {
+      "metadataType": "CustomObject",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "TestObject",
+          "fullyQualifiedName": "TestObject__c"
+        }
+      ]
+    },
+    "ApexClass": {
+      "metadataType": "ApexClass",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "BasicApexClassWithoutFunctionality",
+          "fullyQualifiedName": "BasicApexClassWithoutFunctionality"
+        },
+        {
+          "developerName": "AnotherClassWithoutFunctionality",
+          "fullyQualifiedName": "AnotherClassWithoutFunctionality"
+        }
+      ]
+    },
+    "CustomTab": {
+      "metadataType": "CustomTab",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "TestObject__c",
+          "fullyQualifiedName": "TestObject__c"
+        }
+      ]
+    },
+    "StaticResource": {
+      "metadataType": "StaticResource",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_JSON_Resource",
+          "fullyQualifiedName": "Test_JSON_Resource"
+        }
+      ]
+    },
+    "QuickActionDefinition": {
+      "metadataType": "QuickAction",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "View_Object",
+          "fullyQualifiedName": "TestObject__c.View_Object"
+        }
+      ]
+    },
+    "LightningComponentBundle": {
+      "metadataType": "LightningComponentBundle",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "basicLwcWithoutFunctionality",
+          "fullyQualifiedName": "basicLwcWithoutFunctionality"
+        }
+      ]
+    }
+  },
+  "ignoredTypes": {},
+  "notImplementedTypes": [],
+  "totalDeprecatedComponentCount": 6
+}

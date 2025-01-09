@@ -55,7 +55,7 @@ describe('garbage collector', () => {
     expect(supportedTypes['CustomObject']).to.not.be.undefined;
     expect(supportedTypes['CustomField']).to.not.be.undefined;
     expect(supportedTypes['CustomMetadataRecord']).to.not.be.undefined;
-    expect(unsupportedTypes['CustomTab']).to.not.be.undefined;
+    expect(supportedTypes['CustomTab']).to.not.be.undefined;
     expect(unsupportedTypes['ListView']).to.not.be.undefined;
   });
 

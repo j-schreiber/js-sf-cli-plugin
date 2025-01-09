@@ -31,7 +31,9 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     CustomField: new CustomField(orgConnection),
     QuickActionDefinition: new QuickActionDefinition(orgConnection),
     WorkflowAlert: new WorkflowAlert(orgConnection),
-    WorkflowFieldUpdate: new FullNameSingleRecord(orgConnection, 'WorkflowFieldUpdate'),
+    WorkflowFieldUpdate: new FullNameSingleRecord(orgConnection.tooling, 'WorkflowFieldUpdate'),
+    StaticResource: new NameEntity(orgConnection.tooling, 'StaticResource'),
+    CustomTab: new FullNameSingleRecord(orgConnection.tooling, 'CustomTab'),
   };
 };
 
@@ -41,6 +43,5 @@ export const loadUnsupportedMetadataTypes = (): { [x: string]: EntityDefinitionI
   return {
     EmailTemplate: new UnsupportedEntity('EmailTemplate', toolingApiMsg),
     ListView: new UnsupportedEntity('ListView', toolingApiMsg),
-    CustomTab: new UnsupportedEntity('CustomTab', toolingApiMsg),
   };
 };

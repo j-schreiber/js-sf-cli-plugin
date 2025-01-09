@@ -10,6 +10,7 @@ import {
   Package2Member,
   WorkflowAlertEntity,
 } from '../../src/types/sfToolingApiTypes.js';
+import { PackageGarbageResult } from '../../src/garbage-collection/packageGarbageTypes.js';
 
 const testDataPath = path.join('test', 'garbage-collection', 'data');
 
@@ -75,6 +76,10 @@ export default class GarbageCollectionMocks {
     return Promise.resolve(new Array<T>());
   }
 }
+
+export const EXPECTED_E2E_GARBAGE = JSON.parse(
+  fs.readFileSync(path.join('test', 'garbage-collection', 'data', 'expected-garbage-NUTs.json'), 'utf8')
+) as PackageGarbageResult;
 
 export function parseMockResult<T extends Record>(filePath: string) {
   return JSON.parse(fs.readFileSync(`${path.join(testDataPath, filePath)}`, 'utf8')) as QueryResult<T>;
