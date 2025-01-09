@@ -53,7 +53,7 @@ describe('jsc data NUTs*', () => {
     it('collect garbage on fresh scratch org with package xml output', () => {
       // Act
       execCmd<PackageGarbageResult>(
-        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --output-format PackageXML --output-directory ${outputDir}`,
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --output-format PackageXML --output-dir ${outputDir}`,
         { ensureExitCode: 0 }
       );
 
