@@ -19,6 +19,7 @@ import {
   NamedRecord,
   Package2,
   Package2Member,
+  WorkflowAlertEntity,
 } from '../../src/types/sfToolingApiTypes.js';
 import {
   loadSupportedMetadataTypes,
@@ -48,6 +49,7 @@ describe('garbage collector', () => {
   let ALL_LAYOUTS: QueryResult<FieldDefinition>;
   let M00_CMDS: QueryResult<DeveloperNamedRecord>;
   let M01_CMDS: QueryResult<DeveloperNamedRecord>;
+  let WORKFLOW_ALERTS: QueryResult<WorkflowAlertEntity>;
 
   beforeEach(async () => {
     testOrg.isDevHub = false;
@@ -67,6 +69,7 @@ describe('garbage collector', () => {
     ALL_LAYOUTS = parseMockResult<FieldDefinition>('layouts.json');
     M00_CMDS = parseMockResult<FieldDefinition>('cmd-m00-records.json');
     M01_CMDS = parseMockResult<FieldDefinition>('cmd-m01-records.json');
+    WORKFLOW_ALERTS = parseMockResult<WorkflowAlertEntity>('workflow-alert-definitions.json');
   });
 
   afterEach(() => {
@@ -265,6 +268,27 @@ describe('garbage collector', () => {
     expect(depComponents[2].fullyQualifiedName).to.equal('HandlerControl.Invoice');
   });
 
+  it('package members have workflow alerts > resolves entity def and alert name', async () => {
+    // Arrange
+    PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/workflow-alerts.json');
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    const wfAlerts = garbage.deprecatedMembers['WorkflowAlert'];
+    expect(wfAlerts).to.not.be.undefined;
+    expect(wfAlerts.metadataType).to.equal('WorkflowAlert');
+    expect(wfAlerts.componentCount).to.equal(3);
+    const depComponents = wfAlerts.components;
+    expect(depComponents.length).to.equal(3);
+    expect(depComponents[0].fullyQualifiedName).to.equal('Case.Test_Alert_1');
+    expect(depComponents[1].fullyQualifiedName).to.equal('CustomObject__c.Test_Alert_2');
+    expect(depComponents[2].fullyQualifiedName).to.equal('CustomObject__c.Test_Alert_3');
+  });
+
   it('filters metadata present in package members > only includes requested metadata', async () => {
     // Arrange
     const resolveListener = $$.SANDBOX.stub();
@@ -275,11 +299,16 @@ describe('garbage collector', () => {
     const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
 
     // Assert
-    expect(resolveListener.callCount).to.equal(3);
+    // custom fields contain 4 members, including 1 deleted field.
+    // this resolves to 3 fields only
+    expect(resolveListener.callCount).to.equal(4);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(resolveListener.args.flat()[0].message).to.contain('CustomObject,CustomField');
     expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
-    expect(resolveListener.args.flat()[2]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
+    expect(resolveListener.args.flat()[2]).to.deep.contain({
+      message: 'Package members resolved to 3 actual CustomField(s).',
+    });
+    expect(resolveListener.args.flat()[3]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
     expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
     expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
       'ExternalString',
@@ -379,6 +408,9 @@ describe('garbage collector', () => {
     }
     if (queryString.includes('FROM HandlerControl__mdt')) {
       return Promise.resolve(M01_CMDS.records);
+    }
+    if (queryString.includes('FROM WorkflowAlert WHERE Id IN')) {
+      return Promise.resolve(WORKFLOW_ALERTS.records);
     }
     return Promise.resolve(new Array<T>());
   }

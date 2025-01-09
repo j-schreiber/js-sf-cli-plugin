@@ -60,6 +60,7 @@ export type NamedRecord = Record & {
 };
 
 export type DeveloperNamedRecord = Record & {
+  Id: string;
   DeveloperName: string;
 };
 
@@ -84,4 +85,8 @@ export type FlowVersionDefinition = {
   VersionNumber: number;
   DefinitionId: string;
   Definition: DeveloperNamedRecord;
+};
+
+export type WorkflowAlertEntity = DeveloperNamedRecord & {
+  EntityDefinition: Partial<EntityDefinition>;
 };

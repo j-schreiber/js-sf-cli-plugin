@@ -1,0 +1,51 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "WorkflowAlert",
+        "url": "/services/data/v62.0/tooling/sobjects/WorkflowAlert/01W0X0000000Jr2UAE"
+      },
+      "Id": "01W0X0000000Jr2UAE",
+      "DeveloperName": "Test_Alert_1",
+      "EntityDefinition": {
+        "attributes": {
+          "type": "EntityDefinition",
+          "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/Case"
+        },
+        "QualifiedApiName": "Case"
+      }
+    },
+    {
+      "attributes": {
+        "type": "WorkflowAlert",
+        "url": "/services/data/v62.0/tooling/sobjects/WorkflowAlert/01W0X0000000Jr1UAE"
+      },
+      "Id": "01W0X0000000Jr1UAE",
+      "DeveloperName": "Test_Alert_2",
+      "EntityDefinition": {
+        "attributes": {
+          "type": "EntityDefinition",
+          "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/CustomObject__c"
+        },
+        "QualifiedApiName": "CustomObject__c"
+      }
+    },
+    {
+      "attributes": {
+        "type": "WorkflowAlert",
+        "url": "/services/data/v62.0/tooling/sobjects/WorkflowAlert/01W0X0000000Jv8UAE"
+      },
+      "Id": "01W0X0000000Jv8UAE",
+      "DeveloperName": "Test_Alert_3",
+      "EntityDefinition": {
+        "attributes": {
+          "type": "EntityDefinition",
+          "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/CustomObject__c"
+        },
+        "QualifiedApiName": "CustomObject__c"
+      }
+    }
+  ],
+  "totalSize": 3,
+  "done": true
+}
