@@ -79,6 +79,10 @@ export type QuickActionDefinitionType = DeveloperNamedRecord & {
   SobjectType: string;
 };
 
+export type SobjectTypeDevNamedEntity = DeveloperNamedRecord & {
+  SobjectType: string;
+};
+
 export type FlowVersionDefinition = {
   Id: string;
   Status: string;
@@ -88,6 +92,12 @@ export type FlowVersionDefinition = {
 };
 
 export type WorkflowAlertEntity = DeveloperNamedRecord & {
+  EntityDefinition: Partial<EntityDefinition>;
+};
+
+export type DynamicallyNamedEntity = {
+  [devName: string]: unknown;
+  Id: string;
   EntityDefinition: Partial<EntityDefinition>;
 };
 

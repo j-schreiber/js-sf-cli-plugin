@@ -4,13 +4,13 @@ import { CustomObject } from './customObject.js';
 import { DeveloperNameEntity } from './developerNameEntity.js';
 import { UnsupportedEntity } from './unsupportedEntity.js';
 import { CustomField } from './customField.js';
-import { QuickActionDefinition } from './quickActionDefinition.js';
 import { NameEntity } from './nameEntity.js';
 import { Layout } from './layout.js';
 import { CustomMetadataRecord } from './customMetadataRecord.js';
 import { OutdatedFlowVersions } from './outdatedFlowVersions.js';
-import { WorkflowAlert } from './workflowAlert.js';
 import { FullNameSingleRecord } from './fullNameSingleRecord.js';
+import { DynamicDevNamedEntityRelated } from './dynamicDevNamedEntityRelated.js';
+import { SObjectBasedDefNameEntity } from './sobjectBasedDevNameEntity.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -29,11 +29,17 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     Layout: new Layout(orgConnection),
     CustomObject: new CustomObject(orgConnection),
     CustomField: new CustomField(orgConnection),
-    QuickActionDefinition: new QuickActionDefinition(orgConnection),
-    WorkflowAlert: new WorkflowAlert(orgConnection),
+    QuickActionDefinition: new SObjectBasedDefNameEntity(orgConnection, 'QuickActionDefinition', 'QuickAction'),
+    WorkflowAlert: new DynamicDevNamedEntityRelated(orgConnection, 'WorkflowAlert', 'DeveloperName'),
     WorkflowFieldUpdate: new FullNameSingleRecord(orgConnection.tooling, 'WorkflowFieldUpdate'),
     StaticResource: new NameEntity(orgConnection.tooling, 'StaticResource'),
     CustomTab: new FullNameSingleRecord(orgConnection.tooling, 'CustomTab'),
+    PermissionSet: new NameEntity(orgConnection.tooling, 'PermissionSet'),
+    ValidationRule: new DynamicDevNamedEntityRelated(orgConnection, 'ValidationRule', 'ValidationName'),
+    EmailTemplate: new FullNameSingleRecord(orgConnection.tooling, 'EmailTemplate'),
+    CompactLayout: new SObjectBasedDefNameEntity(orgConnection, 'CompactLayout'),
+    GlobalValueSet: new FullNameSingleRecord(orgConnection.tooling, 'GlobalValueSet'),
+    FieldSet: new DynamicDevNamedEntityRelated(orgConnection, 'FieldSet', 'DeveloperName'),
   };
 };
 

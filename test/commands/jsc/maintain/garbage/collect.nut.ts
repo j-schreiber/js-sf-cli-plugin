@@ -105,8 +105,8 @@ describe('jsc maintain garbage NUTs*', () => {
       expect(result).to.not.be.undefined;
       const deprecatedMembers = result!.deprecatedMembers;
       // the E2E expect file is updated, as the package versions receive more metadata
-      // don't assert equality too deep - we mostly care that every single query / handler
-      // is executed and validated. Actual logic to parse query results is unit tested
+      // don't assert equality too deep - we mostly care that every single handler is executed
+      // and runs successfully against an actual org. Detailed logic to parse query results is unit tested.
       const actualDeprecatedEntities = Object.keys(deprecatedMembers);
       const expectedDeprecatedEntities = EXPECTED_E2E_GARBAGE.deprecatedMembers;
       expect(actualDeprecatedEntities).to.deep.equal(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));

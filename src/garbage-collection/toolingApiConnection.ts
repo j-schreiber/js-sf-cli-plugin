@@ -1,6 +1,6 @@
 import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { EntityDefinition, FieldDefinition, QuickActionDefinitionType } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, FieldDefinition } from '../types/sfToolingApiTypes.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
 
@@ -19,7 +19,6 @@ export default class ToolingApiConnection {
   private isInitialised = false;
   private allEntityDefinitionsByKey = new Map<string, EntityDefinition>();
   private customFieldsBySubjectId = new Map<string, FieldDefinition>();
-  private quickActionsBySubjectId = new Map<string, QuickActionDefinitionType>();
 
   private constructor(private targetOrgConnection: Connection) {
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
@@ -114,27 +113,6 @@ export default class ToolingApiConnection {
       });
     }
     return this.customFieldsBySubjectId;
-  }
-
-  /**
-   * Fetches all quick action definitions for a list of subject ids and returns them
-   * mapped by their subject ids.
-   *
-   * @param subjectIds
-   */
-  public async fetchQuickActions(subjectIds: string[]): Promise<Map<string, QuickActionDefinitionType>> {
-    if (this.quickActionsBySubjectId.size === 0) {
-      const actionDefs = await this.toolingObjectsRunner.fetchRecords<QuickActionDefinitionType>(
-        `SELECT Id,DeveloperName,EntityDefinitionId,EntityDefinition.QualifiedApiName,SobjectType FROM QuickActionDefinition WHERE ${QueryBuilder.buildParamListFilter(
-          'Id',
-          subjectIds
-        )}`
-      );
-      actionDefs.forEach((actionDef) => {
-        this.quickActionsBySubjectId.set(actionDef.Id, actionDef);
-      });
-    }
-    return this.quickActionsBySubjectId;
   }
 
   private async loadObjects(): Promise<void> {

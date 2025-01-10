@@ -10,10 +10,24 @@
         }
       ]
     },
+    "Layout": {
+      "metadataType": "Layout",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test Object Layout",
+          "fullyQualifiedName": "TestObject__c-Test Object Layout"
+        }
+      ]
+    },
     "CustomField": {
       "metadataType": "CustomField",
-      "componentCount": 2,
+      "componentCount": 3,
       "components": [
+        {
+          "developerName": "IsActive",
+          "fullyQualifiedName": "TestObject__c.IsActive__c"
+        },
         {
           "developerName": "Description",
           "fullyQualifiedName": "TestObject__c.Description__c"
@@ -21,6 +35,20 @@
         {
           "developerName": "CustomerType",
           "fullyQualifiedName": "Account.CustomerType__c"
+        }
+      ]
+    },
+    "EmailTemplate": {
+      "metadataType": "EmailTemplate",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "My_Emails_Folder/Email_Template_1",
+          "fullyQualifiedName": "My_Emails_Folder/Email_Template_1"
+        },
+        {
+          "developerName": "My_Emails_Folder/Email_Template_2",
+          "fullyQualifiedName": "My_Emails_Folder/Email_Template_2"
         }
       ]
     },
@@ -39,12 +67,12 @@
       "componentCount": 2,
       "components": [
         {
-          "developerName": "BasicApexClassWithoutFunctionality",
-          "fullyQualifiedName": "BasicApexClassWithoutFunctionality"
-        },
-        {
           "developerName": "AnotherClassWithoutFunctionality",
           "fullyQualifiedName": "AnotherClassWithoutFunctionality"
+        },
+        {
+          "developerName": "BasicApexClassWithoutFunctionality",
+          "fullyQualifiedName": "BasicApexClassWithoutFunctionality"
         }
       ]
     },
@@ -55,6 +83,40 @@
         {
           "developerName": "TestObject__c",
           "fullyQualifiedName": "TestObject__c"
+        }
+      ]
+    },
+    "WorkflowAlert": {
+      "metadataType": "WorkflowAlert",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_Object_Test_Alert_1",
+          "fullyQualifiedName": "TestObject__c.Test_Object_Test_Alert_1"
+        }
+      ]
+    },
+    "ValidationRule": {
+      "metadataType": "ValidationRule",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "Description_Required_Is_Active",
+          "fullyQualifiedName": "TestObject__c.Description_Required_Is_Active"
+        },
+        {
+          "developerName": "Billing_Address_Required_For_Commercial",
+          "fullyQualifiedName": "Account.Billing_Address_Required_For_Commercial"
+        }
+      ]
+    },
+    "WorkflowFieldUpdate": {
+      "metadataType": "WorkflowFieldUpdate",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "TestObject__c.Test_Object_Field_Update_1",
+          "fullyQualifiedName": "TestObject__c.Test_Object_Field_Update_1"
         }
       ]
     },
@@ -78,6 +140,70 @@
         }
       ]
     },
+    "AuraDefinitionBundle": {
+      "metadataType": "AuraDefinitionBundle",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "basicAuraCmpWithoutFunctionality",
+          "fullyQualifiedName": "basicAuraCmpWithoutFunctionality"
+        }
+      ]
+    },
+    "CompactLayout": {
+      "metadataType": "CompactLayout",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "CUSTOM",
+          "fullyQualifiedName": "Account.CUSTOM"
+        },
+        {
+          "developerName": "CUSTOM",
+          "fullyQualifiedName": "TestObject__c.CUSTOM"
+        }
+      ]
+    },
+    "FieldSet": {
+      "metadataType": "FieldSet",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Placeholder_Field_Set",
+          "fullyQualifiedName": "TestObject__c.Placeholder_Field_Set"
+        }
+      ]
+    },
+    "FlexiPage": {
+      "metadataType": "FlexiPage",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_Object_Record_Page",
+          "fullyQualifiedName": "Test_Object_Record_Page"
+        }
+      ]
+    },
+    "GlobalValueSet": {
+      "metadataType": "GlobalValueSet",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Global_Project_Status",
+          "fullyQualifiedName": "Global_Project_Status"
+        }
+      ]
+    },
+    "PermissionSet": {
+      "metadataType": "PermissionSet",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_Package_Full_Access",
+          "fullyQualifiedName": "Test_Package_Full_Access"
+        }
+      ]
+    },
     "LightningComponentBundle": {
       "metadataType": "LightningComponentBundle",
       "componentCount": 1,
@@ -90,6 +216,12 @@
     }
   },
   "ignoredTypes": {},
-  "notImplementedTypes": [],
-  "totalDeprecatedComponentCount": 6
+  "notImplementedTypes": [
+    {
+      "keyPrefix": "00l",
+      "entityName": "Folder",
+      "memberCount": 1
+    }
+  ],
+  "totalDeprecatedComponentCount": 25
 }
