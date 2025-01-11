@@ -11,6 +11,7 @@ import { OutdatedFlowVersions } from './outdatedFlowVersions.js';
 import { FullNameSingleRecord } from './fullNameSingleRecord.js';
 import { DynamicDevNamedEntityRelated } from './dynamicDevNamedEntityRelated.js';
 import { SObjectBasedDefNameEntity } from './sobjectBasedDevNameEntity.js';
+import { ApprovalProcessDefinition } from './approvalProcessDefinition.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -40,6 +41,8 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     CompactLayout: new SObjectBasedDefNameEntity(orgConnection, 'CompactLayout'),
     GlobalValueSet: new FullNameSingleRecord(orgConnection.tooling, 'GlobalValueSet'),
     FieldSet: new DynamicDevNamedEntityRelated(orgConnection, 'FieldSet', 'DeveloperName'),
+    CustomApplication: new DeveloperNameEntity(orgConnection.tooling, 'CustomApplication'),
+    ProcessDefinition: new ApprovalProcessDefinition(orgConnection),
   };
 };
 

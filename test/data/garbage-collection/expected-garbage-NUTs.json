@@ -96,6 +96,16 @@
         }
       ]
     },
+    "CustomApplication": {
+      "metadataType": "CustomApplication",
+      "componentCount": 1,
+      "components": [
+        {
+          "developerName": "Test_Application",
+          "fullyQualifiedName": "Test_Application"
+        }
+      ]
+    },
     "ValidationRule": {
       "metadataType": "ValidationRule",
       "componentCount": 2,
@@ -107,6 +117,20 @@
         {
           "developerName": "Billing_Address_Required_For_Commercial",
           "fullyQualifiedName": "Account.Billing_Address_Required_For_Commercial"
+        }
+      ]
+    },
+    "ProcessDefinition": {
+      "metadataType": "ApprovalProcess",
+      "componentCount": 2,
+      "components": [
+        {
+          "developerName": "Placeholder_Approval_Process",
+          "fullyQualifiedName": "TestObject__c.Placeholder_Approval_Process"
+        },
+        {
+          "developerName": "Placeholder_Approval_Process",
+          "fullyQualifiedName": "Account.Placeholder_Approval_Process"
         }
       ]
     },
@@ -223,5 +247,5 @@
       "memberCount": 1
     }
   ],
-  "totalDeprecatedComponentCount": 25
+  "totalDeprecatedComponentCount": 28
 }

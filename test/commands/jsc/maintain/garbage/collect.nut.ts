@@ -109,7 +109,8 @@ describe('jsc maintain garbage NUTs*', () => {
       // an actual org and executing real queries.
       const actualDeprecatedEntities = Object.keys(deprecatedMembers);
       const expectedDeprecatedEntities = EXPECTED_E2E_GARBAGE.deprecatedMembers;
-      expect(actualDeprecatedEntities).to.deep.equal(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));
+      // we care for qual values, but not for their order
+      expect(actualDeprecatedEntities).to.have.deep.members(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));
       for (const depEnt of actualDeprecatedEntities) {
         expect(deprecatedMembers[depEnt].componentCount).to.equal(expectedDeprecatedEntities[depEnt].componentCount);
         expect(deprecatedMembers[depEnt].metadataType).to.equal(expectedDeprecatedEntities[depEnt].metadataType);
