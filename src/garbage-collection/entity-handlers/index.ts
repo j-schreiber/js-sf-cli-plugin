@@ -4,11 +4,14 @@ import { CustomObject } from './customObject.js';
 import { DeveloperNameEntity } from './developerNameEntity.js';
 import { UnsupportedEntity } from './unsupportedEntity.js';
 import { CustomField } from './customField.js';
-import { QuickActionDefinition } from './quickActionDefinition.js';
 import { NameEntity } from './nameEntity.js';
 import { Layout } from './layout.js';
 import { CustomMetadataRecord } from './customMetadataRecord.js';
 import { OutdatedFlowVersions } from './outdatedFlowVersions.js';
+import { FullNameSingleRecord } from './fullNameSingleRecord.js';
+import { DynamicDevNamedEntityRelated } from './dynamicDevNamedEntityRelated.js';
+import { SObjectBasedDefNameEntity } from './sobjectBasedDevNameEntity.js';
+import { ApprovalProcessDefinition } from './approvalProcessDefinition.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -27,7 +30,19 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     Layout: new Layout(orgConnection),
     CustomObject: new CustomObject(orgConnection),
     CustomField: new CustomField(orgConnection),
-    QuickActionDefinition: new QuickActionDefinition(orgConnection),
+    QuickActionDefinition: new SObjectBasedDefNameEntity(orgConnection, 'QuickActionDefinition', 'QuickAction'),
+    WorkflowAlert: new DynamicDevNamedEntityRelated(orgConnection, 'WorkflowAlert', 'DeveloperName'),
+    WorkflowFieldUpdate: new FullNameSingleRecord(orgConnection.tooling, 'WorkflowFieldUpdate'),
+    StaticResource: new NameEntity(orgConnection.tooling, 'StaticResource'),
+    CustomTab: new FullNameSingleRecord(orgConnection.tooling, 'CustomTab'),
+    PermissionSet: new NameEntity(orgConnection.tooling, 'PermissionSet'),
+    ValidationRule: new DynamicDevNamedEntityRelated(orgConnection, 'ValidationRule', 'ValidationName'),
+    EmailTemplate: new FullNameSingleRecord(orgConnection.tooling, 'EmailTemplate'),
+    CompactLayout: new SObjectBasedDefNameEntity(orgConnection, 'CompactLayout'),
+    GlobalValueSet: new FullNameSingleRecord(orgConnection.tooling, 'GlobalValueSet'),
+    FieldSet: new DynamicDevNamedEntityRelated(orgConnection, 'FieldSet', 'DeveloperName'),
+    CustomApplication: new DeveloperNameEntity(orgConnection.tooling, 'CustomApplication'),
+    ProcessDefinition: new ApprovalProcessDefinition(orgConnection),
   };
 };
 
@@ -37,15 +52,5 @@ export const loadUnsupportedMetadataTypes = (): { [x: string]: EntityDefinitionI
   return {
     EmailTemplate: new UnsupportedEntity('EmailTemplate', toolingApiMsg),
     ListView: new UnsupportedEntity('ListView', toolingApiMsg),
-    CustomTab: new UnsupportedEntity('CustomTab', toolingApiMsg),
-  };
-};
-
-export type EntityDefinitionHandlers = {
-  supported: {
-    [x: string]: EntityDefinitionHandler;
-  };
-  unsupported: {
-    [x: string]: EntityDefinitionHandler;
   };
 };

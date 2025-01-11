@@ -8,5 +8,8 @@
   "namespace": "",
   "sfdcLoginUrl": "https://tmh.my.salesforce.com",
   "sourceApiVersion": "61.0",
-  "packageAliases": {}
+  "packageAliases": {
+    "Test Package @ 0.1.0": "04tPl0000006rJNIAY",
+    "Test Package @ LATEST": "04tPl0000006s5lIAA"
+  }
 }

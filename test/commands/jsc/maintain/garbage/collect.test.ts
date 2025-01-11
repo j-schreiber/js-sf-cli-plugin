@@ -77,10 +77,8 @@ describe('jsc maintain garbage collect', () => {
 
   afterEach(() => {
     $$.restore();
-  });
-
-  afterEach(() => {
     fs.rmSync(TEST_OUTPUT_PATH, { recursive: true, force: true });
+    process.removeAllListeners();
   });
 
   it('with --json and no other params > returns result from garbage collector', async () => {

@@ -101,6 +101,11 @@ export default class GarbageCollector extends EventEmitter {
         const newMembers = await supportedTypes[entityName].resolve(packageMembers);
         garbageContainer.deprecatedMembers[entityName] = newMembers;
         garbageContainer.totalDeprecatedComponentCount += newMembers.componentCount;
+        // in reality, Package2Member records may be corrupted and contain invalid SubjectIds
+        // if numbers are not matching, debug some info to the user
+        if (newMembers.componentCount !== packageMembers.length) {
+          this.emitResolveStatus(`Package members resolved to ${newMembers.componentCount} actual ${entityName}(s).`);
+        }
       } else if (unsupportedTypes[entityName]) {
         const unsupported = await unsupportedTypes[entityName].resolve(packageMembers);
         if (packageMembers.length > 0) {

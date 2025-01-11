@@ -25,7 +25,7 @@ export class DeveloperNameEntity implements EntityDefinitionHandler {
       garbageList.push({
         developerName: def.DeveloperName,
         fullyQualifiedName: def.DeveloperName,
-        subjectId: def.Id!,
+        subjectId: def.Id,
       });
     });
     return {

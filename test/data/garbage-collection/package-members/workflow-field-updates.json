@@ -1,0 +1,18 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v0X0000004D6kQAE"
+      },
+      "Id": "03v0X0000004D6kQAE",
+      "CurrentPackageVersionId": "04t4P0000000002AAA",
+      "MaxPackageVersionId": "04t4P0000000002AAA",
+      "SubjectId": "04Y0X0000000gb0UAA",
+      "SubjectKeyPrefix": "04Y",
+      "SubjectManageableState": "deprecatedEditable"
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}

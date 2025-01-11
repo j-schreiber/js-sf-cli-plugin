@@ -1,0 +1,15 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "WorkflowFieldUpdate",
+        "url": "/services/data/v63.0/tooling/sobjects/WorkflowFieldUpdate/04Y0X0000000gb0UAA"
+      },
+      "Id": "04Y0X0000000gb0UAA",
+      "Name": "Set some test value",
+      "FullName": "Account.My_Test_Field_Update"
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}
