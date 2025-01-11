@@ -104,15 +104,22 @@ describe('jsc maintain garbage NUTs*', () => {
       // Assert
       expect(result).to.not.be.undefined;
       const deprecatedMembers = result!.deprecatedMembers;
-      // the E2E expect file is updated, as the package versions receive more metadata
-      // don't assert equality too deep - we mostly care that every single handler is executed
-      // and runs successfully against an actual org. Detailed logic to parse query results is unit tested.
+      // Update the JSON file from EXPECTED_E2E_GARBAGE for new assert
+      // most important part of this test is running the individual handlers against
+      // an actual org and executing real queries.
       const actualDeprecatedEntities = Object.keys(deprecatedMembers);
       const expectedDeprecatedEntities = EXPECTED_E2E_GARBAGE.deprecatedMembers;
       expect(actualDeprecatedEntities).to.deep.equal(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));
       for (const depEnt of actualDeprecatedEntities) {
         expect(deprecatedMembers[depEnt].componentCount).to.equal(expectedDeprecatedEntities[depEnt].componentCount);
         expect(deprecatedMembers[depEnt].metadataType).to.equal(expectedDeprecatedEntities[depEnt].metadataType);
+        // remove the "subjectId" from actual deprecated members, so we can compare only
+        // the immutable properties with expected result from EXPECTED_E2E_GARBAGE.
+        // eslint-disable-next-line arrow-body-style
+        const reducedMembers = deprecatedMembers[depEnt].components.map(({ fullyQualifiedName, developerName }) => {
+          return { fullyQualifiedName, developerName };
+        });
+        expect(reducedMembers).to.have.deep.members(expectedDeprecatedEntities[depEnt].components);
       }
     });
   });
