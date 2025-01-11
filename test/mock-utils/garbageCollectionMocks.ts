@@ -12,7 +12,7 @@ import {
 } from '../../src/types/sfToolingApiTypes.js';
 import { PackageGarbageResult } from '../../src/garbage-collection/packageGarbageTypes.js';
 
-const testDataPath = path.join('test', 'garbage-collection', 'data');
+const testDataPath = path.join('test', 'data', 'garbage-collection');
 
 export default class GarbageCollectionMocks {
   public PACKAGE_2 = parseMockResult<Package2>('package-2.json');
@@ -78,7 +78,7 @@ export default class GarbageCollectionMocks {
 }
 
 export const EXPECTED_E2E_GARBAGE = JSON.parse(
-  fs.readFileSync(path.join('test', 'garbage-collection', 'data', 'expected-garbage-NUTs.json'), 'utf8')
+  fs.readFileSync(path.join('test', 'data', 'garbage-collection', 'expected-garbage-NUTs.json'), 'utf8')
 ) as PackageGarbageResult;
 
 export function parseMockResult<T extends Record>(filePath: string) {

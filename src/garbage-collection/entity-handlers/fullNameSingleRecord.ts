@@ -20,7 +20,7 @@ export class FullNameSingleRecord implements EntityDefinitionHandler {
     const garbageList: PackageGarbage[] = [];
     for (const packageMember of packageMembers) {
       // queries with "FullName" throw exception, if more than one record is queried
-      // so yes, we do "SOQL in a loop" here. For performence reasons. LOL.
+      // so yes, we do "SOQL in a loop" here. For performance reasons. LOL.
       // eslint-disable-next-line no-await-in-loop
       const entityDef = await this.queryRunner.fetchRecords<FullNameSingleRecordEntity>(
         `SELECT Id,FullName FROM ${this.entityName} WHERE Id = '${packageMember.SubjectId}' LIMIT 1`
