@@ -58,7 +58,7 @@ export default class MigrationPlan {
       const objectResults = await planObject.retrieveRecords(exportPath);
       eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Completed,
-        message: `Retrieved ${objectResults.totalSize} records in ${objectResults.files.length} batches.`,
+        message: `Retrieved ${objectResults.totalSize} records in ${objectResults.executedFullQueryStrings.length} batches.`,
       } as CommandStatusEvent);
       results.push(objectResults);
     }

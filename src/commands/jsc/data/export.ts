@@ -14,7 +14,7 @@ Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.data.export');
 
 export type JscDataExportResult = {
-  'source-org-id': string;
+  sourceOrgId: string;
   exports: MigrationPlanObjectQueryResult[];
 };
 
@@ -63,7 +63,7 @@ export default class JscDataExport extends SfCommand<JscDataExportResult> {
     );
     const results = await plan.execute(flags['output-dir'], flags['validate-only']);
     return {
-      'source-org-id': flags['source-org'].getOrgId(),
+      sourceOrgId: flags['source-org'].getOrgId(),
       exports: results,
     };
   }

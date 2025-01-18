@@ -59,7 +59,7 @@ describe('jsc plan export', () => {
     // started/stopped once for validation, and per each object (4)
     Sinon.assert.callCount(sfSpinnerStub.start, 5);
     Sinon.assert.callCount(sfSpinnerStub.stop, 5);
-    expect(result['source-org-id']).equals(testOrg.orgId);
+    expect(result.sourceOrgId).equals(testOrg.orgId);
   });
 
   it('runs command with --json and valid plan => has query details in result', async () => {
@@ -78,7 +78,7 @@ describe('jsc plan export', () => {
     ]);
 
     // Assert
-    expect(result['source-org-id']).equals(testOrg.orgId);
+    expect(result.sourceOrgId).equals(testOrg.orgId);
     expect(result.exports).to.not.be.undefined;
     expect(result.exports.length).equals(4);
     expect(result.exports[0].queryString).equals('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');

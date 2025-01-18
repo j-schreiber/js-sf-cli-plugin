@@ -40,6 +40,7 @@ export default class MigrationPlanObject {
       queryString: this.resolveQueryString(),
       totalSize: 0,
       files: [],
+      executedFullQueryStrings: [],
     };
     const queries = this.resolveAllQueries();
     let totalRequestCount = 0;
@@ -50,13 +51,15 @@ export default class MigrationPlanObject {
         status: ProcessingStatus.InProgress,
       } as CommandStatusEvent);
       totalRequestCount++;
+      result.executedFullQueryStrings.push(queryString);
       const queryResult = await this.runQuery(queryString);
       result.totalSize += queryResult.records.length;
       const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
       let isDone = queryResult.done;
       let nextRecordsUrl = queryResult.nextRecordsUrl;
-      if (queryResult.records.length > 0) {
-        result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      const filePath = this.processResults(queryResult.records, exportPath, totalRequestCount);
+      if (filePath) {
+        result.files.push(filePath);
       }
       while (!isDone) {
         thisChunkRequestsCount++;
@@ -70,9 +73,15 @@ export default class MigrationPlanObject {
         const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
         isDone = moreResults.done;
         nextRecordsUrl = moreResults.nextRecordsUrl;
-        result.files.push(this.processResults(moreResults.records, exportPath, totalRequestCount));
+        const queryMorePath = this.processResults(moreResults.records, exportPath, totalRequestCount);
+        if (queryMorePath) {
+          result.files.push(queryMorePath);
+        }
         result.totalSize += moreResults.records.length;
       }
+    }
+    if (result.totalSize === 0) {
+      this.processResults([], exportPath, totalRequestCount);
     }
     result.isSuccess = true;
     return result;
@@ -123,7 +132,7 @@ export default class MigrationPlanObject {
 
   //        PRIVATE
 
-  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string {
+  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string | undefined {
     if (this.data.exports) {
       Object.keys(this.data.exports).forEach((exportFieldName) => {
         const recordIds: string[] = [];
@@ -135,7 +144,11 @@ export default class MigrationPlanObject {
         PlanCache.push(this.data.exports![exportFieldName], recordIds);
       });
     }
-    return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+    if (queryRecords.length > 0) {
+      return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+    } else {
+      return undefined;
+    }
   }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {

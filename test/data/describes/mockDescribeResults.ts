@@ -54,3 +54,17 @@ export const MockPackageMemberDescribeResult: Partial<DescribeSObjectResult> = {
     sobject: '/services/data/v60.0/tooling/sobjects/Package2Member',
   },
 };
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const mockDescribeResults = (objectName: string, isToolingObject?: boolean): Promise<DescribeSObjectResult> => {
+  switch (objectName) {
+    case 'Account':
+      return Promise.resolve(MockAccountDescribeResult as DescribeSObjectResult);
+    case 'Order':
+      return Promise.resolve(MockOrderDescribeResult as DescribeSObjectResult);
+    case 'Package2Member':
+      return Promise.resolve(MockPackageMemberDescribeResult as DescribeSObjectResult);
+    default:
+      return Promise.resolve(MockAnyObjectResult as DescribeSObjectResult);
+  }
+};

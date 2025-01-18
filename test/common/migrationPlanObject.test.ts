@@ -6,13 +6,20 @@ import { SfError } from '@salesforce/core';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
-import { MockAccountDescribeResult, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
-import { GenericSuccess, InvalidFieldInQuery, MockAccounts, MockOrders } from '../data/api/queryResults.js';
+import { mockDescribeResults, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
+import {
+  EmptyQueryResult,
+  GenericSuccess,
+  InvalidFieldInQuery,
+  MockAccounts,
+  MockOrders,
+} from '../data/api/queryResults.js';
 import { LOCAL_CACHE_DIR } from '../../src/common/constants.js';
 import PlanCache from '../../src/common/planCache.js';
 import QueryBuilder from '../../src/common/utils/queryBuilder.js';
 import { eventBus } from '../../src/common/comms/eventBus.js';
 import { mockQueryResponseWithQueryMore } from '../mock-utils/sfQueryApiMocks.js';
+import DescribeApi from '../../src/common/metadata/describeApi.js';
 
 const TooManyQuerySourcesDefined: string =
   'More than one query provided. queryString OR queryFile or queryObject are allowed.';
@@ -25,9 +32,10 @@ describe('migration plan object', () => {
 
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
-    sinon
-      .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(MockAccountDescribeResult as DescribeSObjectResult);
+    sinon.stub(DescribeApi.prototype, 'describeSObject').callsFake(mockDescribeResults);
+    // sinon
+    //   .stub(MigrationPlanObject.prototype, 'describeObject')
+    //   .resolves(MockAccountDescribeResult as DescribeSObjectResult);
   });
 
   afterEach(async () => {
@@ -350,6 +358,42 @@ describe('migration plan object', () => {
     expect(result.totalSize).to.equal(1);
   });
 
+  it('retrieves records with parent bind > parent result was empty > child object has empty IN filter', async () => {
+    // Arrange
+    mockQueryResults(EmptyQueryResult.records, 'query');
+    const accPlanObject: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Account',
+        queryString: 'SELECT Id FROM Account',
+        exports: { Id: 'myAccountIds' },
+      },
+      await testOrg.getConnection()
+    );
+    await accPlanObject.load();
+    const accRetrieveResult = await accPlanObject.retrieveRecords(ExportPath);
+    expect(accRetrieveResult.executedFullQueryStrings.length).to.equal(1);
+    expect(accRetrieveResult.executedFullQueryStrings[0]).to.equal('SELECT Id FROM Account');
+
+    // Act
+    const testObj: MigrationPlanObject = new MigrationPlanObject(
+      {
+        objectName: 'Order',
+        query: { fetchAllFields: true, bind: { field: 'AccountId', variable: 'myAccountIds' } },
+      },
+      await testOrg.getConnection()
+    );
+    await testObj.load();
+    sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
+    const result = await testObj.retrieveRecords(ExportPath);
+
+    // Assert
+    expect(PlanCache.isSet('myAccountIds')).to.be.true;
+    expect(PlanCache.get('myAccountIds')).deep.equals([]);
+    expect(result.queryString).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
+    expect(result.totalSize).to.equal(0);
+    expect(result.executedFullQueryStrings.length).to.equal(0);
+  });
+
   it('retrieves records with multiple parent batches and emits useful status information', async () => {
     // Arrange
     PlanCache.CHUNK_SIZE = 2;
@@ -387,11 +431,9 @@ describe('migration plan object', () => {
 
   it('retrieves records and exports multiple ids > exports all ids to cache', async () => {
     // Arrange
-    sinon.restore();
-    sinon
-      .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
     $$.fakeConnectionRequest = mockQueryResponseWithQueryMore;
+
+    // Act
     const testObj: MigrationPlanObject = new MigrationPlanObject(
       {
         objectName: 'Order',
@@ -401,8 +443,6 @@ describe('migration plan object', () => {
       await testOrg.getConnection()
     );
     await testObj.load();
-
-    // Act
     const result = await testObj.retrieveRecords(ExportPath);
 
     // Assert
@@ -419,7 +459,11 @@ describe('migration plan object', () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const url = (request as { url: string }).url;
       if (url.includes(expectedUriString)) {
-        return Promise.resolve({ totalSize: 1, records: mockResult, done: true });
+        return Promise.resolve({
+          totalSize: (mockResult as unknown[]).length,
+          records: mockResult,
+          done: true,
+        });
       }
       return Promise.reject({ data: { message: 'Unexpected query was executed' } });
     };
