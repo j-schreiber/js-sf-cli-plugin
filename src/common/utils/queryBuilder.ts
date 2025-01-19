@@ -1,17 +1,33 @@
 import fs from 'node:fs';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
-import { Connection } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 import { QueryError } from '../../types/sfStandardApiTypes.js';
-import { ZQueryObjectType } from '../../types/migrationPlanObjectData.js';
+import { ZMigrationPlanObjectDataType } from '../../types/migrationPlanObjectData.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 
 export default class QueryBuilder {
-  private selectFields: Set<string> = new Set<string>();
-  private limit?: number;
-  private filter?: string;
-  private parentBind?: string;
+  private isToolingObject: boolean;
+  private rawSOQL?: string;
 
-  public constructor(private describeResult: DescribeSObjectResult) {
-    this.selectFields.add('Id');
+  public constructor(private data: ZMigrationPlanObjectDataType, private describe: DescribeSObjectResult) {
+    const queryCount =
+      Number(Boolean(this.data.queryFile)) +
+      Number(Boolean(this.data.queryString && this.data.queryString.trim() !== '')) +
+      Number(Boolean(this.data.query));
+    if (queryCount === 0) {
+      throw messages.createError('NoQueryDefinedForSObject', [data.objectName]);
+    }
+    if (queryCount > 1) {
+      throw messages.createError('TooManyQueriesDefined');
+    }
+    this.isToolingObject = this.describe.urls.sobject.includes('/tooling/sobjects/');
+    if (data.queryString) {
+      this.rawSOQL = QueryBuilder.sanitise(data.queryString);
+    } else if (data.queryFile) {
+      this.rawSOQL = QueryBuilder.loadFromFile(data.queryFile);
+    }
   }
 
   public static loadFromFile(filePath?: string): string {
@@ -32,15 +48,6 @@ export default class QueryBuilder {
     return cleanesFromSpaces.trim();
   }
 
-  public static makeValidatorQuery(rawQuery: string): string {
-    if (rawQuery.includes('LIMIT')) {
-      const cleanedQuery = rawQuery.replace(/\s+/g, ' ');
-      return cleanedQuery.replace(/(LIMIT)(\s)*[0-9]+$/, 'LIMIT 1');
-    } else {
-      return `${rawQuery} LIMIT 1`;
-    }
-  }
-
   public static buildParamListFilter(paramName: string, paramList?: string[] | number[]): string {
     if (paramList === undefined) {
       return '';
@@ -50,74 +57,108 @@ export default class QueryBuilder {
     return `${paramName} IN ${listInFilter} AND ${paramName} != NULL`;
   }
 
-  public async assertSyntax(conn: Connection, queryString?: string): Promise<boolean> {
-    if (queryString === undefined || queryString.trim().length === 0) {
-      throw new Error('Query cannot be empty!');
-    }
+  /**
+   * Runs the "validator query" from this builder against the
+   * supplied org connection.
+   *
+   * @param conn
+   * @returns
+   */
+  public async assertSyntax(conn: Connection): Promise<boolean> {
+    const queryString = this.toValidatorSOQL();
     try {
-      if (this.isToolingObject()) {
-        await conn.tooling.query(QueryBuilder.makeValidatorQuery(queryString));
+      if (this.isToolingObject) {
+        await conn.tooling.query(queryString);
       } else {
-        await conn.query(QueryBuilder.makeValidatorQuery(queryString));
+        await conn.query(queryString);
       }
       return true;
     } catch (err) {
       const queryApiErr: QueryError = err as QueryError;
-      throw new Error(`Invalid query syntax: ${queryString} (${queryApiErr.errorCode}: ${queryApiErr.data?.message})`);
+      throw new Error(
+        `Invalid query syntax: ${this.toSOQL()} (${queryApiErr.errorCode}: ${queryApiErr.data?.message})`
+      );
     }
   }
 
-  public addAllFields(): QueryBuilder {
-    this.describeResult.fields.forEach((field) => this.selectFields.add(field.name));
-    return this;
-  }
-
-  public setLimit(limit?: number): QueryBuilder {
-    this.limit = limit;
-    return this;
-  }
-
-  public setWhere(filter?: string): QueryBuilder {
-    this.filter = filter;
-    return this;
-  }
-
-  public toSOQL(queryConfig?: ZQueryObjectType, parentIds?: string[]): string {
-    if (queryConfig) {
-      this.readQueryConfig(queryConfig, parentIds);
+  /**
+   * Creates a real, executable SOQL that injects the chunk of parent ids,
+   * if a bind variable is specified. If bind is undefined, parent ids are
+   * ignored.
+   *
+   * @param parentIds
+   * @returns
+   */
+  public toSOQL(parentIds?: string[]): string {
+    if (this.rawSOQL) {
+      return this.rawSOQL;
     }
-    const limitClause = this.limit ? ` LIMIT ${this.limit}` : '';
-    return `SELECT ${[...this.selectFields].join(',')} FROM ${
-      this.describeResult.name
-    }${this.buildWhere()}${limitClause}`;
+    if (this.data.query) {
+      const limitClause = this.data.query.limit ? ` LIMIT ${this.data.query.limit}` : '';
+      const whereClause = this.buildWhere(parentIds ?? []);
+      return `SELECT ${[...this.getQueryFields()].join(',')} FROM ${
+        this.describe.name
+      }${whereClause}${limitClause}`.trim();
+    }
+    return `SELECT Id FROM ${this.describe.name}`;
+  }
+
+  /**
+   * Creates an executable SOQL that injects an empty list of parent bind
+   * variables and appends "LIMIT 0". This SOQL is executed during plan
+   * validation.
+   *
+   * @returns
+   */
+  public toValidatorSOQL(): string {
+    return this.formatRawSoqlAsValidator(this.toSOQL([]));
+  }
+
+  /**
+   * Creates a SOQL that may not be executable, depending on the parent
+   * binds of the query definition. Instead of injecting variables, it
+   * mimicks the apex SOQL inline-syntax.
+   */
+  public toDisplaySOQL(): string {
+    const soql = this.toSOQL([]);
+    if (this.data.query?.bind) {
+      return soql.replace("('')", `:${this.data.query.bind.variable}`);
+    }
+    return soql;
   }
 
   //    PRIVATE
 
-  private isToolingObject(): boolean {
-    return this.describeResult.urls.sobject.includes('/tooling/sobjects/');
+  private buildWhere(parentIds: string[]): string {
+    if (this.data.query?.bind && parentIds) {
+      const parentBind = QueryBuilder.buildParamListFilter(this.data.query.bind.field, parentIds);
+      if (this.data.query.filter) {
+        return ` WHERE (${this.data.query.filter}) AND ${parentBind}`;
+      } else {
+        return ` WHERE ${parentBind}`;
+      }
+    } else if (this.data.query?.filter) {
+      return ` WHERE ${this.data.query.filter}`;
+    }
+    return '';
   }
 
-  private readQueryConfig(queryConfig: ZQueryObjectType, parentIds?: string[]): void {
-    if (queryConfig.fetchAllFields) {
-      this.addAllFields();
-    }
-    if (queryConfig.filter) {
-      this.setWhere(queryConfig.filter);
-    }
-    if (queryConfig.limit) {
-      this.setLimit(queryConfig.limit);
-    }
-    if (queryConfig.bind) {
-      this.parentBind = QueryBuilder.buildParamListFilter(queryConfig.bind.field, parentIds);
-    }
-  }
-
-  private buildWhere(): string {
-    if (this.parentBind) {
-      return this.filter ? ` WHERE (${this.filter}) AND ${this.parentBind}` : ` WHERE ${this.parentBind}`;
+  private getQueryFields(): Set<string> {
+    const fields: Set<string> = new Set<string>();
+    if (this.data.query?.fetchAllFields) {
+      this.describe.fields.forEach((field) => fields.add(field.name));
     } else {
-      return this.filter ? ` WHERE ${this.filter}` : '';
+      fields.add('Id');
     }
+    return fields;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private formatRawSoqlAsValidator(rawQuery: string): string {
+    if (rawQuery.includes('LIMIT')) {
+      const cleanedQuery = rawQuery.replace(/\s+/g, ' ');
+      return cleanedQuery.replace(/(LIMIT)(\s)*[0-9]+$/, 'LIMIT 0');
+    }
+    return `${rawQuery} LIMIT 0`;
   }
 }

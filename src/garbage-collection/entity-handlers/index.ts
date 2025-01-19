@@ -50,7 +50,6 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
 export const loadUnsupportedMetadataTypes = (): { [x: string]: EntityDefinitionIgnorer } => {
   const toolingApiMsg = messages.getMessage('infos.not-fully-supported-by-tooling-api');
   return {
-    EmailTemplate: new UnsupportedEntity('EmailTemplate', toolingApiMsg),
     ListView: new UnsupportedEntity('ListView', toolingApiMsg),
   };
 };

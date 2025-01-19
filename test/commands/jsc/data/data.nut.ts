@@ -34,7 +34,6 @@ describe('jsc data NUTs*', () => {
 
   after(async () => {
     await session?.clean();
-    fs.rmSync('exports', { recursive: true, force: true });
   });
 
   describe('data export', () => {
@@ -58,6 +57,35 @@ describe('jsc data NUTs*', () => {
       expect(result?.exports[1].files.length).to.equal(1, 'number of files for: ' + JSON.stringify(result?.exports[1]));
       const actuallyExportedContacts = parseExportedRecords(result!.exports[1].files[0]);
       expect(actuallyExportedContacts.records.length).to.equal(1, 'length of actually exported contacts');
+    });
+
+    it('exports runs plan file that has empty binds > exports no data', () => {
+      // Act
+      const result = execCmd<JscDataExportResult>(
+        `jsc:data:export --plan ${path.join(
+          'export-plans',
+          'plan-for-empty-bind.yml'
+        )} --source-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      expect(result!.exports.length).to.equal(3);
+      const userResult = result!.exports[0];
+      expect(userResult.isSuccess).to.equal(true, 'user result is success');
+      expect(userResult.totalSize).to.equal(0, 'user result total size');
+      expect(userResult.files.length).to.equal(0, 'user result created files');
+      expect(userResult.executedFullQueryStrings.length).to.equal(1, 'user result queries executed');
+      const accountResult = result!.exports[1];
+      expect(accountResult.isSuccess).to.equal(true, 'accounts result is success');
+      expect(accountResult.totalSize).to.equal(0, 'accounts result total size');
+      expect(accountResult.files.length).to.equal(0, 'accounts result created files');
+      expect(accountResult.executedFullQueryStrings.length).to.equal(0, 'account result queries executed');
+      const contactResult = result!.exports[2];
+      expect(contactResult.isSuccess).to.equal(true, 'contacts result is success');
+      expect(contactResult.totalSize).to.equal(0, 'contacts result total size');
+      expect(contactResult.files.length).to.equal(0, 'contacts result created files');
+      expect(contactResult.executedFullQueryStrings.length).to.equal(0, 'contacts result queries executed');
     });
   });
 
