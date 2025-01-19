@@ -82,7 +82,9 @@ describe('jsc plan export', () => {
     expect(result.exports).to.not.be.undefined;
     expect(result.exports.length).equals(4);
     expect(result.exports[0].queryString).equals('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
-    expect(result.exports[1].queryString).equals('SELECT Id,Name,AccountId FROM Contact');
+    expect(result.exports[1].queryString).equals(
+      'SELECT Id,Name,AccountId FROM Contact WHERE AccountId IN :myAccountIds AND AccountId != NULL'
+    );
     expect(result.exports[2].queryString).equals('SELECT Id,AccountId,BillToContactId FROM Order LIMIT 100');
     expect(result.exports[3].queryString).equals('SELECT Id,AccountId FROM Opportunity LIMIT 10');
     result.exports.forEach((exportObject) => {

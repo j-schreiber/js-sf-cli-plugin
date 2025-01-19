@@ -4,9 +4,8 @@ import sinon from 'sinon';
 import { type AnyJson } from '@salesforce/ts-types';
 import { SfError } from '@salesforce/core';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
-import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import MigrationPlanObject from '../../src/common/migrationPlanObject.js';
-import { mockDescribeResults, MockOrderDescribeResult } from '../data/describes/mockDescribeResults.js';
+import { mockDescribeResults } from '../data/describes/mockDescribeResults.js';
 import {
   EmptyQueryResult,
   GenericSuccess,
@@ -21,9 +20,6 @@ import { eventBus } from '../../src/common/comms/eventBus.js';
 import { mockQueryResponseWithQueryMore } from '../mock-utils/sfQueryApiMocks.js';
 import DescribeApi from '../../src/common/metadata/describeApi.js';
 
-const TooManyQuerySourcesDefined: string =
-  'More than one query provided. queryString OR queryFile or queryObject are allowed.';
-const NoQueryDefinedForAccount: string = 'No query defined for: Account';
 const ExportPath: string = 'tmp/tests/migration-plan-obj-tests';
 
 describe('migration plan object', () => {
@@ -33,9 +29,6 @@ describe('migration plan object', () => {
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
     sinon.stub(DescribeApi.prototype, 'describeSObject').callsFake(mockDescribeResults);
-    // sinon
-    //   .stub(MigrationPlanObject.prototype, 'describeObject')
-    //   .resolves(MockAccountDescribeResult as DescribeSObjectResult);
   });
 
   afterEach(async () => {
@@ -47,73 +40,6 @@ describe('migration plan object', () => {
     PlanCache.flush();
   });
 
-  it('has only query file => returns string from file', async () => {
-    // Arrange
-    const testObj: MigrationPlanObject = new MigrationPlanObject(
-      {
-        objectName: 'Account',
-        queryFile: 'test/data/soql/accounts.sql',
-      },
-      await testOrg.getConnection()
-    );
-
-    // Assert
-    // the file is auto-formatted! Query builder replaces all formatting with single whitespace
-    expect(testObj.resolveQueryString()).to.equal('SELECT Id,Name,BillingStreet FROM Account LIMIT 9500');
-  });
-
-  it('has only query string => returns direct input string', async () => {
-    // Arrange
-    const testObj: MigrationPlanObject = new MigrationPlanObject(
-      {
-        objectName: 'Account',
-        queryString: 'SELECT Id FROM Account',
-      },
-      await testOrg.getConnection()
-    );
-    // don't load, because describe API is not stubbed
-    // await testObj.load();
-
-    // Assert
-    expect(testObj.resolveQueryString()).to.equal('SELECT Id FROM Account');
-  });
-
-  it('has no query defined => loading fails', async () => {
-    // Arrange
-    const testObj: MigrationPlanObject = new MigrationPlanObject(
-      {
-        objectName: 'Account',
-      },
-      await testOrg.getConnection()
-    );
-
-    // Assert
-    try {
-      await testObj.load();
-    } catch (err) {
-      expect(String(err)).to.contain(NoQueryDefinedForAccount);
-    }
-  });
-
-  it('is has query and query file => loading fails', async () => {
-    // Arrange
-    const testObj: MigrationPlanObject = new MigrationPlanObject(
-      {
-        objectName: 'Account',
-        queryString: 'SELECT Id FROM Account',
-        queryFile: 'test/data/soql/accounts.sql',
-      },
-      await testOrg.getConnection()
-    );
-
-    // Assert
-    try {
-      await testObj.load();
-    } catch (err) {
-      expect(String(err)).to.contain(TooManyQuerySourcesDefined);
-    }
-  });
-
   it('is has full query object with "all" fields => creates SOQL from describe', async () => {
     // Arrange
     const testObj: MigrationPlanObject = new MigrationPlanObject(
@@ -123,10 +49,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    sinon.restore();
-    sinon
-      .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
 
     // Act
     await testObj.load();
@@ -146,10 +68,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    sinon.restore();
-    sinon
-      .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
 
     // Act
     await testObj.load();
@@ -167,10 +85,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    sinon.restore();
-    sinon
-      .stub(MigrationPlanObject.prototype, 'describeObject')
-      .resolves(MockOrderDescribeResult as DescribeSObjectResult);
 
     // Act
     await testObj.load();
@@ -230,6 +144,7 @@ describe('migration plan object', () => {
     // Assert
     try {
       await testObj.load();
+      expect.fail('Expected to fail, but succeeded');
     } catch (err) {
       expect(String(err)).to.contain(queryInput);
     }
@@ -239,8 +154,8 @@ describe('migration plan object', () => {
     // Arrange
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const url = (request as { url: string }).url;
-      expect(url).to.include('LIMIT%201', 'Did not normalise query to LIMIT 1');
-      if (url.includes('query?q=SELECT%20Id%2CName%2CBillingStreet%20FROM%20Account%20LIMIT%201')) {
+      expect(url).to.include('LIMIT%200', 'Did not normalise query to LIMIT 0');
+      if (url.includes('query?q=SELECT%20Id%2CName%2CBillingStreet%20FROM%20Account%20LIMIT%200')) {
         return Promise.resolve(GenericSuccess);
       }
       return Promise.reject({ data: { message: 'Unexpected query was executed' } });
@@ -389,7 +304,9 @@ describe('migration plan object', () => {
     // Assert
     expect(PlanCache.isSet('myAccountIds')).to.be.true;
     expect(PlanCache.get('myAccountIds')).deep.equals([]);
-    expect(result.queryString).to.equal('SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order');
+    expect(result.queryString).to.equal(
+      'SELECT Id,OrderNumber,AccountId,BillToContactId FROM Order WHERE AccountId IN :myAccountIds AND AccountId != NULL'
+    );
     expect(result.totalSize).to.equal(0);
     expect(result.executedFullQueryStrings.length).to.equal(0);
   });

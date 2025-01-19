@@ -1,4 +1,4 @@
-# too-many-query-sources-defined
+# TooManyQueriesDefined
 
 More than one query provided. queryString OR queryFile or queryObject are allowed.
 
@@ -6,6 +6,10 @@ More than one query provided. queryString OR queryFile or queryObject are allowe
 
 Invalid query syntax: %s.
 
-# no-query-defined-for-object
+# NoQueryDefinedForSObject
 
 No query defined for: %s
+
+# InvalidSObjectName
+
+Failed to fetch describe for %s: %s
