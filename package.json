@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to orchestrate multi-org deployments, ease org maintenance and migrate data.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -92,7 +92,8 @@
     "prepack": "sf-prepack",
     "test": "wireit",
     "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:garbage:nuts": "nyc mocha \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+    "test:nuts:garbage": "nyc mocha \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+    "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
     "version": "oclif readme"
   },

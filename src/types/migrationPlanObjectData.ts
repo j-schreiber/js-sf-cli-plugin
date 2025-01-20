@@ -13,6 +13,7 @@ export type MigrationPlanObjectQueryResult = {
   queryString: string;
   totalSize: number;
   files: string[];
+  executedFullQueryStrings: string[];
 };
 
 const ZParentBind = z.object({ field: z.string(), variable: z.string() });

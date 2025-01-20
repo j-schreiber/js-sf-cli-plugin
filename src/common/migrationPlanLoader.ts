@@ -26,12 +26,6 @@ export default class MigrationPlanLoader {
         }
       }
       if (objectDef.exports) {
-        // if (exportedIds.includes(objectDef.exportIds)) {
-        //   throw new SfError(
-        //     `${objectDef.objectName} exports a bind variable that was already defined: ${objectDef.exportIds}`,
-        //     'InvalidPlanFileSyntax'
-        //   );
-        // }
         Object.values(objectDef.exports).forEach((exportedVars) => exportedVariables.push(exportedVars));
       }
     });

@@ -1,0 +1,20 @@
+name: Plan With Empty Binds
+objects:
+  - objectName: User
+    queryString: SELECT Id FROM User LIMIT 0
+    exports:
+      Id: emptyOwnerIds
+  - objectName: Account
+    query:
+      fetchAllFields: false
+      bind:
+        field: OwnerId
+        variable: emptyOwnerIds
+    exports:
+      Id: emptyAccountIds
+  - objectName: Contact
+    query:
+      fetchAllFields: false
+      bind:
+        field: AccountId
+        variable: emptyAccountIds

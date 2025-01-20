@@ -16,8 +16,21 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
   private queryBuilder?: QueryBuilder;
+  private queryResult: MigrationPlanObjectQueryResult;
+  private isDone: boolean;
+  private isReady: boolean;
 
-  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {}
+  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {
+    this.queryResult = {
+      isSuccess: false,
+      queryString: '',
+      totalSize: 0,
+      files: [],
+      executedFullQueryStrings: [],
+    };
+    this.isDone = false;
+    this.isReady = false;
+  }
 
   //      PUBLIC API
 
@@ -27,20 +40,32 @@ export default class MigrationPlanObject {
 
   public async load(): Promise<MigrationPlanObject> {
     this.describeResult = await this.describeObject();
-    this.assertQueryDefinitions();
+    this.queryBuilder = new QueryBuilder(this.data, this.describeResult);
+    if (await this.queryBuilder.assertSyntax(this.conn)) {
+      this.queryResult.queryString = this.queryBuilder.toDisplaySOQL();
+    }
     this.assertExports(this.describeResult);
-    await this.assertQuerySyntax(this.describeResult);
+    this.isReady = true;
     return this;
   }
 
+  /**
+   * Retrieves all records from the query configuration and stores them in JSON
+   * files at the exportPath location. Results are cached, subsequent calls do not
+   * run queries again. Depending on the total number of records to retrieve, this
+   * may run a very long time.
+   *
+   * @param exportPath
+   * @returns
+   */
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
+    if (!this.isReady) {
+      await this.load();
+    }
+    if (this.isDone) {
+      return this.queryResult;
+    }
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
-    const result: MigrationPlanObjectQueryResult = {
-      isSuccess: false,
-      queryString: this.resolveQueryString(),
-      totalSize: 0,
-      files: [],
-    };
     const queries = this.resolveAllQueries();
     let totalRequestCount = 0;
     for (const queryString of queries) {
@@ -50,13 +75,15 @@ export default class MigrationPlanObject {
         status: ProcessingStatus.InProgress,
       } as CommandStatusEvent);
       totalRequestCount++;
+      this.queryResult.executedFullQueryStrings.push(queryString);
       const queryResult = await this.runQuery(queryString);
-      result.totalSize += queryResult.records.length;
+      this.queryResult.totalSize += queryResult.records.length;
       const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
       let isDone = queryResult.done;
       let nextRecordsUrl = queryResult.nextRecordsUrl;
-      if (queryResult.records.length > 0) {
-        result.files.push(this.processResults(queryResult.records, exportPath, totalRequestCount));
+      const filePath = this.processResults(queryResult.records, exportPath, totalRequestCount);
+      if (filePath) {
+        this.queryResult.files.push(filePath);
       }
       while (!isDone) {
         thisChunkRequestsCount++;
@@ -70,60 +97,45 @@ export default class MigrationPlanObject {
         const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
         isDone = moreResults.done;
         nextRecordsUrl = moreResults.nextRecordsUrl;
-        result.files.push(this.processResults(moreResults.records, exportPath, totalRequestCount));
-        result.totalSize += moreResults.records.length;
+        const queryMorePath = this.processResults(moreResults.records, exportPath, totalRequestCount);
+        if (queryMorePath) {
+          this.queryResult.files.push(queryMorePath);
+        }
+        this.queryResult.totalSize += moreResults.records.length;
       }
     }
-    result.isSuccess = true;
-    return result;
+    if (this.queryResult.totalSize === 0) {
+      this.processResults([], exportPath, totalRequestCount);
+    }
+    this.queryResult.isSuccess = true;
+    this.isDone = true;
+    return this.queryResult;
   }
 
-  public async describeObject(): Promise<DescribeSObjectResult> {
-    if (!this.describeResult) {
-      const descApi: DescribeApi = new DescribeApi(this.conn);
-      try {
-        this.describeResult = await descApi.describeSObject(this.data.objectName, this.data.isToolingObject);
-      } catch (err) {
-        throw new Error(`Failed to fetch describe for ${this.getObjectName()}: ${String(err)}`);
-      }
+  /**
+   * Returns the current status of the result, even if retrieve records has not been
+   * executed yet.
+   *
+   * @returns
+   */
+  public async getResult(): Promise<MigrationPlanObjectQueryResult> {
+    if (!this.isReady) {
+      await this.load();
     }
-    return this.describeResult;
+    return this.queryResult;
   }
 
   public resolveQueryString(): string {
-    if (this.hasQueryString()) {
-      return String(this.data.queryString);
-    } else if (this.hasValidFile()) {
-      return QueryBuilder.loadFromFile(this.data.queryFile);
-    } else if (this.hasQueryConstructor()) {
-      return this.queryBuilder!.toSOQL(this.data.query);
-    }
-    throw new Error(`No query defined for: ${this.getObjectName()}`);
-  }
-
-  public resolveAllQueries(): string[] {
-    if (this.data.query?.bind && PlanCache.isSet(this.data.query.bind.variable)) {
-      const chunkedParentQueries: string[] = [];
-      const chunks = PlanCache.getChunks(this.data.query.bind.variable);
-      eventBus.emit('planObjectStatus', {
-        message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
-        status: ProcessingStatus.InProgress,
-      } as CommandStatusEvent);
-      chunks.forEach((parentIdsChunk) =>
-        chunkedParentQueries.push(this.queryBuilder!.toSOQL(this.data.query, parentIdsChunk))
-      );
-      return chunkedParentQueries;
-    }
-    return [this.resolveQueryString()];
-  }
-
-  public hasExports(): boolean {
-    return Boolean(this.data.exports);
+    return this.queryBuilder!.toSOQL();
   }
 
   //        PRIVATE
 
-  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string {
+  private hasExports(): boolean {
+    return Boolean(this.data.exports);
+  }
+
+  private processResults(queryRecords: Record[], exportPath: string, incrementer: number): string | undefined {
     if (this.data.exports) {
       Object.keys(this.data.exports).forEach((exportFieldName) => {
         const recordIds: string[] = [];
@@ -135,7 +147,11 @@ export default class MigrationPlanObject {
         PlanCache.push(this.data.exports![exportFieldName], recordIds);
       });
     }
-    return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+    if (queryRecords.length > 0) {
+      return this.writeResultsToFile(queryRecords, exportPath, incrementer);
+    } else {
+      return undefined;
+    }
   }
 
   private writeResultsToFile(queryRecords: unknown, exportPath: string, incrementer: number): string {
@@ -152,29 +168,6 @@ export default class MigrationPlanObject {
       result = await this.conn.query(queryString);
     }
     return result;
-  }
-
-  private hasQueryString(): boolean {
-    return Boolean(this.data.queryString && this.data.queryString.trim() !== '');
-  }
-
-  private hasValidFile(): boolean {
-    try {
-      QueryBuilder.loadFromFile(this.data.queryFile);
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
-  private hasQueryConstructor(): boolean {
-    return Boolean(this.data.query && this.data.query.fetchAllFields);
-  }
-
-  private assertQueryDefinitions(): void {
-    if (Number(this.hasValidFile()) + Number(this.hasQueryString()) + Number(this.hasQueryConstructor()) > 1) {
-      throw messages.createError('too-many-query-sources-defined');
-    }
   }
 
   private assertExports(describe: DescribeSObjectResult): void {
@@ -200,8 +193,29 @@ export default class MigrationPlanObject {
     }
   }
 
-  private async assertQuerySyntax(describe: DescribeSObjectResult): Promise<void> {
-    this.queryBuilder = new QueryBuilder(describe);
-    await this.queryBuilder.assertSyntax(this.conn, this.resolveQueryString());
+  private async describeObject(): Promise<DescribeSObjectResult> {
+    if (!this.describeResult) {
+      const descApi: DescribeApi = new DescribeApi(this.conn);
+      try {
+        this.describeResult = await descApi.describeSObject(this.data.objectName, this.data.isToolingObject);
+      } catch (err) {
+        throw messages.createError('InvalidSObjectName', [this.getObjectName(), String(err)]);
+      }
+    }
+    return this.describeResult;
+  }
+
+  private resolveAllQueries(): string[] {
+    if (this.data.query?.bind && PlanCache.isSet(this.data.query.bind.variable)) {
+      const chunkedParentQueries: string[] = [];
+      const chunks = PlanCache.getChunks(this.data.query.bind.variable);
+      eventBus.emit('planObjectStatus', {
+        message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
+        status: ProcessingStatus.InProgress,
+      } as CommandStatusEvent);
+      chunks.forEach((parentIdsChunk) => chunkedParentQueries.push(this.queryBuilder!.toSOQL(parentIdsChunk)));
+      return chunkedParentQueries;
+    }
+    return [this.resolveQueryString()];
   }
 }
