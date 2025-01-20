@@ -216,7 +216,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
 
     // Act
     const result = await testObj.retrieveRecords(ExportPath);
@@ -242,7 +241,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
 
     // Act
     const result = await testObj.retrieveRecords(ExportPath);
@@ -261,7 +259,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
     sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
     PlanCache.push('mockedAccountIds', ['0019Q00000eC8UKQA0']);
 
@@ -284,7 +281,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await accPlanObject.load();
     const accRetrieveResult = await accPlanObject.retrieveRecords(ExportPath);
     expect(accRetrieveResult.executedFullQueryStrings.length).to.equal(1);
     expect(accRetrieveResult.executedFullQueryStrings[0]).to.equal('SELECT Id FROM Account');
@@ -297,7 +293,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
     sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
     const result = await testObj.retrieveRecords(ExportPath);
 
@@ -321,7 +316,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
     sinon.stub(QueryBuilder.prototype, 'assertSyntax').resolves(true);
     PlanCache.set('mockedAccountIds', [
       '0019Q00000eC8UKQA0',
@@ -359,7 +353,6 @@ describe('migration plan object', () => {
       },
       await testOrg.getConnection()
     );
-    await testObj.load();
     const result = await testObj.retrieveRecords(ExportPath);
 
     // Assert

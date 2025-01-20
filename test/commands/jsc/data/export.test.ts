@@ -8,6 +8,7 @@ import JscDataExport from '../../../../src/commands/jsc/data/export.js';
 import { LOCAL_CACHE_DIR } from '../../../../src/common/constants.js';
 import { eventBus } from '../../../../src/common/comms/eventBus.js';
 import { mockAnySObjectDescribe } from '../../../mock-utils/sfQueryApiMocks.js';
+import { pathHasNoFiles } from '../../../../src/common/utils/fileUtils.js';
 
 const TEST_PATH = 'exports/export-test-ts';
 
@@ -17,12 +18,13 @@ describe('jsc plan export', () => {
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     testOrg = new MockTestOrgData();
     testOrg.orgId = '00Dxx0000000000AAA';
     sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.SANDBOX);
     $$.fakeConnectionRequest = mockAnySObjectDescribe;
+    await $$.stubAuths(testOrg);
   });
 
   afterEach(() => {
@@ -37,9 +39,6 @@ describe('jsc plan export', () => {
   });
 
   it('runs command with required params => exits OK', async () => {
-    // Arrange
-    await $$.stubAuths(testOrg);
-
     // Act
     const result = await JscDataExport.run([
       '--source-org',
@@ -63,9 +62,6 @@ describe('jsc plan export', () => {
   });
 
   it('runs command with --json and valid plan => has query details in result', async () => {
-    // Arrange
-    await $$.stubAuths(testOrg);
-
     // Act
     const result = await JscDataExport.run([
       '--source-org',
@@ -95,9 +91,6 @@ describe('jsc plan export', () => {
   });
 
   it('runs command with invalid plan file => exits error', async () => {
-    // Arrange
-    await $$.stubAuths(testOrg);
-
     // Act
     try {
       await JscDataExport.run([
@@ -120,5 +113,36 @@ describe('jsc plan export', () => {
     }
     Sinon.assert.callCount(sfSpinnerStub.start, 1);
     Sinon.assert.callCount(sfSpinnerStub.stop, 1);
+  });
+
+  it('runs with --validate-only flag and returns object array in --json output', async () => {
+    // Act
+    const result = await JscDataExport.run([
+      '--source-org',
+      testOrg.username,
+      '--plan',
+      'test/data/test-sfdx-project/export-plans/plan-for-empty-bind.yml',
+      '--output-dir',
+      TEST_PATH,
+      '--json',
+      '--validate-only',
+    ]);
+
+    // Assert
+    expect(pathHasNoFiles(TEST_PATH)).to.be.true;
+    expect(result.exports.length).to.equal(3);
+    result.exports.forEach((objectResult, index) => {
+      expect(objectResult.isSuccess).to.equal(false, `index ${index} is success`);
+      expect(objectResult.totalSize).to.equal(0, `index ${index} total size`);
+      expect(objectResult.files.length).to.equal(0, `index ${index} files length`);
+      expect(objectResult.executedFullQueryStrings.length).to.equal(0, `index ${index} queries executed`);
+    });
+    expect(result.exports[0].queryString).to.equal('SELECT Id FROM User LIMIT 0');
+    expect(result.exports[1].queryString).to.equal(
+      'SELECT Id FROM Account WHERE OwnerId IN :emptyOwnerIds AND OwnerId != NULL'
+    );
+    expect(result.exports[2].queryString).to.equal(
+      'SELECT Id FROM Contact WHERE AccountId IN :emptyAccountIds AND AccountId != NULL'
+    );
   });
 });

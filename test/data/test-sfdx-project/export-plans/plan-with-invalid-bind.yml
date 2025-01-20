@@ -1,4 +1,4 @@
-name: Plan With Empty Binds
+name: Plan With Invalid Binds
 objects:
   - objectName: User
     queryString: SELECT Id FROM User LIMIT 0
@@ -16,5 +16,5 @@ objects:
     query:
       fetchAllFields: false
       bind:
-        field: AccountId
+        field: InvalidParentId__c
         variable: emptyAccountIds

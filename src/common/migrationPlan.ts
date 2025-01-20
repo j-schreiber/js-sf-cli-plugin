@@ -46,16 +46,18 @@ export default class MigrationPlan {
 
   public async execute(outputDir?: string, validateOnly?: boolean): Promise<MigrationPlanObjectQueryResult[]> {
     const results: MigrationPlanObjectQueryResult[] = [];
-    if (validateOnly) {
-      return results;
-    }
     const exportPath: string = this.prepareOutputDir(outputDir);
     for (const planObject of this.getObjects()) {
       eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Started,
         message: `Starting ${planObject.getObjectName()}`,
       } as CommandStatusEvent);
-      const objectResults = await planObject.retrieveRecords(exportPath);
+      let objectResults: MigrationPlanObjectQueryResult;
+      if (validateOnly) {
+        objectResults = await planObject.getResult();
+      } else {
+        objectResults = await planObject.retrieveRecords(exportPath);
+      }
       eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Completed,
         message: `Retrieved ${objectResults.totalSize} records in ${objectResults.executedFullQueryStrings.length} batches.`,

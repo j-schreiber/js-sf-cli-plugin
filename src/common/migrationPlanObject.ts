@@ -16,8 +16,21 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
   private queryBuilder?: QueryBuilder;
+  private queryResult: MigrationPlanObjectQueryResult;
+  private isDone: boolean;
+  private isReady: boolean;
 
-  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {}
+  public constructor(private data: ZMigrationPlanObjectDataType, private conn: Connection) {
+    this.queryResult = {
+      isSuccess: false,
+      queryString: '',
+      totalSize: 0,
+      files: [],
+      executedFullQueryStrings: [],
+    };
+    this.isDone = false;
+    this.isReady = false;
+  }
 
   //      PUBLIC API
 
@@ -28,20 +41,31 @@ export default class MigrationPlanObject {
   public async load(): Promise<MigrationPlanObject> {
     this.describeResult = await this.describeObject();
     this.queryBuilder = new QueryBuilder(this.data, this.describeResult);
-    await this.queryBuilder.assertSyntax(this.conn);
+    if (await this.queryBuilder.assertSyntax(this.conn)) {
+      this.queryResult.queryString = this.queryBuilder.toDisplaySOQL();
+    }
     this.assertExports(this.describeResult);
+    this.isReady = true;
     return this;
   }
 
+  /**
+   * Retrieves all records from the query configuration and stores them in JSON
+   * files at the exportPath location. Results are cached, subsequent calls do not
+   * run queries again. Depending on the total number of records to retrieve, this
+   * may run a very long time.
+   *
+   * @param exportPath
+   * @returns
+   */
   public async retrieveRecords(exportPath: string): Promise<MigrationPlanObjectQueryResult> {
+    if (!this.isReady) {
+      await this.load();
+    }
+    if (this.isDone) {
+      return this.queryResult;
+    }
     fs.mkdirSync(`${exportPath}/${this.data.objectName}`, { recursive: true });
-    const result: MigrationPlanObjectQueryResult = {
-      isSuccess: false,
-      queryString: this.queryBuilder!.toDisplaySOQL(),
-      totalSize: 0,
-      files: [],
-      executedFullQueryStrings: [],
-    };
     const queries = this.resolveAllQueries();
     let totalRequestCount = 0;
     for (const queryString of queries) {
@@ -51,15 +75,15 @@ export default class MigrationPlanObject {
         status: ProcessingStatus.InProgress,
       } as CommandStatusEvent);
       totalRequestCount++;
-      result.executedFullQueryStrings.push(queryString);
+      this.queryResult.executedFullQueryStrings.push(queryString);
       const queryResult = await this.runQuery(queryString);
-      result.totalSize += queryResult.records.length;
+      this.queryResult.totalSize += queryResult.records.length;
       const totalBatches = Math.ceil(queryResult.totalSize / queryResult.records.length);
       let isDone = queryResult.done;
       let nextRecordsUrl = queryResult.nextRecordsUrl;
       const filePath = this.processResults(queryResult.records, exportPath, totalRequestCount);
       if (filePath) {
-        result.files.push(filePath);
+        this.queryResult.files.push(filePath);
       }
       while (!isDone) {
         thisChunkRequestsCount++;
@@ -75,16 +99,30 @@ export default class MigrationPlanObject {
         nextRecordsUrl = moreResults.nextRecordsUrl;
         const queryMorePath = this.processResults(moreResults.records, exportPath, totalRequestCount);
         if (queryMorePath) {
-          result.files.push(queryMorePath);
+          this.queryResult.files.push(queryMorePath);
         }
-        result.totalSize += moreResults.records.length;
+        this.queryResult.totalSize += moreResults.records.length;
       }
     }
-    if (result.totalSize === 0) {
+    if (this.queryResult.totalSize === 0) {
       this.processResults([], exportPath, totalRequestCount);
     }
-    result.isSuccess = true;
-    return result;
+    this.queryResult.isSuccess = true;
+    this.isDone = true;
+    return this.queryResult;
+  }
+
+  /**
+   * Returns the current status of the result, even if retrieve records has not been
+   * executed yet.
+   *
+   * @returns
+   */
+  public async getResult(): Promise<MigrationPlanObjectQueryResult> {
+    if (!this.isReady) {
+      await this.load();
+    }
+    return this.queryResult;
   }
 
   public resolveQueryString(): string {

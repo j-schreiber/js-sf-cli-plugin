@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect } from 'chai';
 import { QueryResult, Record } from '@jsforce/jsforce-node';
+import { SfError } from '@salesforce/core';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscDataExportResult } from '../../../../src/commands/jsc/data/export.js';
+import { MigrationPlanObjectQueryResult } from '../../../../src/types/migrationPlanObjectData.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
@@ -36,8 +38,13 @@ describe('jsc data NUTs*', () => {
     await session?.clean();
   });
 
+  afterEach(() => {
+    // default export
+    fs.rmSync('exports', { recursive: true, force: true });
+  });
+
   describe('data export', () => {
-    it('export data from valid plan file', () => {
+    it('exports data from valid plan file', () => {
       // Act
       const result = execCmd<JscDataExportResult>(
         `jsc:data:export --plan ${path.join('export-plans', 'test-plan.yml')} --source-org ${scratchOrgAlias} --json`,
@@ -59,7 +66,7 @@ describe('jsc data NUTs*', () => {
       expect(actuallyExportedContacts.records.length).to.equal(1, 'length of actually exported contacts');
     });
 
-    it('exports runs plan file that has empty binds > exports no data', () => {
+    it('exports no data from plan file that has binds that resolve to zero records', () => {
       // Act
       const result = execCmd<JscDataExportResult>(
         `jsc:data:export --plan ${path.join(
@@ -77,17 +84,49 @@ describe('jsc data NUTs*', () => {
       expect(userResult.files.length).to.equal(0, 'user result created files');
       expect(userResult.executedFullQueryStrings.length).to.equal(1, 'user result queries executed');
       const accountResult = result!.exports[1];
-      expect(accountResult.isSuccess).to.equal(true, 'accounts result is success');
-      expect(accountResult.totalSize).to.equal(0, 'accounts result total size');
-      expect(accountResult.files.length).to.equal(0, 'accounts result created files');
-      expect(accountResult.executedFullQueryStrings.length).to.equal(0, 'account result queries executed');
+      assertEmptyExportsForResult(accountResult);
       const contactResult = result!.exports[2];
-      expect(contactResult.isSuccess).to.equal(true, 'contacts result is success');
-      expect(contactResult.totalSize).to.equal(0, 'contacts result total size');
-      expect(contactResult.files.length).to.equal(0, 'contacts result created files');
-      expect(contactResult.executedFullQueryStrings.length).to.equal(0, 'contacts result queries executed');
+      assertEmptyExportsForResult(contactResult);
+    });
+
+    it('exports no data with --validate-only flag but returns object array in --json output', () => {
+      // Act
+      const result = execCmd<JscDataExportResult>(
+        `jsc:data:export --plan ${path.join(
+          'export-plans',
+          'plan-for-empty-bind.yml'
+        )} --source-org ${scratchOrgAlias} --json --validate-only`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      // details of exports are unit tested
+      expect(result!.exports.length).to.equal(3);
+    });
+
+    it('validates bind variable with --validate-only flag and returns error details in --json output', () => {
+      // Act
+      const planPath = path.join('export-plans', 'plan-with-invalid-bind.yml');
+      const result = execCmd<SfError>(
+        `jsc:data:export --plan ${planPath} --source-org ${scratchOrgAlias} --validate-only --json`,
+        {
+          ensureExitCode: 1,
+        }
+      ).jsonOutput;
+
+      // Assert
+      expect(result?.message).to.contain(
+        "Invalid query syntax: SELECT Id FROM Contact WHERE InvalidParentId__c IN ('') AND InvalidParentId__c != NULL"
+      );
     });
   });
+
+  function assertEmptyExportsForResult(objectResult: MigrationPlanObjectQueryResult) {
+    expect(objectResult.isSuccess).to.equal(true, 'result is success');
+    expect(objectResult.totalSize).to.equal(0, 'result total size');
+    expect(objectResult.files.length).to.equal(0, 'result created files');
+    expect(objectResult.executedFullQueryStrings.length).to.equal(0, 'result queries executed');
+  }
 
   function parseExportedRecords(filePath: string): QueryResult<Record> {
     return JSON.parse(
