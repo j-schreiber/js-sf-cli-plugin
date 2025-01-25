@@ -10,6 +10,7 @@
   "dependencies": {
     "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
+    "@salesforce/apex-node": "^8.1.19",
     "@salesforce/core": "^8.5.7",
     "@salesforce/kit": "^3.2.3",
     "@salesforce/packaging": "^4.2.15",
@@ -70,6 +71,14 @@
             "subtopics": {
               "garbage": {
                 "description": "Analyse and clean garbage from package installs"
+              }
+            }
+          },
+          "apex": {
+            "description": "description for jsc.apex",
+            "subtopics": {
+              "schedule": {
+                "description": "description for jsc.apex.schedule"
               }
             }
           }
