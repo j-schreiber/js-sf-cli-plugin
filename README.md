@@ -50,10 +50,75 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 
 <!-- commands -->
 
+- [`sf jsc apex schedule start`](#sf-jsc-apex-schedule-start)
 - [`sf jsc data export`](#sf-jsc-data-export)
 - [`sf jsc maintain garbage collect`](#sf-jsc-maintain-garbage-collect)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 - [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
+
+## `sf jsc apex schedule start`
+
+Schedule a cron job on the target org.
+
+```
+USAGE
+  $ sf jsc apex schedule start -o <value> -c <value> -e <value> [--json] [--flags-dir <value>] [-n <value>] [--trace]
+
+FLAGS
+  -c, --apex-class-name=<value>  (required) Name of the Apex class to schedule.
+  -e, --cron-expression=<value>  (required) The cron expression that specifies execution of the job.
+  -n, --name=<value>             Unique name of the cron job.
+  -o, --target-org=<value>       (required) Target org where the job will be scheduled.
+      --trace                    Log detailed debug information of command execution.
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Schedule a cron job on the target org.
+
+  Provide the name of an apex class that implements the `Schedulable` interface and a cron expression to schedule a cron
+  job (`CronTrigger`). Use the official Documentation to learn more about cron expressions:
+  https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_scheduler.htm.
+
+EXAMPLES
+  Schedule a class to run every day at 1 am:
+
+    $ sf jsc apex schedule start -c MyJobImplementationName -e '0 0 1 * * ?'
+
+  Schedule a class to run on weekdays (Monday to Friday) at 10 am:
+
+    $ sf jsc apex schedule start -c MyJobImplementationName -e '0 0 10 ? * MON-FRI'
+
+  Schedule a job with a custom name to run every day at 5:30pm:
+
+    $ sf jsc apex schedule start -c MyJobImplementationName -e "0 30 17 * * ?" -n "My Job Name"
+
+FLAG DESCRIPTIONS
+  -c, --apex-class-name=<value>  Name of the Apex class to schedule.
+
+    Must implement the System.Schedulable interface.
+
+  -e, --cron-expression=<value>  The cron expression that specifies execution of the job.
+
+    Provide the expression in unix-compatible format (see Apex Documentation for more details). The basic syntax of the
+    expression is "Seconds Minutes Hours Day_of_month Month Day_of_week Optional_year". See examples for commonly used
+    cron expressions.
+
+  -n, --name=<value>  Unique name of the cron job.
+
+    If you leave this empty, the name of the apex class is used. Jobs must be unique by name: Use different names if you
+    plan to schedule the same apex class multiple times.
+
+  --trace  Log detailed debug information of command execution.
+
+    Due to limitations of available Salesforce APIs, this command uses an anonymous apex execution under the hood. The
+    execution may fail due to a variety of reasons, and the scheduler tries its best to extract the correct error
+    messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
+```
+
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.8.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc data export`
 
@@ -87,7 +152,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.8.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -162,7 +227,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.8.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -196,7 +261,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.8.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -228,6 +293,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.6.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.8.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

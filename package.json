@@ -1,7 +1,7 @@
 {
   "name": "@j-schreiber/sf-plugin",
   "description": "Salesforce plugin to orchestrate multi-org deployments, ease org maintenance and migrate data.",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/j-schreiber/js-sf-cli-plugin"
@@ -10,6 +10,7 @@
   "dependencies": {
     "@jsforce/jsforce-node": "^3.4.2",
     "@oclif/core": "^4",
+    "@salesforce/apex-node": "^8.1.19",
     "@salesforce/core": "^8.5.7",
     "@salesforce/kit": "^3.2.3",
     "@salesforce/packaging": "^4.2.15",
@@ -72,6 +73,14 @@
                 "description": "Analyse and clean garbage from package installs"
               }
             }
+          },
+          "apex": {
+            "description": "description for jsc.apex",
+            "subtopics": {
+              "schedule": {
+                "description": "description for jsc.apex.schedule"
+              }
+            }
           }
         }
       }
@@ -94,8 +103,9 @@
     "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:nuts:garbage": "nyc mocha \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+    "test:nuts:apex": "nyc mocha \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "version": "oclif readme"
+    "readme": "oclif readme && pretty-quick"
   },
   "publishConfig": {
     "access": "public"
@@ -107,9 +117,6 @@
         "compile",
         "lint"
       ]
-    },
-    "gen-readme": {
-      "command": "oclif readme"
     },
     "clean-deps": {
       "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"
