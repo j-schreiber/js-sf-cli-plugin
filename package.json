@@ -105,7 +105,7 @@
     "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:nuts:apex": "nyc mocha \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "version": "oclif readme"
+    "readme": "oclif readme && pretty-quick"
   },
   "publishConfig": {
     "access": "public"
@@ -117,9 +117,6 @@
         "compile",
         "lint"
       ]
-    },
-    "gen-readme": {
-      "command": "oclif readme"
     },
     "clean-deps": {
       "command": "rm -rf node_modules/@types/{glob,minimatch,shelljs}"

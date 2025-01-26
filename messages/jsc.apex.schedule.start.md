@@ -1,10 +1,10 @@
 # summary
 
-Schedule a cron job.
+Schedule a cron job on the target org.
 
 # description
 
-by giving the name of an apex class and the cron expression.
+Provide the name of an apex class that implements the `Schedulable` interface and a cron expression to schedule a cron job (`CronTrigger`). Use the official Documentation to learn more about cron expressions: https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_scheduler.htm.
 
 # flags.target-org.summary
 
@@ -12,7 +12,7 @@ Target org where the job will be scheduled.
 
 # flags.name.summary
 
-Name of the cron job.
+Unique name of the cron job.
 
 # flags.name.description
 
@@ -28,11 +28,11 @@ Must implement the System.Schedulable interface.
 
 # flags.cron-expression.summary
 
-The cron expression to specify, when the job should be executed.
+The cron expression that specifies execution of the job.
 
 # flags.cron-expression.description
 
-Provide the expression in unix-compatible format (see [Apex Documentation](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_scheduler.htm) for more details). The basic syntax of the expression is "Seconds Minutes Hours Day_of_month Month Day_of_week Optional_year". See examples for commonly used cron expressions.
+Provide the expression in unix-compatible format (see Apex Documentation for more details). The basic syntax of the expression is "Seconds Minutes Hours Day_of_month Month Day_of_week Optional_year". See examples for commonly used cron expressions.
 
 # flags.trace.summary
 
