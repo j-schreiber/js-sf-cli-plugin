@@ -1,0 +1,14 @@
+{
+  "compiled": true,
+  "success": false,
+  "logs": "62.0 APEX_CODE,DEBUG;APEX_PROFILING,INFO\nExecute Anonymous: String jobName = 'Test Name 1';\nExecute Anonymous: String cronExpression = '0 A';\nExecute Anonymous: Id jobId = System.schedule(jobName, cronExpression, new CaseReminderJob());\nExecute Anonymous: System.debug(jobId);\n16:18:44.236 (236029154)|USER_INFO|[EXTERNAL]|0059b00000EaACh|test-sgsqwpzichd0@example.com|(GMT+01:00) Central European Standard Time (Europe/Berlin)|GMT+01:00\n16:18:44.236 (236056959)|EXECUTION_STARTED\n16:18:44.236 (236067323)|CODE_UNIT_STARTED|[EXTERNAL]|execute_anonymous_apex\n16:18:44.236 (239880378)|EXCEPTION_THROWN|[3]|System.StringException: Illegal cron expression format (java.lang.StringIndexOutOfBoundsException: begin 0, end 3, length 1)\n16:18:44.236 (240032430)|FATAL_ERROR|System.StringException: Illegal cron expression format (java.lang.StringIndexOutOfBoundsException: begin 0, end 3, length 1)\n\nAnonymousBlock: line 3, column 1\n16:18:44.240 (240070770)|CUMULATIVE_LIMIT_USAGE\n16:18:44.240 (240070770)|LIMIT_USAGE_FOR_NS|(default)|\n  Number of SOQL queries: 0 out of 100\n  Number of query rows: 0 out of 50000\n  Number of SOSL queries: 0 out of 20\n  Number of DML statements: 0 out of 150\n  Number of Publish Immediate DML: 0 out of 150\n  Number of DML rows: 0 out of 10000\n  Maximum CPU time: 0 out of 10000\n  Maximum heap size: 0 out of 6000000\n  Number of callouts: 0 out of 100\n  Number of Email Invocations: 0 out of 10\n  Number of future calls: 0 out of 50\n  Number of queueable jobs added to the queue: 0 out of 50\n  Number of Mobile Apex push calls: 0 out of 10\n\n16:18:44.240 (240070770)|CUMULATIVE_LIMIT_USAGE_END\n\n16:18:44.236 (240132482)|CODE_UNIT_FINISHED|execute_anonymous_apex\n16:18:44.236 (240141087)|EXECUTION_FINISHED\n",
+  "diagnostic": [
+    {
+      "lineNumber": "3",
+      "columnNumber": "1",
+      "compileProblem": "",
+      "exceptionMessage": "System.StringException: Illegal cron expression format (java.lang.StringIndexOutOfBoundsException: begin 0, end 3, length 1)",
+      "exceptionStackTrace": "AnonymousBlock: line 3, column 1"
+    }
+  ]
+}

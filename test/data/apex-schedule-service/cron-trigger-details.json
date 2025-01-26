@@ -1,0 +1,30 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v62.0/sobjects/AsyncApexJob/7079b00000lpqHLAAY"
+      },
+      "Id": "7079b00000lpqHLAAY",
+      "Status": "Queued",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v62.0/sobjects/CronTrigger/08e9b00000KiFENAA3"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v62.0/sobjects/CronJobDetail/08a9b00000L1jvRAAR"
+          },
+          "Name": "Job Name 5"
+        },
+        "State": "WAITING",
+        "StartTime": "2025-01-26T13:08:20.000+0000",
+        "NextFireTime": "2025-01-27T00:05:00.000+0000"
+      }
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}
