@@ -38,7 +38,7 @@ describe('jsc apex schedule NUTs', () => {
     it('schedules an apex class with valid cron expression and returns the cron job details', () => {
       // Act
       const result = execCmd<JscApexScheduleStartResult>(
-        `jsc:apex:schedule:start --apex-class-name TestJob --cron-expression '0 0 1 * * ?' --target-org ${scratchOrgAlias} --json`,
+        `jsc:apex:schedule:start --apex-class-name TestJob --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
         { ensureExitCode: 0 }
       ).jsonOutput?.result;
 
@@ -52,7 +52,7 @@ describe('jsc apex schedule NUTs', () => {
     it('throws error when input is an invalid apex class', () => {
       // Act
       const result = execCmd<JscApexScheduleStartResult>(
-        `jsc:apex:schedule:start --apex-class-name SomeNoneExistingClass --cron-expression '0 0 1 * * ?' --target-org ${scratchOrgAlias} --json`,
+        `jsc:apex:schedule:start --apex-class-name SomeNoneExistingClass --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
         { ensureExitCode: 1 }
       ).jsonOutput!;
 
