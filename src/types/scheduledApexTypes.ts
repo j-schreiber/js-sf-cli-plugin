@@ -1,6 +1,8 @@
 export type AsyncApexJob = {
   Id: string;
+  CronTriggerId: string;
   CronTrigger: CronTrigger;
+  ApexClass: ApexClass;
 };
 
 export type CronTrigger = {
@@ -11,5 +13,9 @@ export type CronTrigger = {
 };
 
 export type CronJobDetail = {
+  Name: string;
+};
+
+export type ApexClass = {
   Name: string;
 };

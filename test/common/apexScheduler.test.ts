@@ -1,9 +1,10 @@
 import { expect } from 'chai';
-import { Connection, SfError } from '@salesforce/core';
+import { SfError } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import ApexScheduleService from '../../src/common/apex-scheduler/apexScheduleService.js';
 import AnonymousApexMocks from '../mock-utils/anonApexMocks.js';
+import QueryRunner from '../../src/common/utils/queryRunner.js';
 
 describe('apex scheduler', () => {
   const $$ = new TestContext();
@@ -13,7 +14,7 @@ describe('apex scheduler', () => {
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
     anonApexMocks = new AnonymousApexMocks();
-    $$.SANDBOX.stub(Connection.prototype, 'query').resolves(anonApexMocks.JOB_DETAILS);
+    $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords').callsFake(anonApexMocks.queryStub);
   });
 
   it('uses apex class name, job name and cron expression to schedule apex', async () => {
@@ -82,5 +83,16 @@ describe('apex scheduler', () => {
         expect.fail('Expected SfError');
       }
     }
+  });
+
+  it('queries for all scheduled apex cron triggers when no filters are provided', async () => {
+    // Act
+    const scheduler = new ApexScheduleService(await testOrg.getConnection());
+    const allJobs = await scheduler.findJobs({});
+
+    // Arrange
+    expect(allJobs.length).to.equal(5);
+    expect(allJobs[0].CronTrigger.CronJobDetail.Name).to.equal('Auto Contract Renewal');
+    expect(allJobs[1].CronTrigger.CronJobDetail.Name).to.equal('Disable Inactive Users');
   });
 });

@@ -3,6 +3,7 @@ import { ApexDiagnostic, ExecuteAnonymousResponse, ExecuteService } from '@sales
 import { Connection, Messages } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
 import { AsyncApexJob } from '../../types/scheduledApexTypes.js';
+import QueryRunner from '../utils/queryRunner.js';
 
 const JOB_NAME_PLACEHOLDER = '%%%JOB_NAME%%%';
 const CLASS_NAME_PLACEHOLDER = '%%%APEX_CLASS_NAME%%%';
@@ -16,18 +17,24 @@ System.debug(jobId);`;
 const CRON_TRIGGER_SOQL_TEMPLATE = `SELECT 
   Id,
   Status,
+  ApexClass.Name,
+  CronTriggerId,
   CronTrigger.CronJobDetail.Name,
   CronTrigger.State,
   CronTrigger.StartTime,
-  CronTrigger.NextFireTime
+  CronTrigger.NextFireTime,
+  CronTrigger.TimesTriggered
 FROM AsyncApexJob`;
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'apexscheduler');
 
 export default class ApexScheduleService extends EventEmitter {
+  private runner: QueryRunner;
+
   public constructor(private targetOrgCon: Connection) {
     super();
+    this.runner = new QueryRunner(targetOrgCon);
   }
 
   public async scheduleJob(inputs: ApexScheduleOptions): Promise<ScheduleApexResult> {
@@ -40,14 +47,24 @@ export default class ApexScheduleService extends EventEmitter {
     return { jobId, nextFireTime: new Date(jobDetails.CronTrigger.NextFireTime) };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJob[]> {
+    const jobs = await this.runner.fetchRecords<AsyncApexJob>(
+      `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType IN ('BatchApexWorker','ScheduledApex') AND Status = 'Queued'`
+    );
+    // reduce array by apex class & job name filter
+    // return filtered items
+    return jobs;
+  }
+
   private async retrieveJobDetails(jobId: string): Promise<AsyncApexJob> {
-    const triggerDetails = await this.targetOrgCon.query<AsyncApexJob>(
+    const triggerDetails = await this.runner.fetchRecords<AsyncApexJob>(
       `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE CronTriggerId = '${jobId}' LIMIT 1`
     );
-    if (triggerDetails.records.length < 1) {
+    if (triggerDetails.length < 1) {
       throw messages.createError('FailedToRetrieveJobDetails', [jobId]);
     }
-    return triggerDetails.records[0];
+    return triggerDetails[0];
   }
 
   private emitEvents(result: ExecuteAnonymousResponse): void {
@@ -124,4 +141,9 @@ export type ApexScheduleOptions = {
 export type ScheduleApexResult = {
   jobId: string;
   nextFireTime: Date;
+};
+
+export type ScheduledJobSearchOptions = {
+  jobName?: string;
+  apexClassName?: string;
 };
