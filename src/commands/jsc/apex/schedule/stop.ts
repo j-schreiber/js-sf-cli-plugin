@@ -82,7 +82,9 @@ export default class JscApexScheduleStop extends SfCommand<JscApexScheduleStopRe
       ],
     });
     if (promptUser) {
-      const confirmation = await this.confirm({ message: messages.getMessage('confirmJobDeletion') });
+      const confirmation = await this.confirm({
+        message: messages.getMessage('confirmJobDeletion', [jobsToBeDeleted.length]),
+      });
       if (!confirmation) {
         throw messages.createError('abortCommand');
       }

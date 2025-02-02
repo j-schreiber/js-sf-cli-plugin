@@ -4,7 +4,7 @@ Stop one or more cron jobs on the target org.
 
 # description
 
-The command allows to stop specific jobs or multiple jobs, based on the provided inputs. You can provide the name of an apex class that implements the `Schedulable` interface, the name of a scheduled job or a list of ids (08e). For most filter-options, the command is idempotent. That means, that it succeeds, even if no job was actually stopped. The only exception is explicit input of job id.
+The command allows to stop one or more scheduled jobs, based on the provided inputs. You can provide the name of an apex class, the name of a scheduled job or a list of ids (08e). The command is idempotent: That means it succeeds, even if no job was actually stopped. If you provide multiple filters (e.g. an apex class and an id), all jobs that satisfy at least one of the criteria are stopped.
 
 # flags.target-org.summary
 
@@ -16,7 +16,7 @@ Identify the scheduled job by its provided name.
 
 # flags.apex-class-name.summary
 
-Name of the apex class that will be stopped.
+Name of an apex class to stop.
 
 # flags.apex-class-name.description
 
@@ -24,11 +24,11 @@ The command finds all scheduled instances of this apex class and stops them.
 
 # flags.id.summary
 
-The CronTrigger Id of the job to stop
+The CronTrigger Id of the job to stop.
 
 # flags.id.description
 
-Provide the Id of the cron trigger that was returned by `System.schedule`. If the Id is invalid, an error is returned.
+Provide the Id of the cron trigger that was returned by `System.schedule`. If the Id is invalid, an error is returned. You can add this flag multiple times to specify multiple jobs.
 
 # flags.trace.summary
 
@@ -40,11 +40,11 @@ Due to limitations of available Salesforce APIs, this command uses an anonymous 
 
 # flags.no-prompt.summary
 
-Don't prompt before executing destructive changes.
+Don't prompt before performing destructive changes.
 
 # flags.no-prompt.description
 
-Without this flag, the command asks for confirmation before stopping jobs. Use this flag in CI pipelines.
+Without this flag, the command asks for confirmation before stopping them. Use this flag in CI pipelines.
 
 # examples
 
@@ -66,7 +66,7 @@ Successfully stopped %s jobs.
 
 # confirmJobDeletion
 
-You are about to stop the following jobs. Please confirm this is what you want.
+You are about to stop %s jobs. Please confirm this is what you want.
 
 # abortCommand
 
