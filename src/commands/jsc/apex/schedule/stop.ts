@@ -2,6 +2,7 @@ import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import ApexScheduleService from '../../../../common/apex-scheduler/apexScheduleService.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
+import { AsyncApexJobFlat } from '../../../../types/scheduledApexTypes.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.stop');
@@ -29,6 +30,7 @@ export default class JscApexScheduleStop extends SfCommand<JscApexScheduleStopRe
     }),
     id: Flags.string({
       char: 'i',
+      multiple: true,
       summary: messages.getMessage('flags.id.summary'),
       description: messages.getMessage('flags.id.description'),
     }),
@@ -39,6 +41,10 @@ export default class JscApexScheduleStop extends SfCommand<JscApexScheduleStopRe
     trace: Flags.boolean({
       summary: messages.getMessage('flags.trace.summary'),
       description: messages.getMessage('flags.trace.description'),
+    }),
+    'no-prompt': Flags.boolean({
+      summary: messages.getMessage('flags.no-prompt.summary'),
+      description: messages.getMessage('flags.no-prompt.description'),
     }),
   };
 
@@ -53,11 +59,35 @@ export default class JscApexScheduleStop extends SfCommand<JscApexScheduleStopRe
         this.info(payload.message ?? 'No diagnostics received. Nothing to trace.');
       });
     }
-    const ids = flags['id'] !== undefined ? [flags['id']] : [];
-    const result = await scheduleService.stopJobs({
-      ids,
+    const gatherJobs = await scheduleService.findJobs({
+      apexClassName: flags['apex-class-name'],
+      jobName: flags['name'],
+      ids: flags.id,
     });
-    this.logSuccess(messages.getMessage('info.success', [flags['id']]));
+    const jobIdsToDelete = await this.confirmJobDeletion(gatherJobs, !flags['no-prompt']);
+    const result = await scheduleService.stopJobs(jobIdsToDelete);
+    this.logSuccess(messages.getMessage('allJobsStopped', [jobIdsToDelete.length]));
     return result;
+  }
+
+  private async confirmJobDeletion(jobsToBeDeleted: AsyncApexJobFlat[], promptUser: boolean): Promise<string[]> {
+    this.table({
+      data: jobsToBeDeleted,
+      columns: [
+        { key: 'CronTriggerId', name: 'Id' },
+        { key: 'CronJobDetailName', name: 'Name' },
+        { key: 'ApexClassName', name: 'Apex Class' },
+        { key: 'NextFireTime', name: 'Next Execution Time' },
+        { key: 'TimesTriggered', name: 'Times Triggered' },
+      ],
+    });
+    if (promptUser) {
+      const confirmation = await this.confirm({ message: messages.getMessage('confirmJobDeletion') });
+      if (!confirmation) {
+        throw messages.createError('abortCommand');
+      }
+    }
+    const idsToDelete = jobsToBeDeleted.map((job) => job.CronTriggerId);
+    return idsToDelete;
   }
 }

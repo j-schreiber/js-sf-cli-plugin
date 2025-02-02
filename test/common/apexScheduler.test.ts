@@ -147,7 +147,7 @@ describe('apex scheduler', () => {
 
     // Act
     try {
-      await scheduler.stopJobs({ ids: ['08e9b00000Kz6hmAAB'] });
+      await scheduler.stopJobs(['08e9b00000Kz6hmAAB']);
     } catch (err) {
       // we're good, only interested in events
     }
@@ -168,7 +168,7 @@ describe('apex scheduler', () => {
 
     // Arrange
     expect(allJobs.length).to.equal(5);
-    expect(allJobs[0].CronTrigger.CronJobDetail.Name).to.equal('Auto Contract Renewal');
-    expect(allJobs[1].CronTrigger.CronJobDetail.Name).to.equal('Disable Inactive Users');
+    expect(allJobs[0].CronJobDetailName).to.equal('Auto Contract Renewal');
+    expect(allJobs[1].CronJobDetailName).to.equal('Disable Inactive Users');
   });
 });

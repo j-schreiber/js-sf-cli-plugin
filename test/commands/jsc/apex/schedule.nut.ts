@@ -62,7 +62,7 @@ describe('jsc apex schedule NUTs', () => {
       expect(result.message).to.contain('Invalid type: SomeNoneExistingClass');
     });
 
-    it('successfully stops a scheduled job', () => {
+    it('successfully stops a job by id that was returned from schedule start', () => {
       // Arrange
       const startResult = execCmd<JscApexScheduleStartResult>(
         `jsc:apex:schedule:start --apex-class-name TestJob --name "To Be Stopped" --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
@@ -70,14 +70,15 @@ describe('jsc apex schedule NUTs', () => {
       ).jsonOutput?.result;
 
       // Act
-      const stopResult = execCmd<JscApexScheduleStopResult>(
-        `jsc:apex:schedule:stop --id ${startResult?.jobId} --target-org ${scratchOrgAlias} --json`,
+      const stopResult = execCmd<JscApexScheduleStopResult[]>(
+        `jsc:apex:schedule:stop --id ${startResult?.jobId} --target-org ${scratchOrgAlias} --no-prompt --json`,
         { ensureExitCode: 0 }
       ).jsonOutput?.result;
 
       // Assert
       expect(stopResult).to.not.be.undefined;
-      expect(stopResult?.jobId).to.equal(startResult?.jobId);
+      expect(stopResult?.length).to.equal(1);
+      expect(stopResult![0].jobId).to.equal(startResult?.jobId);
     });
   });
 });

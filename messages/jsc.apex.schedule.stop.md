@@ -60,6 +60,14 @@ Without this flag, the command asks for confirmation before stopping jobs. Use t
 
   <%= config.bin %> <%= command.id %> -c MyCaseReminderJob -o MyTargetOrg
 
-# info.success
+# allJobsStopped
 
-Successfully stopped job with id: %s.
+Successfully stopped %s jobs.
+
+# confirmJobDeletion
+
+You are about to stop the following jobs. Please confirm this is what you want.
+
+# abortCommand
+
+Aborted by user. No jobs were stopped.

@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { ExecuteAnonymousResponse } from '@salesforce/apex-node';
 import { Connection, Messages } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
-import { AsyncApexJob } from '../../types/scheduledApexTypes.js';
+import { AsyncApexJob, AsyncApexJobFlat } from '../../types/scheduledApexTypes.js';
 import QueryRunner from '../utils/queryRunner.js';
 import StopSingleJobTask, { StopScheduledApexResult } from './stopSingleJobTask.js';
 import ScheduleSingleJobTask, { ApexScheduleOptions, ScheduleApexResult } from './scheduleSingleJobTask.js';
@@ -37,15 +37,11 @@ export default class ApexScheduleService extends EventEmitter {
     return startResult;
   }
 
-  public async stopJobs(inputs: ScheduledJobSearchOptions): Promise<StopScheduledApexResult[]> {
+  public async stopJobs(jobIds: string[]): Promise<StopScheduledApexResult[]> {
     const handler = new StopSingleJobTask(this.targetOrgCon);
     handler.on('apexExecution', (result: ExecuteAnonymousResponse) => this.emitEvents(result));
     const stopJobsQueue = new Array<Promise<StopScheduledApexResult>>();
-    const idsToStop: string[] = [];
-    if (inputs.ids && inputs.ids.length > 0) {
-      inputs.ids.forEach((id) => idsToStop.push(id));
-    }
-    idsToStop.forEach((id) => {
+    jobIds.forEach((id) => {
       stopJobsQueue.push(handler.stop(id));
     });
     const stoppedJobs = await Promise.all(stopJobsQueue);
@@ -53,13 +49,32 @@ export default class ApexScheduleService extends EventEmitter {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJob[]> {
+  public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJobFlat[]> {
     const jobs = await this.runner.fetchRecords<AsyncApexJob>(
       `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType = 'ScheduledApex' AND Status = 'Queued'`
     );
-    // reduce array by apex class & job name filter
-    // return filtered items
-    return jobs;
+    const jobsOutput = new Array<AsyncApexJobFlat>();
+    jobs.forEach((job) => {
+      const output = {
+        CronTriggerId: job.CronTriggerId,
+        ApexClassName: job.ApexClass.Name,
+        CronTriggerState: job.CronTrigger.State,
+        NextFireTime: new Date(job.CronTrigger.NextFireTime),
+        StartTime: new Date(job.CronTrigger.StartTime),
+        CronJobDetailName: job.CronTrigger.CronJobDetail.Name,
+        TimesTriggered: job.CronTrigger.TimesTriggered,
+      };
+      if (!filter.ids && !filter.apexClassName && !filter.jobName) {
+        jobsOutput.push(output);
+      } else if (filter.ids && filter.ids.includes(job.CronTriggerId)) {
+        jobsOutput.push(output);
+      } else if (filter.apexClassName === output.ApexClassName) {
+        jobsOutput.push(output);
+      } else if (filter.jobName === output.CronJobDetailName) {
+        jobsOutput.push(output);
+      }
+    });
+    return jobsOutput;
   }
 
   private emitEvents(result: ExecuteAnonymousResponse): void {
