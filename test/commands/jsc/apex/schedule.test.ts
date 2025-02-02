@@ -4,6 +4,7 @@ import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { stubSfCommandUx, stubPrompter } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import JscApexScheduleStop from '../../../../src/commands/jsc/apex/schedule/stop.js';
+import JscApexScheduleExport from '../../../../src/commands/jsc/apex/schedule/export.js';
 import AnonymousApexMocks from '../../../mock-utils/anonApexMocks.js';
 import QueryRunner from '../../../../src/common/utils/queryRunner.js';
 
@@ -171,6 +172,33 @@ describe('jsc apex schedule', () => {
     // Assert
     expect(promptStub.confirm.callCount).to.equal(1);
     expect(executeServiceStub.callCount).to.equal(0);
+  });
+
+  it('exports all scheduled jobs without filters', async () => {
+    // Act
+    const result = await JscApexScheduleExport.run(['--target-org', testOrg.username]);
+
+    // Assert
+    expect(result.length).to.equal(anonApexMocks.ALL_JOBS.records.length);
+    expect(result[0].CronTriggerId).to.equal('08e7a00000VlWl2AAF');
+    expect(result[0].CronExpression).to.equal('0 0 5 ? * * *');
+    expect(result[0].ApexClassName).to.equal('AutoContractRenewalJob');
+    expect(result[0].TimesTriggered).to.equal(1059);
+  });
+
+  it('exports scheduled jobs filtered by apex class', async () => {
+    // Act
+    const result = await JscApexScheduleExport.run([
+      '--target-org',
+      testOrg.username,
+      '--apex-class-name',
+      'DisableInactiveUsersJob',
+    ]);
+
+    // Assert
+    expect(result.length).to.equal(1);
+    expect(result[0].CronTriggerId).to.equal('08e7a00000cohZpAAI');
+    expect(result[0].ApexClassName).to.equal('DisableInactiveUsersJob');
   });
 });
 
