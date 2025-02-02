@@ -4,6 +4,7 @@ import { Connection, Messages } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
 import { AsyncApexJob } from '../../types/scheduledApexTypes.js';
 import QueryRunner from '../utils/queryRunner.js';
+import StopSingleJobTask from './stopSingleJobTask.js';
 
 const JOB_NAME_PLACEHOLDER = '%%%JOB_NAME%%%';
 const CLASS_NAME_PLACEHOLDER = '%%%APEX_CLASS_NAME%%%';
@@ -47,10 +48,24 @@ export default class ApexScheduleService extends EventEmitter {
     return { jobId, nextFireTime: new Date(jobDetails.CronTrigger.NextFireTime) };
   }
 
+  public async stopJobs(inputs: ScheduledJobSearchOptions): Promise<StopScheduledApexResult[]> {
+    const apexExecutor = new StopSingleJobTask(this.targetOrgCon);
+    const stopJobsQueue = new Array<Promise<StopScheduledApexResult>>();
+    const idsToStop: string[] = [];
+    if (inputs.ids && inputs.ids.length > 0) {
+      inputs.ids.forEach((id) => idsToStop.push(id));
+    }
+    idsToStop.forEach((id) => {
+      stopJobsQueue.push(apexExecutor.stop(id));
+    });
+    const stoppedJobs = await Promise.all(stopJobsQueue);
+    return stoppedJobs;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJob[]> {
     const jobs = await this.runner.fetchRecords<AsyncApexJob>(
-      `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType IN ('BatchApexWorker','ScheduledApex') AND Status = 'Queued'`
+      `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType = 'ScheduledApex' AND Status = 'Queued'`
     );
     // reduce array by apex class & job name filter
     // return filtered items
@@ -90,28 +105,22 @@ function prepareApexTemplate(inputs: ApexScheduleOptions): string {
 }
 
 function parseAnonymousApexResult(result: ExecuteAnonymousResponse, inputs: ApexScheduleOptions): string {
-  if (!result.compiled) {
-    const compileProblem = result.diagnostic?.[0].compileProblem ?? 'Unknown compile problem';
-    throw messages.createError('GenericCompileFail', [compileProblem]);
-  }
-  if (result.success) {
-    const apexLog = result.logs!;
-    const matchResult = /(DEBUG\|)([a-zA-Z0-9]{18})/.exec(apexLog);
-    if (matchResult && matchResult.length >= 3) {
-      return matchResult[2];
-    } else {
-      throw messages.createError('UnableToParseJobId');
-    }
-  } else if (isAsyncException(result.diagnostic)) {
+  assertCompileSuccess(result);
+  if (isAsyncException(result.diagnostic)) {
     throw messages.createError('SystemAsyncException', [result.diagnostic![0].exceptionMessage]);
   } else if (isCronExpressionError(result.diagnostic)) {
     throw messages.createError('InvalidCronExpression', [
       inputs.cronExpression,
       result.diagnostic![0].exceptionMessage.substring(24),
     ]);
+  }
+  assertSuccess(result);
+  const apexLog = result.logs!;
+  const matchResult = /(DEBUG\|)([a-zA-Z0-9]{18})/.exec(apexLog);
+  if (matchResult && matchResult.length >= 3) {
+    return matchResult[2];
   } else {
-    const exceptionMessage = result.diagnostic?.[0].exceptionMessage ?? 'Unknown error';
-    throw messages.createError('Unexpected', [exceptionMessage]);
+    throw messages.createError('UnableToParseJobId');
   }
 }
 
@@ -132,6 +141,20 @@ function isCronExpressionError(diagnostics?: ApexDiagnostic[]): boolean {
   );
 }
 
+export function assertCompileSuccess(result: ExecuteAnonymousResponse): void {
+  if (!result.compiled) {
+    const compileProblem = result.diagnostic?.[0].compileProblem ?? 'Unknown compile problem';
+    throw messages.createError('GenericCompileFail', [compileProblem]);
+  }
+}
+
+export function assertSuccess(result: ExecuteAnonymousResponse): void {
+  if (!result.success) {
+    const exceptionMessage = result.diagnostic?.[0].exceptionMessage ?? 'Unknown error';
+    throw messages.createError('Unexpected', [exceptionMessage]);
+  }
+}
+
 export type ApexScheduleOptions = {
   jobName?: string;
   apexClassName: string;
@@ -143,7 +166,13 @@ export type ScheduleApexResult = {
   nextFireTime: Date;
 };
 
+export type StopScheduledApexResult = {
+  jobId: string;
+  status: string;
+};
+
 export type ScheduledJobSearchOptions = {
   jobName?: string;
   apexClassName?: string;
+  ids?: string[];
 };

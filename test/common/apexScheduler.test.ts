@@ -19,7 +19,7 @@ describe('apex scheduler', () => {
 
   it('uses apex class name, job name and cron expression to schedule apex', async () => {
     // Arrange
-    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SUCCESS);
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
 
     // Act
     const scheduler = new ApexScheduleService(await testOrg.getConnection());

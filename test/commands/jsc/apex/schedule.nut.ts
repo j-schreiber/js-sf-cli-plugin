@@ -2,6 +2,7 @@ import path from 'node:path';
 import { expect } from 'chai';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscApexScheduleStartResult } from '../../../../src/commands/jsc/apex/schedule/start.js';
+import { JscApexScheduleStopResult } from '../../../../src/commands/jsc/apex/schedule/stop.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
@@ -59,6 +60,24 @@ describe('jsc apex schedule NUTs', () => {
       // Assert
       expect(result.name).to.equal('GenericCompileFailError');
       expect(result.message).to.contain('Invalid type: SomeNoneExistingClass');
+    });
+
+    it('successfully stops a scheduled job', () => {
+      // Arrange
+      const startResult = execCmd<JscApexScheduleStartResult>(
+        `jsc:apex:schedule:start --apex-class-name TestJob --name "To Be Stopped" --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Act
+      const stopResult = execCmd<JscApexScheduleStopResult>(
+        `jsc:apex:schedule:stop --id ${startResult?.jobId} --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      expect(stopResult).to.not.be.undefined;
+      expect(stopResult?.jobId).to.equal(startResult?.jobId);
     });
   });
 });
