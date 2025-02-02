@@ -16,7 +16,8 @@ export const CRON_TRIGGER_SOQL_TEMPLATE = `SELECT
   CronTrigger.State,
   CronTrigger.StartTime,
   CronTrigger.NextFireTime,
-  CronTrigger.TimesTriggered
+  CronTrigger.TimesTriggered,
+  CronTrigger.CronExpression
 FROM AsyncApexJob`;
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -63,6 +64,7 @@ export default class ApexScheduleService extends EventEmitter {
         StartTime: new Date(job.CronTrigger.StartTime),
         CronJobDetailName: job.CronTrigger.CronJobDetail.Name,
         TimesTriggered: job.CronTrigger.TimesTriggered,
+        CronExpression: job.CronTrigger.CronExpression,
       };
       if (!filter.ids && !filter.apexClassName && !filter.jobName) {
         jobsOutput.push(output);

@@ -27,6 +27,7 @@
           },
           "Name": "Auto Contract Renewal"
         },
+        "CronExpression": "0 0 5 ? * * *",
         "State": "WAITING",
         "StartTime": "2022-03-10T15:13:47.000+0000",
         "NextFireTime": "2025-02-02T04:00:00.000+0000",

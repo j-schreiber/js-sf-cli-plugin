@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscApexScheduleStartResult } from '../../../../src/commands/jsc/apex/schedule/start.js';
 import { JscApexScheduleStopResult } from '../../../../src/commands/jsc/apex/schedule/stop.js';
+import { AsyncApexJobFlat } from '../../../../src/types/scheduledApexTypes.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
@@ -35,50 +36,67 @@ describe('jsc apex schedule NUTs', () => {
     await session?.clean();
   });
 
-  describe('start', () => {
-    it('schedules an apex class with valid cron expression and returns the cron job details', () => {
-      // Act
-      const result = execCmd<JscApexScheduleStartResult>(
-        `jsc:apex:schedule:start --apex-class-name TestJob --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
-        { ensureExitCode: 0 }
-      ).jsonOutput?.result;
-
-      // Assert
-      expect(result).to.not.be.undefined;
-      expect(result!.jobId).to.not.be.empty;
-      expect(result!.jobId.startsWith('08e')).to.equal(true, 'is a valid cron trigger id');
-      expect(result!.nextFireTime).to.not.be.empty;
+  afterEach(async () => {
+    execCmd<JscApexScheduleStopResult[]>(`jsc:apex:schedule:stop --target-org ${scratchOrgAlias} --no-prompt --json`, {
+      ensureExitCode: 0,
     });
+  });
 
-    it('throws error when input is an invalid apex class', () => {
-      // Act
-      const result = execCmd<JscApexScheduleStartResult>(
-        `jsc:apex:schedule:start --apex-class-name SomeNoneExistingClass --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
-        { ensureExitCode: 1 }
-      ).jsonOutput!;
+  it('schedules an apex class with valid cron expression and returns the cron job details', () => {
+    // Act
+    const result = execCmd<JscApexScheduleStartResult>(
+      `jsc:apex:schedule:start --apex-class-name TestJob --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+    const exportResult = execCmd<AsyncApexJobFlat[]>(
+      `jsc:apex:schedule:export --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
 
-      // Assert
-      expect(result.name).to.equal('GenericCompileFailError');
-      expect(result.message).to.contain('Invalid type: SomeNoneExistingClass');
-    });
+    // Assert
+    expect(result).to.not.be.undefined;
+    expect(result!.jobId).to.not.be.empty;
+    expect(result!.jobId.startsWith('08e')).to.equal(true, 'is a valid cron trigger id');
+    expect(result!.nextFireTime).to.not.be.empty;
+    expect(exportResult).to.not.be.undefined;
+    expect(exportResult?.length).to.equal(1);
+    expect(exportResult![0].CronTriggerId).to.equal(result!.jobId);
+  });
 
-    it('successfully stops a job by id that was returned from schedule start', () => {
-      // Arrange
-      const startResult = execCmd<JscApexScheduleStartResult>(
-        `jsc:apex:schedule:start --apex-class-name TestJob --name "To Be Stopped" --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
-        { ensureExitCode: 0 }
-      ).jsonOutput?.result;
+  it('throws error when input is an invalid apex class', () => {
+    // Act
+    const result = execCmd<JscApexScheduleStartResult>(
+      `jsc:apex:schedule:start --apex-class-name SomeNoneExistingClass --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 1 }
+    ).jsonOutput!;
 
-      // Act
-      const stopResult = execCmd<JscApexScheduleStopResult[]>(
-        `jsc:apex:schedule:stop --id ${startResult?.jobId} --target-org ${scratchOrgAlias} --no-prompt --json`,
-        { ensureExitCode: 0 }
-      ).jsonOutput?.result;
+    // Assert
+    expect(result.name).to.equal('GenericCompileFailError');
+    expect(result.message).to.contain('Invalid type: SomeNoneExistingClass');
+  });
 
-      // Assert
-      expect(stopResult).to.not.be.undefined;
-      expect(stopResult?.length).to.equal(1);
-      expect(stopResult![0].jobId).to.equal(startResult?.jobId);
-    });
+  it('successfully stops a job by id that was returned from schedule start', () => {
+    // Arrange
+    const startResult = execCmd<JscApexScheduleStartResult>(
+      `jsc:apex:schedule:start --apex-class-name TestJob --name "To Be Stopped" --cron-expression "0 0 1 * * ?" --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Act
+    const stopResult = execCmd<JscApexScheduleStopResult[]>(
+      `jsc:apex:schedule:stop --id ${startResult?.jobId} --target-org ${scratchOrgAlias} --no-prompt --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+    const exportResult = execCmd<AsyncApexJobFlat[]>(
+      `jsc:apex:schedule:export --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Assert
+    expect(stopResult).to.not.be.undefined;
+    expect(stopResult?.length).to.equal(1);
+    expect(stopResult![0].jobId).to.equal(startResult?.jobId);
+    expect(exportResult).to.not.be.undefined;
+    expect(exportResult?.length).to.equal(0, 'jobs exported after stop');
   });
 });

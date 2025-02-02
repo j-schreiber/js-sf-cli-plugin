@@ -13,6 +13,7 @@ export type AsyncApexJobFlat = {
   StartTime: Date;
   CronJobDetailName: string;
   TimesTriggered: number;
+  CronExpression?: string;
 };
 
 export type CronTrigger = {
@@ -21,6 +22,7 @@ export type CronTrigger = {
   NextFireTime: string;
   CronJobDetail: CronJobDetail;
   TimesTriggered: number;
+  CronExpression?: string;
 };
 
 export type CronJobDetail = {
