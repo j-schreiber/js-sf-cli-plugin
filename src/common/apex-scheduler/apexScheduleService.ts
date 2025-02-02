@@ -1,53 +1,80 @@
 import { EventEmitter } from 'node:events';
-import { ApexDiagnostic, ExecuteAnonymousResponse, ExecuteService } from '@salesforce/apex-node';
+import { ExecuteAnonymousResponse } from '@salesforce/apex-node';
 import { Connection, Messages } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
-import { AsyncApexJob } from '../../types/scheduledApexTypes.js';
+import { AsyncApexJob, AsyncApexJobFlat } from '../../types/scheduledApexTypes.js';
+import QueryRunner from '../utils/queryRunner.js';
+import StopSingleJobTask, { StopScheduledApexResult } from './stopSingleJobTask.js';
+import ScheduleSingleJobTask, { ApexScheduleOptions, ScheduleApexResult } from './scheduleSingleJobTask.js';
 
-const JOB_NAME_PLACEHOLDER = '%%%JOB_NAME%%%';
-const CLASS_NAME_PLACEHOLDER = '%%%APEX_CLASS_NAME%%%';
-const CRON_EXPRESSION_PLACEHOLDER = '%%%CRON_EXPRESSION%%%';
-
-const SCHEDULE_SINGLE_CLASS_TEMPLATE = `String jobName = '${JOB_NAME_PLACEHOLDER}';
-String cronExpression = '${CRON_EXPRESSION_PLACEHOLDER}';
-Id jobId = System.schedule(jobName, cronExpression, new ${CLASS_NAME_PLACEHOLDER}());
-System.debug(jobId);`;
-
-const CRON_TRIGGER_SOQL_TEMPLATE = `SELECT 
+export const CRON_TRIGGER_SOQL_TEMPLATE = `SELECT 
   Id,
   Status,
+  ApexClass.Name,
+  CronTriggerId,
   CronTrigger.CronJobDetail.Name,
   CronTrigger.State,
   CronTrigger.StartTime,
-  CronTrigger.NextFireTime
+  CronTrigger.NextFireTime,
+  CronTrigger.TimesTriggered
 FROM AsyncApexJob`;
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'apexscheduler');
 
 export default class ApexScheduleService extends EventEmitter {
+  private runner: QueryRunner;
+
   public constructor(private targetOrgCon: Connection) {
     super();
+    this.runner = new QueryRunner(targetOrgCon);
   }
 
   public async scheduleJob(inputs: ApexScheduleOptions): Promise<ScheduleApexResult> {
-    const apexCode = prepareApexTemplate(inputs);
-    const apexExecutor = new ExecuteService(this.targetOrgCon);
-    const result = await apexExecutor.executeAnonymous({ apexCode });
-    this.emitEvents(result);
-    const jobId = parseAnonymousApexResult(result, inputs);
-    const jobDetails = await this.retrieveJobDetails(jobId);
-    return { jobId, nextFireTime: new Date(jobDetails.CronTrigger.NextFireTime) };
+    const handler = new ScheduleSingleJobTask(this.targetOrgCon);
+    handler.on('apexExecution', (result: ExecuteAnonymousResponse) => this.emitEvents(result));
+    const startResult = await handler.start(inputs);
+    return startResult;
   }
 
-  private async retrieveJobDetails(jobId: string): Promise<AsyncApexJob> {
-    const triggerDetails = await this.targetOrgCon.query<AsyncApexJob>(
-      `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE CronTriggerId = '${jobId}' LIMIT 1`
+  public async stopJobs(jobIds: string[]): Promise<StopScheduledApexResult[]> {
+    const handler = new StopSingleJobTask(this.targetOrgCon);
+    handler.on('apexExecution', (result: ExecuteAnonymousResponse) => this.emitEvents(result));
+    const stopJobsQueue = new Array<Promise<StopScheduledApexResult>>();
+    jobIds.forEach((id) => {
+      stopJobsQueue.push(handler.stop(id));
+    });
+    const stoppedJobs = await Promise.all(stopJobsQueue);
+    return stoppedJobs;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJobFlat[]> {
+    const jobs = await this.runner.fetchRecords<AsyncApexJob>(
+      `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType = 'ScheduledApex' AND Status = 'Queued'`
     );
-    if (triggerDetails.records.length < 1) {
-      throw messages.createError('FailedToRetrieveJobDetails', [jobId]);
-    }
-    return triggerDetails.records[0];
+    const jobsOutput = new Array<AsyncApexJobFlat>();
+    jobs.forEach((job) => {
+      const output = {
+        CronTriggerId: job.CronTriggerId,
+        ApexClassName: job.ApexClass.Name,
+        CronTriggerState: job.CronTrigger.State,
+        NextFireTime: new Date(job.CronTrigger.NextFireTime),
+        StartTime: new Date(job.CronTrigger.StartTime),
+        CronJobDetailName: job.CronTrigger.CronJobDetail.Name,
+        TimesTriggered: job.CronTrigger.TimesTriggered,
+      };
+      if (!filter.ids && !filter.apexClassName && !filter.jobName) {
+        jobsOutput.push(output);
+      } else if (filter.ids && filter.ids.includes(job.CronTriggerId)) {
+        jobsOutput.push(output);
+      } else if (filter.apexClassName === output.ApexClassName) {
+        jobsOutput.push(output);
+      } else if (filter.jobName === output.CronJobDetailName) {
+        jobsOutput.push(output);
+      }
+    });
+    return jobsOutput;
   }
 
   private emitEvents(result: ExecuteAnonymousResponse): void {
@@ -64,64 +91,22 @@ export default class ApexScheduleService extends EventEmitter {
   }
 }
 
-function prepareApexTemplate(inputs: ApexScheduleOptions): string {
-  let apexCode = SCHEDULE_SINGLE_CLASS_TEMPLATE;
-  apexCode = apexCode.replace(JOB_NAME_PLACEHOLDER, inputs.jobName ?? inputs.apexClassName);
-  apexCode = apexCode.replace(CLASS_NAME_PLACEHOLDER, inputs.apexClassName);
-  apexCode = apexCode.replace(CRON_EXPRESSION_PLACEHOLDER, inputs.cronExpression);
-  return apexCode;
-}
-
-function parseAnonymousApexResult(result: ExecuteAnonymousResponse, inputs: ApexScheduleOptions): string {
+export function assertCompileSuccess(result: ExecuteAnonymousResponse): void {
   if (!result.compiled) {
     const compileProblem = result.diagnostic?.[0].compileProblem ?? 'Unknown compile problem';
     throw messages.createError('GenericCompileFail', [compileProblem]);
   }
-  if (result.success) {
-    const apexLog = result.logs!;
-    const matchResult = /(DEBUG\|)([a-zA-Z0-9]{18})/.exec(apexLog);
-    if (matchResult && matchResult.length >= 3) {
-      return matchResult[2];
-    } else {
-      throw messages.createError('UnableToParseJobId');
-    }
-  } else if (isAsyncException(result.diagnostic)) {
-    throw messages.createError('SystemAsyncException', [result.diagnostic![0].exceptionMessage]);
-  } else if (isCronExpressionError(result.diagnostic)) {
-    throw messages.createError('InvalidCronExpression', [
-      inputs.cronExpression,
-      result.diagnostic![0].exceptionMessage.substring(24),
-    ]);
-  } else {
+}
+
+export function assertSuccess(result: ExecuteAnonymousResponse): void {
+  if (!result.success) {
     const exceptionMessage = result.diagnostic?.[0].exceptionMessage ?? 'Unknown error';
     throw messages.createError('Unexpected', [exceptionMessage]);
   }
 }
 
-function isAsyncException(diagnostics?: ApexDiagnostic[]): boolean {
-  return (
-    diagnostics !== undefined &&
-    diagnostics.length >= 1 &&
-    diagnostics[0].exceptionMessage.startsWith('System.AsyncException')
-  );
-}
-
-function isCronExpressionError(diagnostics?: ApexDiagnostic[]): boolean {
-  return (
-    diagnostics !== undefined &&
-    diagnostics.length >= 1 &&
-    Number(diagnostics[0].lineNumber) === 3 &&
-    diagnostics[0].exceptionMessage.startsWith('System.StringException')
-  );
-}
-
-export type ApexScheduleOptions = {
+export type ScheduledJobSearchOptions = {
   jobName?: string;
-  apexClassName: string;
-  cronExpression: string;
-};
-
-export type ScheduleApexResult = {
-  jobId: string;
-  nextFireTime: Date;
+  apexClassName?: string;
+  ids?: string[];
 };

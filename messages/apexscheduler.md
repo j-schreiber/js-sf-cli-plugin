@@ -21,3 +21,7 @@ Unexpected error happend when trying to retrieve details about job %s. Please ch
 # InvalidCronExpression
 
 Failed to parse the cron expression "%s": %s
+
+# JobAlreadyAborted
+
+%s

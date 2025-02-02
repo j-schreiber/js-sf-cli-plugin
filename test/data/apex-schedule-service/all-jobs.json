@@ -1,0 +1,171 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v63.0/sobjects/AsyncApexJob/7077a000037qEt8AAE"
+      },
+      "Id": "7077a000037qEt8AAE",
+      "Status": "Queued",
+      "ApexClass": {
+        "attributes": {
+          "type": "ApexClass",
+          "url": "/services/data/v63.0/sobjects/ApexClass/01p67000007sIQTAA2"
+        },
+        "Name": "AutoContractRenewalJob"
+      },
+      "CronTriggerId": "08e7a00000VlWl2AAF",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v63.0/sobjects/CronTrigger/08e7a00000VlWl2AAF"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v63.0/sobjects/CronJobDetail/08a7a00000VlWyVAAV"
+          },
+          "Name": "Auto Contract Renewal"
+        },
+        "State": "WAITING",
+        "StartTime": "2022-03-10T15:13:47.000+0000",
+        "NextFireTime": "2025-02-02T04:00:00.000+0000",
+        "TimesTriggered": 1059
+      }
+    },
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v63.0/sobjects/AsyncApexJob/7077a000042audmAAA"
+      },
+      "Id": "7077a000042audmAAA",
+      "Status": "Queued",
+      "ApexClass": {
+        "attributes": {
+          "type": "ApexClass",
+          "url": "/services/data/v63.0/sobjects/ApexClass/01p7a000009tlquAAA"
+        },
+        "Name": "DisableInactiveUsersJob"
+      },
+      "CronTriggerId": "08e7a00000cohZpAAI",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v63.0/sobjects/CronTrigger/08e7a00000cohZpAAI"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v63.0/sobjects/CronJobDetail/08a7a00000cokBqAAI"
+          },
+          "Name": "Disable Inactive Users"
+        },
+        "State": "WAITING",
+        "StartTime": "2023-01-24T14:10:44.000+0000",
+        "NextFireTime": "2025-02-02T14:12:00.000+0000",
+        "TimesTriggered": 740
+      }
+    },
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v63.0/sobjects/AsyncApexJob/7079Q000009VdfrQAC"
+      },
+      "Id": "7079Q000009VdfrQAC",
+      "Status": "Queued",
+      "ApexClass": {
+        "attributes": {
+          "type": "ApexClass",
+          "url": "/services/data/v63.0/sobjects/ApexClass/01p9Q000001UE1pQAG"
+        },
+        "Name": "AssetMonitoringStateRetentionBatch"
+      },
+      "CronTriggerId": "08e9Q0000051cl7QAA",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v63.0/sobjects/CronTrigger/08e9Q0000051cl7QAA"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v63.0/sobjects/CronJobDetail/08a9Q00000520HBQAY"
+          },
+          "Name": "Delete old Asset States"
+        },
+        "State": "WAITING",
+        "StartTime": "2023-09-28T06:35:30.000+0000",
+        "NextFireTime": "2025-02-02T01:00:00.000+0000",
+        "TimesTriggered": 491
+      }
+    },
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v63.0/sobjects/AsyncApexJob/7079Q00000SPQ23QAH"
+      },
+      "Id": "7079Q00000SPQ23QAH",
+      "Status": "Queued",
+      "ApexClass": {
+        "attributes": {
+          "type": "ApexClass",
+          "url": "/services/data/v63.0/sobjects/ApexClass/01p9Q000006GSOKQA4"
+        },
+        "Name": "LicensingStatusRecalculationBatch"
+      },
+      "CronTriggerId": "08e9Q00000G1e5lQAB",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v63.0/sobjects/CronTrigger/08e9Q00000G1e5lQAB"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v63.0/sobjects/CronJobDetail/08a9Q00000G1sjpQAB"
+          },
+          "Name": "Asset Licensing Status Recalculation"
+        },
+        "State": "WAITING",
+        "StartTime": "2024-07-23T11:56:08.000+0000",
+        "NextFireTime": "2025-02-02T03:00:00.000+0000",
+        "TimesTriggered": 193
+      }
+    },
+    {
+      "attributes": {
+        "type": "AsyncApexJob",
+        "url": "/services/data/v63.0/sobjects/AsyncApexJob/7079Q00000UPt1TQAT"
+      },
+      "Id": "7079Q00000UPt1TQAT",
+      "Status": "Queued",
+      "ApexClass": {
+        "attributes": {
+          "type": "ApexClass",
+          "url": "/services/data/v63.0/sobjects/ApexClass/01p9Q000006pnrIQAQ"
+        },
+        "Name": "CaseReminderJob"
+      },
+      "CronTriggerId": "08e9Q00000GoRITQA3",
+      "CronTrigger": {
+        "attributes": {
+          "type": "CronTrigger",
+          "url": "/services/data/v63.0/sobjects/CronTrigger/08e9Q00000GoRITQA3"
+        },
+        "CronJobDetail": {
+          "attributes": {
+            "type": "CronJobDetail",
+            "url": "/services/data/v63.0/sobjects/CronJobDetail/08a9Q00000GoTP7QAN"
+          },
+          "Name": "Auto Case Reminder"
+        },
+        "State": "WAITING",
+        "StartTime": "2024-08-14T05:14:54.000+0000",
+        "NextFireTime": "2025-02-03T08:00:00.000+0000",
+        "TimesTriggered": 1107
+      }
+    }
+  ],
+  "totalSize": 5,
+  "done": true
+}
