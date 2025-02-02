@@ -1,9 +1,10 @@
 import { expect } from 'chai';
-import { Connection, SfError } from '@salesforce/core';
+import { SfError } from '@salesforce/core';
 import { ExecuteService } from '@salesforce/apex-node';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import ApexScheduleService from '../../src/common/apex-scheduler/apexScheduleService.js';
 import AnonymousApexMocks from '../mock-utils/anonApexMocks.js';
+import QueryRunner from '../../src/common/utils/queryRunner.js';
 
 describe('apex scheduler', () => {
   const $$ = new TestContext();
@@ -13,12 +14,12 @@ describe('apex scheduler', () => {
   beforeEach(async () => {
     await $$.stubAuths(testOrg);
     anonApexMocks = new AnonymousApexMocks();
-    $$.SANDBOX.stub(Connection.prototype, 'query').resolves(anonApexMocks.JOB_DETAILS);
+    $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords').callsFake(anonApexMocks.queryStub);
   });
 
   it('uses apex class name, job name and cron expression to schedule apex', async () => {
     // Arrange
-    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SUCCESS);
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
 
     // Act
     const scheduler = new ApexScheduleService(await testOrg.getConnection());
@@ -82,5 +83,92 @@ describe('apex scheduler', () => {
         expect.fail('Expected SfError');
       }
     }
+  });
+
+  it('emits log event when successfully scheduling a job', async () => {
+    // Arrange
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
+    const scheduler = new ApexScheduleService(await testOrg.getConnection());
+    const logListener = $$.SANDBOX.stub();
+    const diagnosticsListener = $$.SANDBOX.stub();
+    scheduler.addListener('logOutput', logListener);
+    scheduler.addListener('diagnostics', diagnosticsListener);
+
+    // Act
+    await scheduler.scheduleJob({
+      apexClassName: 'MyTestClass',
+      jobName: 'My Test Job',
+      cronExpression: '0 0 0 1 ? * * *',
+    });
+
+    // Assert
+    expect(logListener.callCount).to.equal(1);
+    expect(logListener.args.flat()[0]).to.deep.contain({ message: anonApexMocks.SCHEDULE_START_SUCCESS.logs });
+    expect(diagnosticsListener.callCount).to.equal(0);
+  });
+
+  it('emits trace events when failing to schedule a job', async () => {
+    // Arrange
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.ALREADY_SCHEDULED_ERROR);
+    const scheduler = new ApexScheduleService(await testOrg.getConnection());
+    const logListener = $$.SANDBOX.stub();
+    const diagnosticsListener = $$.SANDBOX.stub();
+    scheduler.addListener('logOutput', logListener);
+    scheduler.addListener('diagnostics', diagnosticsListener);
+
+    // Act
+    try {
+      await scheduler.scheduleJob({
+        apexClassName: 'MyTestClass',
+        jobName: 'My Test Job',
+        cronExpression: '0 0 0 1 ? * * *',
+      });
+    } catch (err) {
+      // we're good, only interested in events
+    }
+
+    // Assert
+    expect(logListener.callCount).to.equal(1);
+    expect(logListener.args.flat()[0]).to.deep.contain({ message: anonApexMocks.ALREADY_SCHEDULED_ERROR.logs });
+    expect(diagnosticsListener.callCount).to.equal(1);
+    expect(diagnosticsListener.args.flat()[0]).to.deep.contain({
+      message: JSON.stringify(anonApexMocks.ALREADY_SCHEDULED_ERROR.diagnostic, null, 2),
+    });
+  });
+
+  it('emits trace events when failing to stop a job', async () => {
+    // Arrange
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.JOB_ALREADY_ABORTED);
+    const scheduler = new ApexScheduleService(await testOrg.getConnection());
+    const logListener = $$.SANDBOX.stub();
+    const diagnosticsListener = $$.SANDBOX.stub();
+    scheduler.addListener('logOutput', logListener);
+    scheduler.addListener('diagnostics', diagnosticsListener);
+
+    // Act
+    try {
+      await scheduler.stopJobs(['08e9b00000Kz6hmAAB']);
+    } catch (err) {
+      // we're good, only interested in events
+    }
+
+    // Assert
+    expect(logListener.callCount).to.equal(1);
+    expect(logListener.args.flat()[0]).to.deep.contain({ message: anonApexMocks.JOB_ALREADY_ABORTED.logs });
+    expect(diagnosticsListener.callCount).to.equal(1);
+    expect(diagnosticsListener.args.flat()[0]).to.deep.contain({
+      message: JSON.stringify(anonApexMocks.JOB_ALREADY_ABORTED.diagnostic, null, 2),
+    });
+  });
+
+  it('queries for all scheduled apex cron triggers when no filters are provided', async () => {
+    // Act
+    const scheduler = new ApexScheduleService(await testOrg.getConnection());
+    const allJobs = await scheduler.findJobs({});
+
+    // Arrange
+    expect(allJobs.length).to.equal(5);
+    expect(allJobs[0].CronJobDetailName).to.equal('Auto Contract Renewal');
+    expect(allJobs[1].CronJobDetailName).to.equal('Disable Inactive Users');
   });
 });
