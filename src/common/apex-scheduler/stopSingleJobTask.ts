@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { ApexDiagnostic, ExecuteAnonymousResponse, ExecuteService } from '@salesforce/apex-node';
 import { Connection, Messages } from '@salesforce/core';
 import { assertCompileSuccess, assertSuccess } from './apexScheduleService.js';
@@ -8,16 +9,18 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'apexscheduler'
 const JOB_ID_PLACEHOLDER = '%%%JOB_ID%%%';
 const STOP_SINGLE_JOB_TEMPLATE = `System.abortJob('${JOB_ID_PLACEHOLDER}');`;
 
-export default class StopSingleJobTask {
+export default class StopSingleJobTask extends EventEmitter {
   private executor: ExecuteService;
 
   public constructor(private targetOrgCon: Connection) {
+    super();
     this.executor = new ExecuteService(this.targetOrgCon);
   }
 
   public async stop(id: string): Promise<StopScheduledApexResult> {
     const apexCode = prepareCode(id);
     const anonResult = await this.executor.executeAnonymous({ apexCode });
+    this.emit('apexExecution', anonResult);
     return { jobId: id, status: parseExecutionResult(anonResult) };
   }
 }

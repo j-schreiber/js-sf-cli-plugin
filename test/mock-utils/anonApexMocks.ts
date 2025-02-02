@@ -11,6 +11,7 @@ export default class AnonymousApexMocks {
   public SCHEDULE_STOP_SUCCESS = parseMockResult<ExecuteAnonymousResponse>('schedule-stop-success.json');
   public ALREADY_SCHEDULED_ERROR = parseMockResult<ExecuteAnonymousResponse>('is-already-scheduled-error.json');
   public INVALID_CRON_EXPRESSION_ERROR = parseMockResult<ExecuteAnonymousResponse>('invalid-cron-error.json');
+  public JOB_ALREADY_ABORTED = parseMockResult<ExecuteAnonymousResponse>('job-is-already-aborted.json');
   public JOB_DETAILS = parseMockResult<QueryResult<AsyncApexJob>>('cron-trigger-details.json');
   public ALL_JOBS = parseMockResult<QueryResult<AsyncApexJob>>('all-jobs.json');
 
