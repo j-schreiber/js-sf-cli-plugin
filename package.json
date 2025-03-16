@@ -105,7 +105,7 @@
     "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:nuts:apex": "nyc mocha \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
     "test:only": "wireit",
-    "readme": "oclif readme && pretty-quick"
+    "readme": "wireit"
   },
   "publishConfig": {
     "access": "public"
@@ -223,6 +223,12 @@
         "messages/**/*.md"
       ],
       "output": []
+    },
+    "readme": {
+      "dependencies": [
+        "build"
+      ],
+      "command": "oclif readme && pretty-quick"
     }
   },
   "exports": "./lib/index.js",
