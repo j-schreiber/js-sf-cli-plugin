@@ -186,6 +186,29 @@ describe('jsc apex schedule', () => {
     expect(result[0].TimesTriggered).to.equal(1059);
   });
 
+  it('prints all exported scheduled jobs to output table', async () => {
+    // Act
+    await JscApexScheduleExport.run(['--target-org', testOrg.username]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(1);
+    const tableArgs = sfCommandStubs.table.args.flat()[0];
+    expect(tableArgs.data.length).to.equal(5);
+    tableArgs.data.forEach((tableRow, index) => {
+      const originalRecord = anonApexMocks.ALL_JOBS.records[index];
+      expect(tableRow).to.deep.equal({
+        CronTriggerId: originalRecord.CronTriggerId,
+        CronJobDetailName: originalRecord.CronTrigger.CronJobDetail.Name,
+        ApexClassName: originalRecord.ApexClass.Name,
+        CronExpression: originalRecord.CronTrigger.CronExpression,
+        CronTriggerState: originalRecord.CronTrigger.State,
+        NextFireTime: new Date(originalRecord.CronTrigger.NextFireTime),
+        StartTime: new Date(originalRecord.CronTrigger.StartTime),
+        TimesTriggered: originalRecord.CronTrigger.TimesTriggered,
+      });
+    });
+  });
+
   it('exports scheduled jobs filtered by apex class', async () => {
     // Act
     const result = await JscApexScheduleExport.run([

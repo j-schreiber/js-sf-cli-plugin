@@ -12,6 +12,8 @@
   },
   "editor.tabSize": 2,
   "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "mochaExplorer.files": "test/**/*.test.ts",
-  "mochaExplorer.require": "tsx"
+  "mochaExplorer.require": "tsx",
+  "github-actions.workflows.pinned.workflows": [".github/workflows/tests.yml"]
 }
