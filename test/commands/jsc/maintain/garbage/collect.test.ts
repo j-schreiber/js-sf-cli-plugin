@@ -1,5 +1,3 @@
-// import * as events from 'node:events';
-// import * as extend from 'extend';
 import fs from 'node:fs';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { expect } from 'chai';
@@ -79,6 +77,47 @@ describe('jsc maintain garbage collect', () => {
     $$.restore();
     fs.rmSync(TEST_OUTPUT_PATH, { recursive: true, force: true });
     process.removeAllListeners();
+  });
+
+  it('prints garbage result to cmd output as table with default parameters', async () => {
+    // Arrange
+    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(1); // once with all types
+    const tablesCallArgs = sfCommandStubs.table.args.flat()[0];
+    expect(tablesCallArgs.data.length).to.equal(
+      MOCK_GARBAGE_RESULT.deprecatedMembers.ExternalString.componentCount +
+        MOCK_GARBAGE_RESULT.deprecatedMembers.CustomField.componentCount
+    );
+    // custom labels, 0-1
+    for (let i = 0; i < 2; i++) {
+      expect(tablesCallArgs.data[i].metadataType).to.equal('CustomLabel');
+      const labelRow = MOCK_GARBAGE_RESULT.deprecatedMembers.ExternalString.components[i];
+      expect(tablesCallArgs.data[i].subjectId).to.equal(labelRow.subjectId);
+      expect(tablesCallArgs.data[i].fullyQualifiedApiName).to.equal(labelRow.fullyQualifiedName);
+    }
+    // custom fields 2-2
+    for (let i = 2; i < 3; i++) {
+      expect(tablesCallArgs.data[i].metadataType).to.equal('CustomField');
+      const fieldRow = MOCK_GARBAGE_RESULT.deprecatedMembers.CustomField.components[i - 2];
+      expect(tablesCallArgs.data[i].subjectId).to.equal(fieldRow.subjectId);
+      expect(tablesCallArgs.data[i].fullyQualifiedApiName).to.equal(fieldRow.fullyQualifiedName);
+    }
+  });
+
+  it('prints no table when garbage result is empty', async () => {
+    // Arrange
+    $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+
+    // Act
+    await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(0);
   });
 
   it('with --json and no other params > returns result from garbage collector', async () => {

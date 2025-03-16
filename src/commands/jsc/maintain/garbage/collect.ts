@@ -77,8 +77,26 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       packages: await this.resolvePackageIds(orgConnection, flags.package),
     });
     await this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
+    this.printTable(deprecatedPackageMembers);
     process.exitCode = 0;
     return deprecatedPackageMembers;
+  }
+
+  private printTable(collectedGarbage: PackageGarbageResult): void {
+    const tableData: TableOutputRow[] = [];
+    Object.keys(collectedGarbage.deprecatedMembers).forEach((memberType) => {
+      const members = collectedGarbage.deprecatedMembers[memberType];
+      members.components.forEach((member) => {
+        tableData.push({
+          subjectId: member.subjectId,
+          metadataType: members.metadataType,
+          fullyQualifiedApiName: member.fullyQualifiedName,
+        });
+      });
+    });
+    if (tableData.length > 0) {
+      this.table({ data: tableData });
+    }
   }
 
   private async writePackageXml(
@@ -145,3 +163,9 @@ function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Co
   }
   return devhubOrg?.getConnection(apiVersion);
 }
+
+type TableOutputRow = {
+  metadataType: string;
+  subjectId: string;
+  fullyQualifiedApiName: string;
+};
