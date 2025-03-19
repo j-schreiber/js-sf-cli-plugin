@@ -19,9 +19,9 @@ export const MockInstalledVersionQueryResult = {
     {
       SubscriberPackageVersionId: '04t0X0000000000AAA',
       SubscriberPackageVersion: {
-        MajorVersion: '1',
-        MinorVersion: '2',
-        PatchVersion: '2',
+        MajorVersion: 1,
+        MinorVersion: 2,
+        PatchVersion: 2,
         IsPasswordProtected: false,
         IsBeta: false,
       },
@@ -35,9 +35,9 @@ export const MockPackageVersionQueryResult = {
       SubscriberPackageVersionId: '04t0X0000000001AAA',
       IsReleased: true,
       SubscriberPackageVersion: {
-        MajorVersion: '1',
-        MinorVersion: '2',
-        PatchVersion: '3',
+        MajorVersion: 1,
+        MinorVersion: 2,
+        PatchVersion: 3,
         IsBeta: false,
         IsPasswordProtected: false,
       },
