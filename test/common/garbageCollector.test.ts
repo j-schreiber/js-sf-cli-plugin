@@ -95,6 +95,28 @@ describe('garbage collector', () => {
     expect(garbage.deprecatedMembers['Flow']).to.be.undefined;
   });
 
+  it('contains package details for all package members', async () => {
+    // Arrange
+    apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+    apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const labels = garbage.deprecatedMembers['ExternalString'];
+    labels.components.forEach((labelGarbage) => {
+      expect(labelGarbage.deprecatedSinceVersion).to.equal('1.2.3');
+      // expect(labelGarbage.packageName).to.equal('My Test Package');
+    });
+    const layouts = garbage.deprecatedMembers['Layout'];
+    layouts.components.forEach((layoutGarbage) => {
+      expect(layoutGarbage.deprecatedSinceVersion).to.equal('1.2.4');
+      // expect(layoutGarbage.packageName).to.equal('My Test Package');
+    });
+  });
+
   it('receives mixed package members and has no export filter > includes all types', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());

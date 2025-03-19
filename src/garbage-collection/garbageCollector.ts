@@ -14,11 +14,11 @@ Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 export default class GarbageCollector extends EventEmitter {
-  private toolingObjectsRunner: QueryRunner;
-  private toolingApiCache: ToolingApiConnection;
-  private devhubQueryRunner?: QueryRunner;
+  private readonly toolingObjectsRunner: QueryRunner;
+  private readonly toolingApiCache: ToolingApiConnection;
+  private readonly devhubQueryRunner?: QueryRunner;
 
-  public constructor(private targetOrgConnection: Connection, private devhubConnection?: Connection) {
+  public constructor(private readonly targetOrgConnection: Connection, private readonly devhubConnection?: Connection) {
     super();
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);

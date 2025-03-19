@@ -1,14 +1,14 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, extractSubjectIds, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 
 export class CustomField implements EntityDefinitionHandler {
-  private apiConnection: ToolingApiConnection;
+  private readonly apiConnection: ToolingApiConnection;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.apiConnection = ToolingApiConnection.getInstance(this.queryConnection);
   }
 
@@ -27,6 +27,7 @@ export class CustomField implements EntityDefinitionHandler {
               developerName: fieldDef.DeveloperName,
               fullyQualifiedName: `${customObjDef.QualifiedApiName}.${fieldDef.DeveloperName}__c`,
               subjectId: fieldDef.Id,
+              ...resolvePackageDetails(member),
             });
           }
         } else {
@@ -35,6 +36,7 @@ export class CustomField implements EntityDefinitionHandler {
             developerName: fieldDef.DeveloperName,
             fullyQualifiedName: `${fieldDef.TableEnumOrId}.${fieldDef.DeveloperName}__c`,
             subjectId: fieldDef.Id,
+            ...resolvePackageDetails(member),
           });
         }
       }

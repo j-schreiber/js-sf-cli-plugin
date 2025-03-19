@@ -91,6 +91,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
           subjectId: member.subjectId,
           metadataType: members.metadataType,
           fullyQualifiedApiName: member.fullyQualifiedName,
+          deprecatedSinceVersion: member.deprecatedSinceVersion,
         });
       });
     });
@@ -168,4 +169,5 @@ type TableOutputRow = {
   metadataType: string;
   subjectId: string;
   fullyQualifiedApiName: string;
+  deprecatedSinceVersion?: string;
 };

@@ -1,18 +1,18 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { DynamicallyNamedEntity, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, buildSubjectIdFilter } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, buildSubjectIdFilter, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class DynamicDevNamedEntityRelated<T extends DynamicallyNamedEntity> implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection,
-    private entityName: string,
-    private devName: string,
-    private metadataName?: string
+    private readonly queryConnection: Connection,
+    private readonly entityName: string,
+    private readonly devName: string,
+    private readonly metadataName?: string
   ) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
@@ -27,6 +27,7 @@ export class DynamicDevNamedEntityRelated<T extends DynamicallyNamedEntity> impl
           developerName: alertDef[this.devName] as string,
           fullyQualifiedName: `${alertDef.EntityDefinition.QualifiedApiName!}.${alertDef[this.devName] as string}`,
           subjectId: alertDef.Id,
+          ...resolvePackageDetails(member),
         });
       }
     });

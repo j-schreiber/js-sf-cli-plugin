@@ -1,15 +1,15 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { FlowVersionDefinition, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 import { OBSOLETE_FLOWS } from '../queries.js';
 
 export class OutdatedFlowVersions implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
 
@@ -24,6 +24,7 @@ export class OutdatedFlowVersions implements EntityDefinitionHandler {
             developerName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
             fullyQualifiedName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
             subjectId: flowVersion.Id,
+            ...resolvePackageDetails(packageMember),
           });
         });
       }

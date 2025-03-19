@@ -1,14 +1,14 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
+import { buildSubjectIdFilter, EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class ApprovalProcessDefinition implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
 
@@ -24,6 +24,7 @@ export class ApprovalProcessDefinition implements EntityDefinitionHandler {
           developerName: approvalProcessDef.DeveloperName,
           fullyQualifiedName: `${approvalProcessDef.TableEnumOrId}.${approvalProcessDef.DeveloperName}`,
           subjectId: member.SubjectId,
+          ...resolvePackageDetails(member),
         });
       }
     });

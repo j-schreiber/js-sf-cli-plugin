@@ -1,17 +1,17 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { NamedSObjectChildType, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, extractSubjectIds, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 import QueryBuilder from '../../common/utils/queryBuilder.js';
 
 export class Layout implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
-  private apiConnection: ToolingApiConnection;
+  private readonly queryRunner: QueryRunner;
+  private readonly apiConnection: ToolingApiConnection;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.apiConnection = ToolingApiConnection.getInstance(this.queryConnection);
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
@@ -31,14 +31,16 @@ export class Layout implements EntityDefinitionHandler {
               developerName: def.Name,
               fullyQualifiedName: `${customObjDef.QualifiedApiName}-${def.Name}`,
               subjectId: def.Id,
+              ...resolvePackageDetails(member),
             });
           }
         } else {
-          // must be a custom field to a standard object
+          // must be a layout to a standard object
           garbageList.push({
             developerName: def.Name,
             fullyQualifiedName: `${def.TableEnumOrId}-${def.Name}`,
             subjectId: def.Id,
+            ...resolvePackageDetails(member),
           });
         }
       }

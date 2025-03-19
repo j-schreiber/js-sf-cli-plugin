@@ -1,14 +1,18 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member, SobjectTypeDevNamedEntity } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
+import { buildSubjectIdFilter, EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class SObjectBasedDefNameEntity implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection, private entityName: string, private metadataType?: string) {
+  public constructor(
+    private readonly queryConnection: Connection,
+    private readonly entityName: string,
+    private readonly metadataType?: string
+  ) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
 
@@ -22,6 +26,7 @@ export class SObjectBasedDefNameEntity implements EntityDefinitionHandler {
           developerName: actionDef.DeveloperName,
           fullyQualifiedName: `${actionDef.SobjectType}.${actionDef.DeveloperName}`,
           subjectId: member.SubjectId,
+          ...resolvePackageDetails(member),
         });
       }
     });

@@ -82,7 +82,7 @@ describe('jsc maintain garbage NUTs*', () => {
       // Arrange
       // Package versions are build here: https://github.com/j-schreiber/js-cli-plugin-test-package
       // Installs the latest package version (with a lot of metadata) and rolls back to 0.1.0 (almost empty)
-      // Actual package versions are resolved in the test project's sfdx-project.json
+      // The package alias from command parameter are resolved in the test project's sfdx-project.json
       execCmd(`package:install -p "Test Package @ LATEST" -o ${scratchOrgAlias} -w 10 --json`, {
         ensureExitCode: 0,
         cli: 'sf',
@@ -109,11 +109,16 @@ describe('jsc maintain garbage NUTs*', () => {
       // an actual org and executing real queries.
       const actualDeprecatedEntities = Object.keys(deprecatedMembers);
       const expectedDeprecatedEntities = EXPECTED_E2E_GARBAGE.deprecatedMembers;
-      // we care for qual values, but not for their order
+      // we care for equal values, but not for their order
       expect(actualDeprecatedEntities).to.have.deep.members(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));
       for (const depEnt of actualDeprecatedEntities) {
         expect(deprecatedMembers[depEnt].componentCount).to.equal(expectedDeprecatedEntities[depEnt].componentCount);
         expect(deprecatedMembers[depEnt].metadataType).to.equal(expectedDeprecatedEntities[depEnt].metadataType);
+        // all components are expected to be deprecated since LATEST
+        // probably need to revisit that, and dynamically resolve LATEST to actual version
+        deprecatedMembers[depEnt].components.forEach((cmp) => {
+          expect(cmp.deprecatedSinceVersion).to.equal('1.0.0', JSON.stringify(cmp));
+        });
         // remove the "subjectId" from actual deprecated members, so we can compare only
         // the immutable properties with expected result from EXPECTED_E2E_GARBAGE.
         // eslint-disable-next-line arrow-body-style

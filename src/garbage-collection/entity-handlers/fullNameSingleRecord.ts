@@ -1,17 +1,17 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { FullNameSingleRecordEntity, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class FullNameSingleRecord implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection['tooling'],
-    private entityName: string,
-    private metadataTypeName?: string
+    private readonly queryConnection: Connection['tooling'],
+    private readonly entityName: string,
+    private readonly metadataTypeName?: string
   ) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
@@ -30,6 +30,7 @@ export class FullNameSingleRecord implements EntityDefinitionHandler {
           developerName: entityDef[0].FullName,
           fullyQualifiedName: entityDef[0].FullName,
           subjectId: packageMember.SubjectId,
+          ...resolvePackageDetails(packageMember),
         });
       }
     }

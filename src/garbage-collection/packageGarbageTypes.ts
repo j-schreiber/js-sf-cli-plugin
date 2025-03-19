@@ -1,7 +1,15 @@
 export type PackageGarbage = {
   subjectId: string;
   developerName: string;
+  /**
+   * Fully resolved name, including parent object (e.g. on custom fields, workflows, etc)
+   */
   fullyQualifiedName: string;
+  /**
+   * Package version that deprecated the component (the first version to NOT contain it)
+   */
+  deprecatedSinceVersion?: string;
+  packageName?: string;
 };
 
 export type UnknownPackageGarbage = {

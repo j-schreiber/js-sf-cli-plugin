@@ -14,9 +14,9 @@ export type Package2 = {
 
 /** The one with id 04t */
 export type SubscriberPackageVersion = {
-  MajorVersion: string;
-  MinorVersion: string;
-  PatchVersion: string;
+  MajorVersion: number;
+  MinorVersion: number;
+  PatchVersion: number;
   IsBeta: boolean;
   IsPasswordProtected: boolean;
   SubscriberPackageId?: string;
@@ -25,6 +25,9 @@ export type SubscriberPackageVersion = {
 /** The one with id 04t. When used as related parent */
 export type ParentSubscriberPackageVersion = {
   SubscriberPackageId: string;
+  MajorVersion: number;
+  MinorVersion: number;
+  PatchVersion: number;
 };
 
 export type InstalledSubscriberPackage = {
@@ -35,6 +38,7 @@ export type InstalledSubscriberPackage = {
 
 export type Package2Member = Record & {
   Id: string;
+  SubscriberPackageId: string;
   CurrentPackageVersionId: string;
   CurrentPackageVersion?: ParentSubscriberPackageVersion;
   MaxPackageVersionId?: string;

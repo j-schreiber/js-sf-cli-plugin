@@ -8,14 +8,14 @@ import { ALL_CUSTOM_OBJECTS } from './queries.js';
  * Durable Id, key Prefix, etc.
  */
 export default class CustomObjects {
-  private toolingObjectsRunner: QueryRunner;
-  private objectsByKey = new Map<string, EntityDefinition>();
-  private objectsByDurableId = new Map<string, EntityDefinition>();
-  private objectsByDeveloperName = new Map<string, EntityDefinition>();
-  private objectsByApiName = new Map<string, EntityDefinition>();
+  private readonly toolingObjectsRunner: QueryRunner;
+  private readonly objectsByKey = new Map<string, EntityDefinition>();
+  private readonly objectsByDurableId = new Map<string, EntityDefinition>();
+  private readonly objectsByDeveloperName = new Map<string, EntityDefinition>();
+  private readonly objectsByApiName = new Map<string, EntityDefinition>();
   private isInitialised = false;
 
-  public constructor(private targetOrgConnection: Connection) {
+  public constructor(private readonly targetOrgConnection: Connection) {
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
   }
 
@@ -44,28 +44,3 @@ export default class CustomObjects {
     this.isInitialised = true;
   }
 }
-
-// function normaliseIdToCaseInsensitive(caseSensitiveId: string): string {
-//   if (caseSensitiveId == null) {
-//     return caseSensitiveId;
-//   }
-//   if (caseSensitiveId.length === 18) {
-//     return caseSensitiveId;
-//   }
-//   let suffix = '';
-//   for (let i = 0; i < 3; i++) {
-//     let flags = 0;
-//     for (let j = 0; j < 5; j++) {
-//       const c = caseSensitiveId.charAt(i * 5 + j);
-//       if (c >= 'A' && c <= 'Z') {
-//         flags += 1 << j;
-//       }
-//     }
-//     if (flags <= 25) {
-//       suffix += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.charAt(flags);
-//     } else {
-//       suffix += '012345'.charAt(flags - 26);
-//     }
-//   }
-//   return caseSensitiveId + suffix;
-// }

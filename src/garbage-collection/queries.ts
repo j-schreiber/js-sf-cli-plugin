@@ -3,9 +3,11 @@ import QueryBuilder from '../common/utils/queryBuilder.js';
 export const PACKAGE_MEMBER_BASE = `SELECT
   Id,
   CurrentPackageVersionId,
-  CurrentPackageVersion.SubscriberPackageId,
   MaxPackageVersionId,
-  MaxPackageVersion.SubscriberPackageId,
+  SubscriberPackageId,
+  MaxPackageVersion.MajorVersion,
+  MaxPackageVersion.MinorVersion,
+  MaxPackageVersion.PatchVersion,
   SubjectId,
   SubjectKeyPrefix,
   SubjectManageableState
