@@ -108,12 +108,12 @@ describe('garbage collector', () => {
     const labels = garbage.deprecatedMembers['ExternalString'];
     labels.components.forEach((labelGarbage) => {
       expect(labelGarbage.deprecatedSinceVersion).to.equal('1.2.3');
-      // expect(labelGarbage.packageName).to.equal('My Test Package');
+      expect(labelGarbage.packageName).to.equal('My Test Package');
     });
     const layouts = garbage.deprecatedMembers['Layout'];
     layouts.components.forEach((layoutGarbage) => {
       expect(layoutGarbage.deprecatedSinceVersion).to.equal('1.2.4');
-      // expect(layoutGarbage.packageName).to.equal('My Test Package');
+      expect(layoutGarbage.packageName).to.equal('My Test Package');
     });
   });
 

@@ -1,8 +1,8 @@
 import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { EntityDefinition, FieldDefinition } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, FieldDefinition, SubscriberPackage } from '../types/sfToolingApiTypes.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
-import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
+import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY, SUBSCRIBER_PACKAGE_FIELDS } from './queries.js';
 
 /**
  * Caches all custom objects from org and allows to retrieve & resolve by
@@ -11,16 +11,17 @@ import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
 export default class ToolingApiConnection {
   private static activeConnection: ToolingApiConnection;
 
-  private toolingObjectsRunner: QueryRunner;
-  private objectsByKey = new Map<string, EntityDefinition>();
-  private objectsByDurableId = new Map<string, EntityDefinition>();
-  private objectsByDeveloperName = new Map<string, EntityDefinition>();
-  private objectsByApiName = new Map<string, EntityDefinition>();
+  private readonly toolingObjectsRunner: QueryRunner;
+  private readonly objectsByKey = new Map<string, EntityDefinition>();
+  private readonly objectsByDurableId = new Map<string, EntityDefinition>();
+  private readonly objectsByDeveloperName = new Map<string, EntityDefinition>();
+  private readonly objectsByApiName = new Map<string, EntityDefinition>();
+  private readonly allEntityDefinitionsByKey = new Map<string, EntityDefinition>();
+  private readonly customFieldsBySubjectId = new Map<string, FieldDefinition>();
+  private readonly subscriberPackages = new Map<string, SubscriberPackage | undefined>();
   private isInitialised = false;
-  private allEntityDefinitionsByKey = new Map<string, EntityDefinition>();
-  private customFieldsBySubjectId = new Map<string, FieldDefinition>();
 
-  private constructor(private targetOrgConnection: Connection) {
+  public constructor(private readonly targetOrgConnection: Connection) {
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
   }
 
@@ -63,6 +64,24 @@ export default class ToolingApiConnection {
       await this.loadObjects();
     }
     return this.objectsByKey;
+  }
+
+  public async resolveSubscriberPackageId(subscriberPackageId: string): Promise<SubscriberPackage | undefined> {
+    if (subscriberPackageId === undefined || subscriberPackageId === null || subscriberPackageId.length === 0) {
+      return;
+    }
+    if (this.subscriberPackages.has(subscriberPackageId)) {
+      return this.subscriberPackages.get(subscriberPackageId);
+    }
+    const pkgs = await this.toolingObjectsRunner.fetchRecords<SubscriberPackage>(
+      `SELECT ${SUBSCRIBER_PACKAGE_FIELDS.join(',')} FROM SubscriberPackage WHERE Id = '${subscriberPackageId}'`
+    );
+    if (pkgs.length >= 1) {
+      this.subscriberPackages.set(subscriberPackageId, pkgs[0]);
+    } else {
+      this.subscriberPackages.set(subscriberPackageId, undefined);
+    }
+    return this.subscriberPackages.get(subscriberPackageId);
   }
 
   /**

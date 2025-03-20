@@ -141,6 +141,7 @@ export default class GarbageCollector extends EventEmitter {
         garbageContainer.notImplementedTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
       }
     }
+    await this.resolveSubscriberIds(garbageContainer);
     return garbageContainer;
   }
 
@@ -188,6 +189,17 @@ export default class GarbageCollector extends EventEmitter {
       subscriberPackageIds.push(p2.SubscriberPackageId);
     });
     return subscriberPackageIds;
+  }
+
+  private async resolveSubscriberIds(result: PackageGarbageResult): Promise<void> {
+    for (const memberType of Object.keys(result.deprecatedMembers)) {
+      for (const cmp of result.deprecatedMembers[memberType].components) {
+        if (cmp.packageName?.startsWith('033')) {
+          const packageDef = await this.toolingApiCache.resolveSubscriberPackageId(cmp.packageName);
+          cmp.packageName = packageDef?.Name;
+        }
+      }
+    }
   }
 
   private emitResolveStatus(message: string): void {

@@ -68,3 +68,5 @@ export const PACKAGE_2: string = QueryBuilder.sanitise(`SELECT
   SubscriberPackageId
 FROM
   Package2`);
+
+export const SUBSCRIBER_PACKAGE_FIELDS = ['Id', 'Name', 'Description', 'IsPackageValid', 'NamespacePrefix'];

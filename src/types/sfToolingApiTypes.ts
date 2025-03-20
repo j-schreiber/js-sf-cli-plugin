@@ -36,6 +36,14 @@ export type InstalledSubscriberPackage = {
   SubscriberPackageVersion: SubscriberPackageVersion;
 };
 
+export type SubscriberPackage = {
+  Id: string;
+  Name: string;
+  Description: string;
+  IsPackageValid: boolean;
+  NamespacePrefix: string;
+};
+
 export type Package2Member = Record & {
   Id: string;
   SubscriberPackageId: string;

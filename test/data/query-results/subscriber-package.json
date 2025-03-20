@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "SubscriberPackage",
+        "url": "/services/data/v63.0/tooling/sobjects/SubscriberPackage/0336f000000G8roAAC"
+      },
+      "Id": "0336f000000G8roAAC",
+      "Name": "JS Apex Utils",
+      "Description": "Awesome Apex and Visualforce utilities",
+      "IsPackageValid": true,
+      "NamespacePrefix": null
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}

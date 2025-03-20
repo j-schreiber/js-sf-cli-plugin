@@ -4,7 +4,7 @@ import { Record } from '@jsforce/jsforce-node';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
 
 export default class QueryRunner extends EventEmitter {
-  public constructor(private orgConnection: Connection | Connection['tooling']) {
+  public constructor(private readonly orgConnection: Connection | Connection['tooling']) {
     super();
   }
 

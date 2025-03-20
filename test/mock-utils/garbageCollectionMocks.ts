@@ -8,6 +8,7 @@ import {
   NamedRecord,
   Package2,
   Package2Member,
+  SubscriberPackage,
   WorkflowAlertEntity,
 } from '../../src/types/sfToolingApiTypes.js';
 import { PackageGarbageResult } from '../../src/garbage-collection/packageGarbageTypes.js';
@@ -29,6 +30,7 @@ export default class GarbageCollectionMocks {
   public M01_CMDS = parseMockResult<FieldDefinition>('cmd-m01-records.json');
   public WORKFLOW_ALERTS = parseMockResult<WorkflowAlertEntity>('workflow-alert-definitions.json');
   public WORKFLOW_FIELD_UPDATES = parseMockResult<WorkflowAlertEntity>('workflow-field-update-defs.json');
+  public SUBSCRIBER_PACKAGE = parseMockResult<SubscriberPackage>('subscriber-package.json');
 
   public fetchRecordsStub<T extends Record>(queryString: string): Promise<Record[]> {
     if (queryString.includes('FROM Package2 WHERE Id IN')) {
@@ -72,6 +74,9 @@ export default class GarbageCollectionMocks {
     }
     if (queryString.includes("FROM WorkflowFieldUpdate WHERE Id = '04Y0X0000000gb0UAA'")) {
       return Promise.resolve(this.WORKFLOW_FIELD_UPDATES.records);
+    }
+    if (queryString.includes('FROM SubscriberPackage WHERE Id =')) {
+      return Promise.resolve(this.SUBSCRIBER_PACKAGE.records);
     }
     return Promise.resolve(new Array<T>());
   }
