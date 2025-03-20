@@ -5,10 +5,11 @@ import QueryRunner from '../common/utils/queryRunner.js';
 import { Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
-import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
+import { GarbageFilter } from './packageGarbageTypes.js';
 import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
 import { PACKAGE_2, PACKAGE_MEMBER_BASE, PACKAGE_MEMBER_QUERY } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
+import PackageGarbageResult from './packageGarbageResult.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -74,12 +75,7 @@ export default class GarbageCollector extends EventEmitter {
   ): Promise<PackageGarbageResult> {
     const supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
     const unsupportedTypes = loadUnsupportedMetadataTypes();
-    const garbageContainer: PackageGarbageResult = {
-      deprecatedMembers: {},
-      ignoredTypes: {},
-      notImplementedTypes: [],
-      totalDeprecatedComponentCount: 0,
-    };
+    const garbageContainer = new PackageGarbageResult(this.targetOrgConnection);
     for (const keyPrefix of Object.keys(container)) {
       const entity = await this.toolingApiCache.getEntityDefinitionByKey(keyPrefix);
       if (entity === undefined) {
@@ -120,17 +116,7 @@ export default class GarbageCollector extends EventEmitter {
             `Resolving ${packageMembers.length} ${entityName} (${keyPrefix}) as CustomMetadata records.`
           );
         }
-        if (garbageContainer.deprecatedMembers['CustomMetadataRecord'] === undefined) {
-          garbageContainer.deprecatedMembers['CustomMetadataRecord'] = {
-            metadataType: 'CustomMetadata',
-            componentCount: 0,
-            components: [],
-          };
-        }
-        const newRecords = (await supportedTypes['CustomMetadataRecord'].resolve(packageMembers)).components;
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(...newRecords);
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount += newRecords.length;
-        garbageContainer.totalDeprecatedComponentCount += newRecords.length;
+        await garbageContainer.pushCustomMetadataRecords(packageMembers);
       } else {
         const reason = messages.getMessage('infos.not-yet-implemented');
         if (packageMembers.length > 0) {

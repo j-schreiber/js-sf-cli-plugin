@@ -40,7 +40,7 @@ export type GarbageFilter = {
   packages?: string[];
 };
 
-type UnknownEntityPrefix = {
+export type UnknownEntityPrefix = {
   keyPrefix: string;
   entityName: string;
   memberCount: number;
