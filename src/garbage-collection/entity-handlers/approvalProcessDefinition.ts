@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
@@ -20,12 +20,13 @@ export class ApprovalProcessDefinition implements EntityDefinitionHandler {
       if (approvalProcessDef) {
         // other entities have "01I" ids for custom objects, but approval processes have the
         // actual API name of the custom object (e.g. TestObject__c)
-        garbageList.push({
-          developerName: approvalProcessDef.DeveloperName,
-          fullyQualifiedName: `${approvalProcessDef.TableEnumOrId}.${approvalProcessDef.DeveloperName}`,
-          subjectId: member.SubjectId,
-          ...resolvePackageDetails(member),
-        });
+        garbageList.push(
+          new PackageGarbage(
+            member,
+            approvalProcessDef.DeveloperName,
+            `${approvalProcessDef.TableEnumOrId}.${approvalProcessDef.DeveloperName}`
+          )
+        );
       }
     });
     return {

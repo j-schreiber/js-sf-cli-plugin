@@ -1,10 +1,9 @@
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
-import { Record } from '@jsforce/jsforce-node';
 import { Messages } from '@salesforce/core';
+import { AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import GarbageCollector from '../../src/garbage-collection/garbageCollector.js';
-import QueryRunner from '../../src/common/utils/queryRunner.js';
 import {
   ALL_CUSTOM_OBJECTS,
   ENTITY_DEFINITION_QUERY,
@@ -33,16 +32,15 @@ describe('garbage collector', () => {
     testOrg.isDevHub = false;
     devhubOrg.isDevHub = true;
     await $$.stubAuths(testOrg, devhubOrg);
-    fetchRecordsStub = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    fetchRecordsStub.callsFake(fakeFetchRecords);
+    $$.fakeConnectionRequest = mockQueryResults;
   });
 
   afterEach(() => {
     $$.SANDBOX.restore();
   });
 
-  function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
-    return apiMocks.fetchRecordsStub<T>(queryString);
+  function mockQueryResults(request: AnyJson): Promise<AnyJson> {
+    return apiMocks.mockQueryResults(request);
   }
 
   it('registry loads all supported and unsupported handlers', async () => {
@@ -117,7 +115,7 @@ describe('garbage collector', () => {
     });
   });
 
-  it('receives mixed package members and has no export filter > includes all types', async () => {
+  it('includes all package members on partial garbage filter', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     const garbage = await collector.export({ includeOnly: undefined });

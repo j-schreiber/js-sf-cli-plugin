@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { NamedSObjectChildType, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, extractSubjectIds, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
@@ -23,25 +23,15 @@ export class Layout implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       const def = definitions.get(member.SubjectId);
       if (def) {
-        // field belongs to a custom object (or custom metadata, platform event, etc)
+        // custom object
         if (def.TableEnumOrId.startsWith('01I')) {
           const customObjDef = objectsByDurableId.get(def.TableEnumOrId.substring(0, 15));
           if (customObjDef) {
-            garbageList.push({
-              developerName: def.Name,
-              fullyQualifiedName: `${customObjDef.QualifiedApiName}-${def.Name}`,
-              subjectId: def.Id,
-              ...resolvePackageDetails(member),
-            });
+            garbageList.push(new PackageGarbage(member, def.Name, `${customObjDef.QualifiedApiName}-${def.Name}`));
           }
         } else {
-          // must be a layout to a standard object
-          garbageList.push({
-            developerName: def.Name,
-            fullyQualifiedName: `${def.TableEnumOrId}-${def.Name}`,
-            subjectId: def.Id,
-            ...resolvePackageDetails(member),
-          });
+          // standard object
+          garbageList.push(new PackageGarbage(member, def.Name, `${def.TableEnumOrId}-${def.Name}`));
         }
       }
     });

@@ -29,3 +29,11 @@ Packages filter active. Only include members from these packages: %s
 # infos.metadata-filter-active
 
 Metadata types filter active. Only include members of these types: %s
+
+# packages-filter-no-devhub
+
+Packages filter specified, but no Devhub was provided.
+
+# provide-valid-devhub-with-filter
+
+Provide a valid DevHub, when you specify a packages filter.

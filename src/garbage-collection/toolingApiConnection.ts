@@ -66,6 +66,26 @@ export default class ToolingApiConnection {
     return this.objectsByKey;
   }
 
+  /**
+   * Resolves a potentially invalid list of subscriber package ids in null/undefined safe way
+   * to a map of subscriber packages (by their id). All invalid ids are ignored.
+   *
+   * @param subscriberPackageIds
+   * @returns
+   */
+  public async resolveSubscriberPackageIds(subscriberPackageIds: string[]): Promise<Map<string, SubscriberPackage>> {
+    const subPackagePromises = new Array<Promise<SubscriberPackage | undefined>>();
+    subscriberPackageIds.forEach((id) => subPackagePromises.push(this.resolveSubscriberPackageId(id)));
+    const subpackages = await Promise.all(subPackagePromises);
+    const resolvedIds = new Map<string, SubscriberPackage>();
+    subpackages.forEach((potentialPackage) => {
+      if (potentialPackage) {
+        resolvedIds.set(potentialPackage.Id, potentialPackage);
+      }
+    });
+    return resolvedIds;
+  }
+
   public async resolveSubscriberPackageId(subscriberPackageId: string): Promise<SubscriberPackage | undefined> {
     if (subscriberPackageId === undefined || subscriberPackageId === null || subscriberPackageId.length === 0) {
       return;
@@ -111,6 +131,22 @@ export default class ToolingApiConnection {
       entityDefinitions.forEach((entityDef) => this.allEntityDefinitionsByKey.set(entityDef.KeyPrefix, entityDef));
     }
     return this.allEntityDefinitionsByKey;
+  }
+
+  /**
+   * Returns all entity definitions by "QualifiedApiName"
+   *
+   * @param qualifiedApiNames
+   * @returns
+   */
+  public async resolveEntityDefinitionNames(qualifiedApiNames?: string[]): Promise<EntityDefinition[]> {
+    if (!qualifiedApiNames || qualifiedApiNames.length === 0) {
+      return [];
+    }
+    const entityDefinitions = await this.toolingObjectsRunner.fetchRecords<EntityDefinition>(
+      `${ENTITY_DEFINITION_QUERY} WHERE ${QueryBuilder.buildParamListFilter('QualifiedApiName', qualifiedApiNames)}`
+    );
+    return entityDefinitions;
   }
 
   /**

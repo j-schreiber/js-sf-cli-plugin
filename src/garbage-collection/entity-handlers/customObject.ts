@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 
@@ -16,12 +16,7 @@ export class CustomObject implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       const definition = objectsByDurableId.get(member.SubjectId.substring(0, 15));
       if (definition) {
-        garbageList.push({
-          developerName: definition.DeveloperName,
-          fullyQualifiedName: definition.QualifiedApiName,
-          subjectId: member.SubjectId,
-          ...resolvePackageDetails(member),
-        });
+        garbageList.push(new PackageGarbage(member, definition.DeveloperName, definition.QualifiedApiName));
       }
     });
     return { metadataType: 'CustomObject', componentCount: garbageList.length, components: garbageList };

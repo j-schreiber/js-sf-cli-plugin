@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { DynamicallyNamedEntity, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, buildSubjectIdFilter, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, buildSubjectIdFilter } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
@@ -21,14 +21,15 @@ export class DynamicDevNamedEntityRelated<T extends DynamicallyNamedEntity> impl
     const garbageList: PackageGarbage[] = [];
     const definitions = await this.fetchDefinitions(packageMembers);
     packageMembers.forEach((member) => {
-      const alertDef = definitions.get(member.SubjectId);
-      if (alertDef) {
-        garbageList.push({
-          developerName: alertDef[this.devName] as string,
-          fullyQualifiedName: `${alertDef.EntityDefinition.QualifiedApiName!}.${alertDef[this.devName] as string}`,
-          subjectId: alertDef.Id,
-          ...resolvePackageDetails(member),
-        });
+      const entity = definitions.get(member.SubjectId);
+      if (entity) {
+        garbageList.push(
+          new PackageGarbage(
+            member,
+            entity[this.devName] as string,
+            `${entity.EntityDefinition.QualifiedApiName!}.${entity[this.devName] as string}`
+          )
+        );
       }
     });
     return {

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member, SobjectTypeDevNamedEntity } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 
@@ -22,12 +22,9 @@ export class SObjectBasedDefNameEntity implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       const actionDef = defs.get(member.SubjectId);
       if (actionDef) {
-        garbageList.push({
-          developerName: actionDef.DeveloperName,
-          fullyQualifiedName: `${actionDef.SobjectType}.${actionDef.DeveloperName}`,
-          subjectId: member.SubjectId,
-          ...resolvePackageDetails(member),
-        });
+        garbageList.push(
+          new PackageGarbage(member, actionDef.DeveloperName, `${actionDef.SobjectType}.${actionDef.DeveloperName}`)
+        );
       }
     });
     return {

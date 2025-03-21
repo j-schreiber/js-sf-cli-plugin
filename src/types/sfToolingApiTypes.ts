@@ -54,6 +54,7 @@ export type Package2Member = Record & {
   SubjectId: string;
   SubjectKeyPrefix: string;
   SubjectManageableState: 'deprecated' | 'deprecatedEditable';
+  SubscriberPackage?: SubscriberPackage;
 };
 
 export type EntityDefinition = Record & {

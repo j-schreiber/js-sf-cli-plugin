@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { AnyJson } from '@salesforce/ts-types';
 import { QueryResult, Record } from '@jsforce/jsforce-node';
 import {
   EntityDefinition,
@@ -79,6 +80,56 @@ export default class GarbageCollectionMocks {
       return Promise.resolve(this.SUBSCRIBER_PACKAGE.records);
     }
     return Promise.resolve(new Array<T>());
+  }
+
+  public mockQueryResults(request: AnyJson): Promise<AnyJson> {
+    const url = (request as { url: string }).url;
+    if (url.includes(encodeURIComponent('FROM EntityDefinition WHERE KeyPrefix IN ('))) {
+      return Promise.resolve(this.ENTITY_DEFINITIONS);
+    }
+    if (url.includes(encodeURIComponent('FROM Package2 WHERE Id IN'))) {
+      return Promise.resolve(this.PACKAGE_2);
+    }
+    if (url.includes(encodeURIComponent('FROM Package2Member WHERE SubjectManageableState IN'))) {
+      return Promise.resolve(this.PACKAGE_2_MEMBERS);
+    }
+    if (url.includes(encodeURIComponent("FROM Package2Member WHERE SubjectKeyPrefix = '300'"))) {
+      return Promise.resolve(this.PACKAGED_FLOWS);
+    }
+    if (url.includes(encodeURIComponent('FROM ExternalString WHERE Id IN'))) {
+      return Promise.resolve(this.CUSTOM_LABELS);
+    }
+    if (url.includes(encodeURIComponent("FROM EntityDefinition WHERE KeyPrefix LIKE 'a%'"))) {
+      return Promise.resolve(this.CUSTOM_OBJECT_ENTITY_DEFS);
+    }
+    if (url.includes(encodeURIComponent('FROM CustomField WHERE Id IN'))) {
+      return Promise.resolve(this.ALL_CUSTOM_FIELDS);
+    }
+    if (url.includes(encodeURIComponent('FROM QuickActionDefinition WHERE Id IN'))) {
+      return Promise.resolve(this.ALL_QUICK_ACTIONS);
+    }
+    if (url.includes(encodeURIComponent('FROM Layout WHERE Id IN'))) {
+      return Promise.resolve(this.ALL_LAYOUTS);
+    }
+    if (url.includes(encodeURIComponent("FROM Flow WHERE Status = 'Obsolete'"))) {
+      return Promise.resolve(this.OBSOLETE_FLOW_VERSIONS);
+    }
+    if (url.includes(encodeURIComponent('FROM CompanyData__mdt'))) {
+      return Promise.resolve(this.M00_CMDS);
+    }
+    if (url.includes(encodeURIComponent('FROM HandlerControl__mdt'))) {
+      return Promise.resolve(this.M01_CMDS);
+    }
+    if (url.includes(encodeURIComponent('FROM WorkflowAlert WHERE Id IN'))) {
+      return Promise.resolve(this.WORKFLOW_ALERTS);
+    }
+    if (url.includes(encodeURIComponent("FROM WorkflowFieldUpdate WHERE Id = '04Y0X0000000gb0UAA'"))) {
+      return Promise.resolve(this.WORKFLOW_FIELD_UPDATES);
+    }
+    if (url.includes(encodeURIComponent('FROM SubscriberPackage WHERE Id ='))) {
+      return Promise.resolve(this.SUBSCRIBER_PACKAGE);
+    }
+    throw new Error(`Request not mocked: ${JSON.stringify(request)}`);
   }
 }
 

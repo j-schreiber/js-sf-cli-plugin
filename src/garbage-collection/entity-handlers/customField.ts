@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
-import { EntityDefinitionHandler, extractSubjectIds, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 
@@ -23,21 +23,19 @@ export class CustomField implements EntityDefinitionHandler {
         if (fieldDef.TableEnumOrId.startsWith('01I')) {
           const customObjDef = objectsByDurableId.get(fieldDef.TableEnumOrId.substring(0, 15));
           if (customObjDef) {
-            garbageList.push({
-              developerName: fieldDef.DeveloperName,
-              fullyQualifiedName: `${customObjDef.QualifiedApiName}.${fieldDef.DeveloperName}__c`,
-              subjectId: fieldDef.Id,
-              ...resolvePackageDetails(member),
-            });
+            garbageList.push(
+              new PackageGarbage(
+                member,
+                fieldDef.DeveloperName,
+                `${customObjDef.QualifiedApiName}.${fieldDef.DeveloperName}__c`
+              )
+            );
           }
         } else {
           // must be a custom field to a standard object
-          garbageList.push({
-            developerName: fieldDef.DeveloperName,
-            fullyQualifiedName: `${fieldDef.TableEnumOrId}.${fieldDef.DeveloperName}__c`,
-            subjectId: fieldDef.Id,
-            ...resolvePackageDetails(member),
-          });
+          garbageList.push(
+            new PackageGarbage(member, fieldDef.DeveloperName, `${fieldDef.TableEnumOrId}.${fieldDef.DeveloperName}__c`)
+          );
         }
       }
     });

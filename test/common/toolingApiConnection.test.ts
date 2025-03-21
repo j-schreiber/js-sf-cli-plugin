@@ -1,19 +1,19 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { expect } from 'chai';
 import { AnyJson } from '@salesforce/ts-types';
-import { QueryResult, Record } from '@jsforce/jsforce-node';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import { SubscriberPackage } from '../../src/types/sfToolingApiTypes.js';
 import ToolingApiConnection from '../../src/garbage-collection/toolingApiConnection.js';
+import { parseFileAsQueryResult } from '../mock-utils/sfQueryApiMocks.js';
+
+const TEST_FILES_ROOT = ['test', 'data', 'query-results'];
 
 describe('tooling API connection', () => {
   const $$ = new TestContext();
   const testOrg = new MockTestOrgData();
   let testConnection: ToolingApiConnection;
 
-  const SUBSCRIBER_PACKAGE = parseResultFile<SubscriberPackage>('subscriber-package.json');
-  const EMPTY_QUERY_RESULT = parseResultFile<SubscriberPackage>('empty-result.json');
+  const SUBSCRIBER_PACKAGE = parseFileAsQueryResult<SubscriberPackage>([...TEST_FILES_ROOT, 'subscriber-package.json']);
+  const EMPTY_QUERY_RESULT = parseFileAsQueryResult<SubscriberPackage>([...TEST_FILES_ROOT, 'empty-result.json']);
 
   beforeEach(async () => {
     testOrg.isDevHub = false;
@@ -36,12 +36,6 @@ describe('tooling API connection', () => {
       return Promise.resolve(EMPTY_QUERY_RESULT);
     }
     throw new Error(`Request not mocked: ${JSON.stringify(request)}`);
-  }
-
-  function parseResultFile<T extends Record>(filePath: string) {
-    return JSON.parse(
-      fs.readFileSync(`${path.join('test', 'data', 'query-results', filePath)}`, 'utf8')
-    ) as QueryResult<T>;
   }
 
   it('queries subscriber package when resolving a package id', async () => {

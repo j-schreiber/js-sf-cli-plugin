@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { type AnyJson } from '@salesforce/ts-types';
 import { QueryResult, Record } from '@jsforce/jsforce-node';
 import { EmptyQueryResult } from '../data/api/queryResults.js';
@@ -29,4 +30,12 @@ export function mockAnySObjectDescribe(request: AnyJson): Promise<AnyJson> {
     return Promise.resolve(EmptyQueryResult);
   }
   return Promise.resolve({});
+}
+
+export function parseFileAsQueryResult<T extends Record>(filePath: string[]) {
+  return JSON.parse(fs.readFileSync(path.join(...filePath), 'utf8')) as QueryResult<T>;
+}
+
+export function parseFile<T>(filePath: string[]) {
+  return JSON.parse(fs.readFileSync(path.join(...filePath), 'utf8')) as T;
 }

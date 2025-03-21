@@ -15,7 +15,7 @@ export function resolvePackageDetails(member: Package2Member): Partial<PackageGa
   const deprecatedSinceVersion = member.MaxPackageVersion
     ? `${member.MaxPackageVersion.MajorVersion}.${member.MaxPackageVersion.MinorVersion}.${member.MaxPackageVersion.PatchVersion}`
     : undefined;
-  return { deprecatedSinceVersion, packageName: member.SubscriberPackageId };
+  return { deprecatedSinceVersion, subscriberPackageId: member.SubscriberPackageId };
 }
 
 export function buildSubjectIdFilter(packageMembers: Package2Member[]): string {

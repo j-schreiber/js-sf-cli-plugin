@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { DeveloperNamedRecord, Package2Member } from '../../types/sfToolingApiTypes.js';
-import { buildSubjectIdFilter, EntityDefinitionHandler, resolvePackageDetails } from '../entityDefinitionHandler.js';
+import { buildSubjectIdFilter, EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.js';
 import QueryRunner from '../../common/utils/queryRunner.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
@@ -33,12 +33,9 @@ export class CustomMetadataRecord implements EntityDefinitionHandler {
       packageMembers.forEach((member) => {
         const record = records.get(member.SubjectId);
         if (record !== undefined) {
-          garbageList.push({
-            developerName: record.DeveloperName,
-            fullyQualifiedName: `${metadataObject.DeveloperName}.${record.DeveloperName}`,
-            subjectId: member.Id,
-            ...resolvePackageDetails(member),
-          });
+          garbageList.push(
+            new PackageGarbage(member, record.DeveloperName, `${metadataObject.DeveloperName}.${record.DeveloperName}`)
+          );
         }
       });
     }
