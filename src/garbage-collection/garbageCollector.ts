@@ -6,7 +6,7 @@ import { Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
-import { PACKAGE_2, PACKAGE_MEMBER_BASE, PACKAGE_MEMBER_QUERY } from './queries.js';
+import { PACKAGE_2, PACKAGE_MEMBER_BASE, ALL_DEPRECATED_PACKAGE_MEMBERS } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 import GarbageManager from './garbageManager.js';
 import PackageMemberFilter from './packageMemberFilter.js';
@@ -38,6 +38,9 @@ export default class GarbageCollector extends EventEmitter {
 
   public async export(filter?: GarbageFilter): Promise<PackageGarbageResult> {
     const garbageMan = new GarbageManager(this.targetOrgConnection);
+    garbageMan.on('resolve', (payload: CommandStatusEvent) => {
+      this.emitResolveStatus(payload.message!);
+    });
     this.parseInputs(filter);
     const members = await this.fetchPackageMembers2(filter);
     await this.resolveSubscriberPackage(members);
@@ -73,13 +76,26 @@ export default class GarbageCollector extends EventEmitter {
   }
 
   private async fetchPackageMembers2(filter?: GarbageFilter): Promise<Package2Member[]> {
-    // why not only filter package members of "white-listed" entity types?
-    // would make the "ignored types" thing entirely optional & increase performance
+    const filteredEntityDefs = await this.toolingApiCache.resolveEntityDefinitionNames(filter?.includeOnly);
     const memberFilter = new PackageMemberFilter(
       await this.fetchSubscriberPackageVersions(filter?.packages),
-      await this.toolingApiCache.resolveEntityDefinitionNames(filter?.includeOnly)
+      filteredEntityDefs
     );
-    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(PACKAGE_MEMBER_QUERY);
+    let queryString;
+    if (filter?.includeOnly && filter.includeOnly.length > 0) {
+      const keyPrefixFilter = QueryBuilder.buildParamListFilter(
+        'SubjectKeyPrefix',
+        filteredEntityDefs.map((def) => def.KeyPrefix)
+      );
+      queryString = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
+        WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')
+        AND ${keyPrefixFilter}
+        AND SubjectKeyPrefix NOT IN ('300')
+        ORDER BY SubjectKeyPrefix`);
+    } else {
+      queryString = ALL_DEPRECATED_PACKAGE_MEMBERS;
+    }
+    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(queryString);
     packageMembers.push(...(await this.buildFlowPackageMembers()));
     return packageMembers.filter((member) => memberFilter.isAllowed(member));
   }
@@ -88,11 +104,7 @@ export default class GarbageCollector extends EventEmitter {
     const packagedFlowDefinitions = await this.toolingObjectsRunner.fetchRecords<Package2Member>(
       QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} WHERE SubjectKeyPrefix = '300'`)
     );
-    const packageMembers: Package2Member[] = [];
-    packagedFlowDefinitions.forEach((flowDefMember) => {
-      packageMembers.push(flowDefMember);
-    });
-    return packageMembers;
+    return packagedFlowDefinitions;
   }
 
   private async fetchSubscriberPackageVersions(packageIds?: string[]): Promise<Package2[]> {

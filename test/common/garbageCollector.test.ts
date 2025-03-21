@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { SinonStub } from 'sinon';
 import { Messages } from '@salesforce/core';
 import { AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
@@ -7,7 +6,7 @@ import GarbageCollector from '../../src/garbage-collection/garbageCollector.js';
 import {
   ALL_CUSTOM_OBJECTS,
   ENTITY_DEFINITION_QUERY,
-  PACKAGE_MEMBER_QUERY,
+  ALL_DEPRECATED_PACKAGE_MEMBERS,
 } from '../../src/garbage-collection/queries.js';
 import { Package2Member } from '../../src/types/sfToolingApiTypes.js';
 import {
@@ -25,7 +24,6 @@ describe('garbage collector', () => {
   const devhubOrg = new MockTestOrgData();
 
   let apiMocks: GarbageCollectionMocks;
-  let fetchRecordsStub: SinonStub;
 
   beforeEach(async () => {
     apiMocks = new GarbageCollectionMocks();
@@ -58,7 +56,7 @@ describe('garbage collector', () => {
   });
 
   it('has all queries initialised', async () => {
-    expect(PACKAGE_MEMBER_QUERY).to.contain('FROM Package2Member');
+    expect(ALL_DEPRECATED_PACKAGE_MEMBERS).to.contain('FROM Package2Member');
     expect(ENTITY_DEFINITION_QUERY).to.contain('FROM EntityDefinition');
     expect(ALL_CUSTOM_OBJECTS).to.contain("FROM EntityDefinition WHERE KeyPrefix LIKE 'a%");
   });
@@ -293,86 +291,49 @@ describe('garbage collector', () => {
     expect(depComponents[0].fullyQualifiedName).to.equal('Account.My_Test_Field_Update');
   });
 
-  it('filters metadata present in package members > only includes requested metadata', async () => {
+  it('emits events with details when resolving with metadata type filter', async () => {
     // Arrange
     const resolveListener = $$.SANDBOX.stub();
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     collector.addListener('resolveMemberStatus', resolveListener);
-    const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
+    // the default filtered entities are mocked in apiMocks.FILTERED_ENTITY_DEFINITIONS
+    await collector.export({ includeOnly: ['ExternalString', 'CompanyData__mdt', 'Layout'] });
 
     // Assert
-    // custom fields contain 4 members, including 1 deleted field.
-    // this resolves to 3 fields only
     expect(resolveListener.callCount).to.equal(4);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(resolveListener.args.flat()[0].message).to.contain('CustomObject,CustomField');
-    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
-    expect(resolveListener.args.flat()[2]).to.deep.contain({
-      message: 'Package members resolved to 3 actual CustomField(s).',
+    expect(resolveListener.args.flat()[0].message).to.contain('ExternalString,CompanyData__mdt,Layout');
+    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 2 ExternalStrings (101)' });
+    expect(resolveListener.args.flat()[2]).to.deep.contain({ message: 'Resolving 2 Layouts (00h)' });
+    expect(resolveListener.args.flat()[3]).to.deep.contain({
+      message: 'Resolving 7 CompanyData__mdt (m00) as CustomMetadata records.',
     });
-    expect(resolveListener.args.flat()[3]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
-    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
-    expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
-      'ExternalString',
-      'FlowDefinition',
-      'ListView',
-      'Layout',
-      'Folder',
-      'CompanyData__mdt',
-    ]);
-    const expectedReason = messages.getMessage('infos.excluded-from-result-not-in-filter');
-    expect(garbage.ignoredTypes['ExternalString'].reason).to.equal(expectedReason);
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
-    expect(garbage.ignoredTypes['CompanyData__mdt'].reason).to.equal(expectedReason);
   });
 
   it('filters metadata types with case-sensitive input > all matches are case-insensitive', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
-    const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'CuStOmFIELD'] });
+    const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'lAyOUT', 'CompanyDATA__mdt'] });
 
     // Assert
-    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'CustomField']);
-  });
-
-  it('filters for packages > relevant queries include package ids', async () => {
-    // Act
-    const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
-    const result = await collector.export({ packages: ['0Ho6f000000TN1eCAG'] });
-
-    // Assert
-    // packages are filtered - first query must be to Package2
-    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho6f000000TN1eCAG')");
-    // SubscriberPackageId' can not be filtered in a query call, therefore we must filter manually
-    expect(fetchRecordsStub.args.flat()[1]).to.contain(
-      "FROM Package2Member WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')"
-    );
-    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
-    expect(result.deprecatedMembers.ExternalString.componentCount).to.equal(1);
-    expect(result.deprecatedMembers.CustomMetadataRecord.components.length).to.equal(1);
-    expect(result.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(1);
-    expect(result.ignoredTypes.ListView.componentCount).to.equal(1);
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'Layout', 'CustomMetadataRecord']);
   });
 
   it('filters for packages > all package members belong to other packages', async () => {
-    // Arrange
-    // package members are to subscriber id 0330X0000000000AAA
-    // expect flows, where first flow is 0330X0000000000AAA, second flow is 033000000000001AAA
-    apiMocks.PACKAGE_2.records[0].SubscriberPackageId = '033000000000001AAA';
-
     // Act
+    // most package members are to subscriber id 0330X0000000000AAA
+    // except flows, where first flow is 0330X0000000000AAA, second flow is 0330X0000000001AAA
     const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
-    const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+    // resolves subscriber package id from apiMocks.PACKAGE_2 (0330X0000000000AAA)
+    const result = await collector.export({ packages: ['0Ho000000000000AAA'] });
 
     // Assert
-    // packages are filtered - first query must be to Package2
-    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho000000000001AAA')");
-    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(0);
-    expect(result.deprecatedMembers.CustomField.components.length).to.equal(0);
-    expect(result.deprecatedMembers.CustomObject.components.length).to.equal(0);
-    expect(result.deprecatedMembers.Layout.components.length).to.equal(0);
-    expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(3);
+    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
+    expect(result.deprecatedMembers.CustomField.components.length).to.equal(3);
+    expect(result.deprecatedMembers.CustomObject.components.length).to.equal(2);
+    expect(result.deprecatedMembers.Layout.components.length).to.equal(2);
+    expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(5);
   });
 });

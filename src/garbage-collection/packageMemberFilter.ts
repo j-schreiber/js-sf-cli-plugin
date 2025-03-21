@@ -9,7 +9,7 @@ export default class PackageMemberFilter {
       this.allowedSubscriberPackages = packages.map((pgk) => pgk.SubscriberPackageId);
     }
     if (entities && entities.length > 0) {
-      this.allowedKeyPrefixes = entities.map((entity) => entity.QualifiedApiName);
+      this.allowedKeyPrefixes = entities.map((entity) => entity.KeyPrefix);
     }
   }
 

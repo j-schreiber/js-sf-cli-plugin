@@ -22,6 +22,7 @@ export default class GarbageCollectionMocks {
   public PACKAGED_FLOWS = parseMockResult<Package2Member>('packaged-flows.json');
   public OBSOLETE_FLOW_VERSIONS = parseMockResult<FlowVersionDefinition>('outdated-flow-versions.json');
   public ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('entity-definitions.json');
+  public FILTERED_ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('filtered-entity-definitions.json');
   public CUSTOM_LABELS = parseMockResult<NamedRecord>('custom-labels.json');
   public CUSTOM_OBJECT_ENTITY_DEFS = parseMockResult<NamedRecord>('custom-object-entity-defs.json');
   public ALL_CUSTOM_FIELDS = parseMockResult<FieldDefinition>('all-custom-fields.json');
@@ -33,59 +34,13 @@ export default class GarbageCollectionMocks {
   public WORKFLOW_FIELD_UPDATES = parseMockResult<WorkflowAlertEntity>('workflow-field-update-defs.json');
   public SUBSCRIBER_PACKAGE = parseMockResult<SubscriberPackage>('subscriber-package.json');
 
-  public fetchRecordsStub<T extends Record>(queryString: string): Promise<Record[]> {
-    if (queryString.includes('FROM Package2 WHERE Id IN')) {
-      return Promise.resolve(this.PACKAGE_2.records);
-    }
-    if (queryString.includes('FROM Package2Member WHERE SubjectManageableState IN')) {
-      return Promise.resolve(this.PACKAGE_2_MEMBERS.records);
-    }
-    if (queryString.includes("FROM Package2Member WHERE SubjectKeyPrefix = '300'")) {
-      return Promise.resolve(this.PACKAGED_FLOWS.records);
-    }
-    if (queryString.includes('FROM EntityDefinition WHERE KeyPrefix IN')) {
-      return Promise.resolve(this.ENTITY_DEFINITIONS.records);
-    }
-    if (queryString.includes('FROM ExternalString WHERE Id IN')) {
-      return Promise.resolve(this.CUSTOM_LABELS.records);
-    }
-    if (queryString.includes("FROM EntityDefinition WHERE KeyPrefix LIKE 'a%'")) {
-      return Promise.resolve(this.CUSTOM_OBJECT_ENTITY_DEFS.records);
-    }
-    if (queryString.includes('FROM CustomField WHERE Id IN')) {
-      return Promise.resolve(this.ALL_CUSTOM_FIELDS.records);
-    }
-    if (queryString.includes('FROM QuickActionDefinition WHERE Id IN')) {
-      return Promise.resolve(this.ALL_QUICK_ACTIONS.records);
-    }
-    if (queryString.includes('FROM Layout WHERE Id IN')) {
-      return Promise.resolve(this.ALL_LAYOUTS.records);
-    }
-    if (queryString.includes("FROM Flow WHERE Status = 'Obsolete'")) {
-      return Promise.resolve(this.OBSOLETE_FLOW_VERSIONS.records);
-    }
-    if (queryString.includes('FROM CompanyData__mdt')) {
-      return Promise.resolve(this.M00_CMDS.records);
-    }
-    if (queryString.includes('FROM HandlerControl__mdt')) {
-      return Promise.resolve(this.M01_CMDS.records);
-    }
-    if (queryString.includes('FROM WorkflowAlert WHERE Id IN')) {
-      return Promise.resolve(this.WORKFLOW_ALERTS.records);
-    }
-    if (queryString.includes("FROM WorkflowFieldUpdate WHERE Id = '04Y0X0000000gb0UAA'")) {
-      return Promise.resolve(this.WORKFLOW_FIELD_UPDATES.records);
-    }
-    if (queryString.includes('FROM SubscriberPackage WHERE Id =')) {
-      return Promise.resolve(this.SUBSCRIBER_PACKAGE.records);
-    }
-    return Promise.resolve(new Array<T>());
-  }
-
   public mockQueryResults(request: AnyJson): Promise<AnyJson> {
     const url = (request as { url: string }).url;
     if (url.includes(encodeURIComponent('FROM EntityDefinition WHERE KeyPrefix IN ('))) {
       return Promise.resolve(this.ENTITY_DEFINITIONS);
+    }
+    if (url.includes(encodeURIComponent('FROM EntityDefinition WHERE QualifiedApiName IN ('))) {
+      return Promise.resolve(this.FILTERED_ENTITY_DEFINITIONS);
     }
     if (url.includes(encodeURIComponent('FROM Package2 WHERE Id IN'))) {
       return Promise.resolve(this.PACKAGE_2);

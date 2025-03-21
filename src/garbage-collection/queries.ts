@@ -15,7 +15,7 @@ FROM
   Package2Member`;
 
 // flow definitions (prefix 300) are processed separately
-export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
+export const ALL_DEPRECATED_PACKAGE_MEMBERS = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
 WHERE
   SubjectManageableState IN ('deprecatedEditable', 'deprecated')
   AND SubjectKeyPrefix NOT IN ('300')

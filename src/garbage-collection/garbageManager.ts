@@ -1,16 +1,18 @@
 /* eslint-disable no-await-in-loop */
+import EventEmitter from 'node:events';
 import { Connection } from '@salesforce/core';
-import { Package2Member } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
 import { loadSupportedMetadataTypes } from './entity-handlers/index.js';
 import { PackageGarbageContainer, PackageGarbageResult } from './packageGarbageTypes.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
-export default class GarbageManager {
+export default class GarbageManager extends EventEmitter {
   public deprecatedMembers: { [x: string]: PackageGarbageContainer };
   private readonly supportedTypes;
   private readonly toolingApiCache: ToolingApiConnection;
 
   public constructor(private readonly targetOrgConnection: Connection) {
+    super();
     this.deprecatedMembers = {};
     this.supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
@@ -26,17 +28,15 @@ export default class GarbageManager {
     const organizedMembers = organizeMembersByPrefix(unstructuredMembers);
     const entities = await this.toolingApiCache.fetchEntityDefinitions(Object.keys(organizedMembers));
     for (const [keyPrefix, members] of Object.entries(organizedMembers)) {
-      if (keyPrefix.startsWith('m')) {
-        await this.resolveCustomMetadataTypeMembers(members);
-        continue;
-      }
       const entity = entities.get(keyPrefix);
-      if (entity === undefined || this.supportedTypes[entity.QualifiedApiName] === undefined) {
+      if (entity === undefined) {
         continue;
       }
-      this.deprecatedMembers[entity.QualifiedApiName] = await this.supportedTypes[entity.QualifiedApiName].resolve(
-        members
-      );
+      if (keyPrefix.startsWith('m')) {
+        await this.resolveCustomMetadataTypeMembers(entity, members);
+      } else if (this.supportedTypes[entity.QualifiedApiName] !== undefined) {
+        await this.resolveStandardEntity(entity, members);
+      }
     }
   }
 
@@ -59,7 +59,12 @@ export default class GarbageManager {
 
   //          PRIVATE ZONE
 
-  private async resolveCustomMetadataTypeMembers(members: Package2Member[]): Promise<void> {
+  private async resolveCustomMetadataTypeMembers(entity: EntityDefinition, members: Package2Member[]): Promise<void> {
+    if (members.length > 0) {
+      this.emit('resolve', {
+        message: `Resolving ${members.length} ${entity.QualifiedApiName} (${entity.KeyPrefix}) as CustomMetadata records.`,
+      });
+    }
     if (this.deprecatedMembers['CustomMetadataRecord'] === undefined) {
       this.deprecatedMembers['CustomMetadataRecord'] = {
         metadataType: 'CustomMetadata',
@@ -70,6 +75,21 @@ export default class GarbageManager {
     const newRecords = (await this.supportedTypes['CustomMetadataRecord'].resolve(members)).components;
     this.deprecatedMembers['CustomMetadataRecord'].components.push(...newRecords);
     this.deprecatedMembers['CustomMetadataRecord'].componentCount += newRecords.length;
+  }
+
+  private async resolveStandardEntity(entity: EntityDefinition, members: Package2Member[]): Promise<void> {
+    if (members.length > 0) {
+      this.emit('resolve', {
+        message: `Resolving ${members.length} ${entity.QualifiedApiName}s (${entity.KeyPrefix})`,
+      });
+    }
+    const newMembers = await this.supportedTypes[entity.QualifiedApiName].resolve(members);
+    this.deprecatedMembers[entity.QualifiedApiName] = newMembers;
+    if (newMembers.componentCount !== members.length) {
+      this.emit('resolve', {
+        message: `Package members resolved to ${newMembers.componentCount} actual ${entity.QualifiedApiName}(s).`,
+      });
+    }
   }
 }
 

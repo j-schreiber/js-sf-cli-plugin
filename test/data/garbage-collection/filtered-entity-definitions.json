@@ -1,0 +1,45 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "EntityDefinition",
+        "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/ExternalString"
+      },
+      "Id": "000000000000000AAA",
+      "DurableId": "ExternalString",
+      "QualifiedApiName": "ExternalString",
+      "DeveloperName": "ExternalString",
+      "MasterLabel": "Custom Label",
+      "KeyPrefix": "101",
+      "IsRetrieveable": true
+    },
+    {
+      "attributes": {
+        "type": "EntityDefinition",
+        "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/01I4P000000wXQ1"
+      },
+      "Id": "000000000000000AAA",
+      "DurableId": "01I4P000000wXQ1",
+      "QualifiedApiName": "CompanyData__mdt",
+      "DeveloperName": "CompanyData",
+      "MasterLabel": "Company Data",
+      "KeyPrefix": "m00",
+      "IsRetrieveable": true
+    },
+    {
+      "attributes": {
+        "type": "EntityDefinition",
+        "url": "/services/data/v62.0/tooling/sobjects/EntityDefinition/Layout"
+      },
+      "Id": "000000000000000AAA",
+      "DurableId": "Layout",
+      "QualifiedApiName": "Layout",
+      "DeveloperName": null,
+      "MasterLabel": "Page Layout",
+      "KeyPrefix": "00h",
+      "IsRetrieveable": true
+    }
+  ],
+  "totalSize": 3,
+  "done": true
+}
