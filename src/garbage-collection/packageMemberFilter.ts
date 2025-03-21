@@ -21,7 +21,7 @@ export default class PackageMemberFilter {
     if (!this.allowedKeyPrefixes || this.allowedKeyPrefixes.length === 0) {
       return true;
     }
-    return this.allowedKeyPrefixes.includes(member.SubjectKeyPrefix.toLowerCase());
+    return this.allowedKeyPrefixes.includes(member.SubjectKeyPrefix);
   }
 
   private isAllowedSubscriberPackage(member: Package2Member): boolean {

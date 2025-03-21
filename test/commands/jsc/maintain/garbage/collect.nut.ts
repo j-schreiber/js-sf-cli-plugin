@@ -128,5 +128,24 @@ describe('jsc maintain garbage NUTs*', () => {
         expect(reducedMembers).to.have.deep.members(expectedDeprecatedEntities[depEnt].components);
       }
     });
+
+    it('filters garbage output with metadata type filter', () => {
+      // Arrange
+      // not specifically needed, was done in test before
+
+      // Act
+      const result = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --metadata-type CustomField --metadataType ExternalString --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      expect(result?.deprecatedMembers.CustomField.components.length).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.CustomField.componentCount
+      );
+      expect(result?.deprecatedMembers.ExternalString.components.length).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
+      );
+    });
   });
 });
