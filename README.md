@@ -42,6 +42,15 @@ sf plugins link .
 sf plugins
 ```
 
+## Development
+
+Ensure that husky is installed and initialised. Otherwise, you will miss out on pre-push validation and have more failed pipelines.
+
+```bash
+yarn add --dev husky
+npx husky init
+```
+
 ## Contribute
 
 Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.com/in/jannis-schreiber/) or via [Email](mailto:info@lietzau-consulting.de).
