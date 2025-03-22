@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect } from 'chai';
+import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
@@ -57,9 +57,9 @@ describe('jsc maintain garbage NUTs*', () => {
 
       // Assert
       // a new org is never supposed to have any package garbage
-      expect(result).to.not.be.undefined;
-      expect(result?.totalDeprecatedComponentCount).to.equal(0);
-      expect(result?.deprecatedMembers).to.deep.equal({});
+      assert.isDefined(result);
+      expect(result.totalDeprecatedComponentCount).to.equal(0);
+      expect(result.deprecatedMembers).to.deep.equal({});
     });
 
     it('collect garbage on fresh scratch org with package xml output', () => {
@@ -102,8 +102,8 @@ describe('jsc maintain garbage NUTs*', () => {
       ).jsonOutput?.result;
 
       // Assert
-      expect(result).to.not.be.undefined;
-      const deprecatedMembers = result!.deprecatedMembers;
+      assert.isDefined(result);
+      const deprecatedMembers = result.deprecatedMembers;
       // Update the JSON file from EXPECTED_E2E_GARBAGE for new assert
       // most important part of this test is running the individual handlers against
       // an actual org and executing real queries.
@@ -135,15 +135,17 @@ describe('jsc maintain garbage NUTs*', () => {
 
       // Act
       const result = execCmd<PackageGarbageResult>(
-        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --metadata-type CustomField --metadataType ExternalString --json`,
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --metadata-type CustomField --metadata-type ExternalString --json`,
         { ensureExitCode: 0 }
       ).jsonOutput?.result;
 
       // Assert
-      expect(result?.deprecatedMembers.CustomField.components.length).to.equal(
+      assert.isDefined(result);
+      expect(Object.keys(result.deprecatedMembers)).to.has.members(['CustomField', 'ExternalString']);
+      expect(result.deprecatedMembers.CustomField.components.length).to.equal(
         EXPECTED_E2E_GARBAGE.deprecatedMembers.CustomField.componentCount
       );
-      expect(result?.deprecatedMembers.ExternalString.components.length).to.equal(
+      expect(result.deprecatedMembers.ExternalString.components.length).to.equal(
         EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
       );
     });
