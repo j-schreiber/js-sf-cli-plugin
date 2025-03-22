@@ -49,26 +49,20 @@ export type PackageGarbageContainer = {
   components: PackageGarbage[];
 };
 
-export type IgnoredPackageGarbageContainer = {
-  reason: string;
-  metadataType: string;
+export type UnsupportedGarbageContainer = {
+  keyPrefix: string;
+  entityName?: string;
   componentCount: number;
+  reason: string;
 };
 
 export type PackageGarbageResult = {
   deprecatedMembers: { [x: string]: PackageGarbageContainer };
-  ignoredTypes: { [x: string]: IgnoredPackageGarbageContainer };
-  notImplementedTypes: UnknownEntityPrefix[];
+  unsupported: UnsupportedGarbageContainer[];
   totalDeprecatedComponentCount: number;
 };
 
 export type GarbageFilter = {
   includeOnly?: string[];
   packages?: string[];
-};
-
-export type UnknownEntityPrefix = {
-  keyPrefix: string;
-  entityName: string;
-  memberCount: number;
 };

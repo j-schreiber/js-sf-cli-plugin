@@ -239,8 +239,7 @@
       ]
     }
   },
-  "ignoredTypes": {},
-  "notImplementedTypes": [
+  "unsupported": [
     {
       "keyPrefix": "00l",
       "entityName": "Folder",

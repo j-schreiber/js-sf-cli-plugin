@@ -45,8 +45,6 @@ export default class GarbageCollector extends EventEmitter {
     const members = await this.fetchPackageMembers2(filter);
     await this.resolveSubscriberPackage(members);
     await garbageMan.pushPackageMembers(members);
-    // unsupported types?
-    // not implemented types?
     return garbageMan.format();
   }
 

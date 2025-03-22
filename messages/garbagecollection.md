@@ -4,11 +4,15 @@ Excluded from result because metadata type filter was active and this type was n
 
 # infos.not-fully-supported-by-tooling-api
 
-Cannot be processed. Entity is not fully supported by Tooling API.
+Entity %s (%s) is not fully supported by Tooling API. %s members are ignored.
 
 # infos.not-yet-implemented
 
-Type not yet implemented. Be patient.
+Entity %s (%s) is not yet implemented. %s members are ignored.
+
+# infos.unknown-keyprefix
+
+Failed to resolve keyprefix %s to a valid entity definition. %s members are ignored.
 
 # infos.not-a-sfdx-project
 

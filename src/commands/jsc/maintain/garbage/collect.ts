@@ -115,8 +115,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     if (outputFormat === 'DestructiveChangesXML') {
       packageXml = await PackageXmlBuilder.parseGarbageResultToXml({
         deprecatedMembers: {},
-        ignoredTypes: {},
-        notImplementedTypes: [],
+        unsupported: [],
         totalDeprecatedComponentCount: 0,
       });
       const destructiveChangesXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);

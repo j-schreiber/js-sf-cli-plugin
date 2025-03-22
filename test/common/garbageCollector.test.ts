@@ -8,7 +8,7 @@ import {
   ENTITY_DEFINITION_QUERY,
   ALL_DEPRECATED_PACKAGE_MEMBERS,
 } from '../../src/garbage-collection/queries.js';
-import { Package2Member } from '../../src/types/sfToolingApiTypes.js';
+import { EntityDefinition, Package2Member } from '../../src/types/sfToolingApiTypes.js';
 import {
   loadSupportedMetadataTypes,
   loadUnsupportedMetadataTypes,
@@ -127,27 +127,49 @@ describe('garbage collector', () => {
       'CustomObject',
       'CustomMetadataRecord',
     ]);
-    expect(Object.keys(garbage.ignoredTypes)).deep.equal(['ListView']);
-    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.unsupported.length).to.equal(2);
+    expect(garbage.unsupported[0]).to.deep.equal({
+      keyPrefix: '00B',
+      entityName: 'ListView',
+      componentCount: 1,
+      reason: messages.getMessage('infos.not-fully-supported-by-tooling-api', ['ListView', '00B', 1]),
+    });
+    expect(garbage.unsupported[1]).to.deep.equal({
+      keyPrefix: '00l',
+      entityName: 'Folder',
+      componentCount: 1,
+      reason: messages.getMessage('infos.not-yet-implemented', ['Folder', '00l', 1]),
+    });
     expect(garbage.deprecatedMembers.CustomField.componentCount).to.equal(3);
     expect(garbage.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(7);
     expect(garbage.deprecatedMembers.CustomObject.componentCount).to.equal(2);
     expect(garbage.deprecatedMembers.ExternalString.componentCount).to.equal(2);
     expect(garbage.deprecatedMembers.FlowDefinition.componentCount).to.equal(8);
-    expect(garbage.deprecatedMembers.Layout.componentCount).to.equal(0);
-    expect(garbage.totalDeprecatedComponentCount).to.equal(22);
+    expect(garbage.deprecatedMembers.Layout.componentCount).to.equal(2);
+    expect(garbage.totalDeprecatedComponentCount).to.equal(24);
   });
 
   it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {
+    // Arrange
+    // mocking correct query results is critical - the implementation does not
+    // double-check results from the API and always assums, that database queries are correct
+    apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/label-and-list-view.json');
+    apiMocks.FILTERED_ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('label-listview-entity-definitions.json');
+
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     const garbage = await collector.export({ includeOnly: ['ExternalString', 'ListView'] });
 
     // Assert
-    expect(Object.keys(garbage.ignoredTypes)).contain('ListView');
-    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.unsupported).to.deep.equal([
+      {
+        entityName: 'ListView',
+        keyPrefix: '00B',
+        reason: messages.getMessage('infos.not-fully-supported-by-tooling-api', ['ListView', '00B', 1]),
+        componentCount: 1,
+      },
+    ]);
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString']);
   });
 
   it('package members have custom field > resolves only undeleted custom field components', async () => {
@@ -260,7 +282,7 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    expect(garbage.unsupported).to.deep.equal([], 'all types implemented');
     const wfAlerts = garbage.deprecatedMembers['WorkflowAlert'];
     expect(wfAlerts).to.not.be.undefined;
     expect(wfAlerts.metadataType).to.equal('WorkflowAlert');
@@ -281,7 +303,7 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    expect(garbage.unsupported).to.deep.equal([], 'all types implemented');
     const wfUpdate = garbage.deprecatedMembers['WorkflowFieldUpdate'];
     expect(wfUpdate).to.not.be.undefined;
     expect(wfUpdate.metadataType).to.equal('WorkflowFieldUpdate');

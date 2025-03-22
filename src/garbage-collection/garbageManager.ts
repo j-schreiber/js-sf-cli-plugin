@@ -1,26 +1,33 @@
 /* eslint-disable no-await-in-loop */
 import EventEmitter from 'node:events';
-import { Connection } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
-import { loadSupportedMetadataTypes } from './entity-handlers/index.js';
-import { PackageGarbageContainer, PackageGarbageResult } from './packageGarbageTypes.js';
+import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
+import { PackageGarbageContainer, PackageGarbageResult, UnsupportedGarbageContainer } from './packageGarbageTypes.js';
 import ToolingApiConnection from './toolingApiConnection.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 export default class GarbageManager extends EventEmitter {
   public deprecatedMembers: { [x: string]: PackageGarbageContainer };
+  public unsupported: UnsupportedGarbageContainer[];
   private readonly supportedTypes;
+  private readonly unsupportedTypes;
   private readonly toolingApiCache: ToolingApiConnection;
 
   public constructor(private readonly targetOrgConnection: Connection) {
     super();
     this.deprecatedMembers = {};
+    this.unsupported = [];
     this.supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
+    this.unsupportedTypes = loadUnsupportedMetadataTypes();
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
   }
 
   /**
    * Accepts an unsorted/unorganized list of `Package2Member` and resolves their
-   * deprecated components. Unknown entities or key prefixes are silently ignored.
+   * deprecated components. Ignores unknowne entities or key prefixes.
    *
    * @param unstructuredMembers
    */
@@ -29,31 +36,29 @@ export default class GarbageManager extends EventEmitter {
     const entities = await this.toolingApiCache.fetchEntityDefinitions(Object.keys(organizedMembers));
     for (const [keyPrefix, members] of Object.entries(organizedMembers)) {
       const entity = entities.get(keyPrefix);
-      if (entity === undefined) {
-        continue;
-      }
-      if (keyPrefix.startsWith('m')) {
+      if (entity && keyPrefix.startsWith('m')) {
         await this.resolveCustomMetadataTypeMembers(entity, members);
-      } else if (this.supportedTypes[entity.QualifiedApiName] !== undefined) {
+      } else if (entity && this.supportedTypes[entity.QualifiedApiName] !== undefined) {
         await this.resolveStandardEntity(entity, members);
+      } else {
+        this.resolveUnsupportedPackageMembers(keyPrefix, members, entity);
       }
     }
   }
 
   /**
-   *
+   * Formats all package member garbage for output.
    *
    * @returns
    */
   public format(): PackageGarbageResult {
     return {
-      notImplementedTypes: [],
-      ignoredTypes: {},
       deprecatedMembers: this.deprecatedMembers,
       totalDeprecatedComponentCount: Object.values(this.deprecatedMembers).reduce(
         (accumulator, currentValue) => accumulator + currentValue.componentCount,
         0
       ),
+      unsupported: this.unsupported,
     };
   }
 
@@ -90,6 +95,29 @@ export default class GarbageManager extends EventEmitter {
         message: `Package members resolved to ${newMembers.componentCount} actual ${entity.QualifiedApiName}(s).`,
       });
     }
+  }
+
+  private resolveUnsupportedPackageMembers(
+    keyPrefix: string,
+    members: Package2Member[],
+    entity?: EntityDefinition
+  ): void {
+    const entityName = entity?.QualifiedApiName;
+    let reason;
+    if (entityName && this.unsupportedTypes[entityName]) {
+      reason = messages.getMessage('infos.not-fully-supported-by-tooling-api', [entityName, keyPrefix, members.length]);
+    } else if (entityName) {
+      reason = messages.getMessage('infos.not-yet-implemented', [entityName, keyPrefix, members.length]);
+    } else {
+      reason = messages.getMessage('infos.unknown-keyprefix', [keyPrefix, members.length]);
+    }
+    this.emit('resolve', { message: reason });
+    this.unsupported.push({
+      keyPrefix,
+      entityName,
+      componentCount: members.length,
+      reason,
+    });
   }
 }
 
