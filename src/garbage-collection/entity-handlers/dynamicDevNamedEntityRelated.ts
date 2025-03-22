@@ -6,13 +6,13 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class DynamicDevNamedEntityRelated<T extends DynamicallyNamedEntity> implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection,
-    private entityName: string,
-    private devName: string,
-    private metadataName?: string
+    private readonly queryConnection: Connection,
+    private readonly entityName: string,
+    private readonly devName: string,
+    private readonly metadataName?: string
   ) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
@@ -21,13 +21,15 @@ export class DynamicDevNamedEntityRelated<T extends DynamicallyNamedEntity> impl
     const garbageList: PackageGarbage[] = [];
     const definitions = await this.fetchDefinitions(packageMembers);
     packageMembers.forEach((member) => {
-      const alertDef = definitions.get(member.SubjectId);
-      if (alertDef) {
-        garbageList.push({
-          developerName: alertDef[this.devName] as string,
-          fullyQualifiedName: `${alertDef.EntityDefinition.QualifiedApiName!}.${alertDef[this.devName] as string}`,
-          subjectId: alertDef.Id,
-        });
+      const entity = definitions.get(member.SubjectId);
+      if (entity) {
+        garbageList.push(
+          new PackageGarbage(
+            member,
+            entity[this.devName] as string,
+            `${entity.EntityDefinition.QualifiedApiName!}.${entity[this.devName] as string}`
+          )
+        );
       }
     });
     return {

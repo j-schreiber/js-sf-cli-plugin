@@ -4,11 +4,15 @@ Excluded from result because metadata type filter was active and this type was n
 
 # infos.not-fully-supported-by-tooling-api
 
-Cannot be processed. Entity is not fully supported by Tooling API.
+Entity %s (%s) is not fully supported by Tooling API: %s. %s members are ignored.
 
 # infos.not-yet-implemented
 
-Type not yet implemented. Be patient.
+Entity %s (%s) is not yet implemented. %s members are ignored.
+
+# infos.unknown-keyprefix
+
+Failed to resolve keyprefix %s to a valid entity definition. %s members are ignored.
 
 # infos.not-a-sfdx-project
 
@@ -29,3 +33,19 @@ Packages filter active. Only include members from these packages: %s
 # infos.metadata-filter-active
 
 Metadata types filter active. Only include members of these types: %s
+
+# packages-filter-no-devhub
+
+Packages filter specified, but no Devhub was provided.
+
+# provide-valid-devhub-with-filter
+
+Provide a valid DevHub, when you specify a packages filter.
+
+# record-types-cannot-be-deleted
+
+Record types cannot be deleted via metadata API.
+
+# deprecated-list-views-not-accessible
+
+List views are not accessible via APIs, when member is deprecated.

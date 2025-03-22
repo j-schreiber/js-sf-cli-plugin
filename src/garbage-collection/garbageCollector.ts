@@ -6,19 +6,20 @@ import { Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
-import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
-import { PACKAGE_2, PACKAGE_MEMBER_BASE, PACKAGE_MEMBER_QUERY } from './queries.js';
+import { PACKAGE_2, PACKAGE_MEMBER_BASE, ALL_DEPRECATED_PACKAGE_MEMBERS } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
+import GarbageManager from './garbageManager.js';
+import PackageMemberFilter from './packageMemberFilter.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 export default class GarbageCollector extends EventEmitter {
-  private toolingObjectsRunner: QueryRunner;
-  private toolingApiCache: ToolingApiConnection;
-  private devhubQueryRunner?: QueryRunner;
+  private readonly toolingObjectsRunner: QueryRunner;
+  private readonly toolingApiCache: ToolingApiConnection;
+  private readonly devhubQueryRunner?: QueryRunner;
 
-  public constructor(private targetOrgConnection: Connection, private devhubConnection?: Connection) {
+  public constructor(private readonly targetOrgConnection: Connection, private readonly devhubConnection?: Connection) {
     super();
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
@@ -36,11 +37,15 @@ export default class GarbageCollector extends EventEmitter {
   //      PUBLIC API
 
   public async export(filter?: GarbageFilter): Promise<PackageGarbageResult> {
+    const garbageMan = new GarbageManager(this.targetOrgConnection);
+    garbageMan.on('resolve', (payload: CommandStatusEvent) => {
+      this.emitResolveStatus(payload.message!);
+    });
     this.parseInputs(filter);
-    const packageMembersContainer = await this.fetchPackageMembers(filter);
-    await this.toolingApiCache.fetchEntityDefinitions(Object.keys(packageMembersContainer));
-    const garbageContainer = await this.resolvePackageMembers(packageMembersContainer, filter);
-    return garbageContainer;
+    const members = await this.fetchPackageMembers2(filter);
+    await this.resolveSubscriberPackage(members);
+    await garbageMan.pushPackageMembers(members);
+    return garbageMan.format();
   }
 
   //      PRIVATE ZONE
@@ -48,9 +53,9 @@ export default class GarbageCollector extends EventEmitter {
   private parseInputs(filter?: GarbageFilter): void {
     if (filter?.packages && filter.packages.length > 0 && !this.devhubConnection) {
       throw new SfError(
-        'Packages filter specified, but no Devhub was provided.',
+        messages.getMessage('packages-filter-no-devhub'),
         'DevhubRequiredForPackages',
-        ['Provide a valid DevHub, when you specify a packages filter.'],
+        [messages.getMessage('provide-valid-devhub-with-filter')],
         2
       );
     }
@@ -68,126 +73,57 @@ export default class GarbageCollector extends EventEmitter {
     }
   }
 
-  private async resolvePackageMembers(
-    container: PackageMembersContainer,
-    filter?: GarbageFilter
-  ): Promise<PackageGarbageResult> {
-    const supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
-    const unsupportedTypes = loadUnsupportedMetadataTypes();
-    const garbageContainer: PackageGarbageResult = {
-      deprecatedMembers: {},
-      ignoredTypes: {},
-      notImplementedTypes: [],
-      totalDeprecatedComponentCount: 0,
-    };
-    for (const keyPrefix of Object.keys(container)) {
-      const entity = await this.toolingApiCache.getEntityDefinitionByKey(keyPrefix);
-      if (entity === undefined) {
-        continue;
-      }
-      const entityName = entity.QualifiedApiName;
-      const packageMembers = container[keyPrefix];
-      if (!isIncludedInFilter(entityName, filter)) {
-        const reason = messages.getMessage('infos.excluded-from-result-not-in-filter');
-        garbageContainer.ignoredTypes[entityName] = {
-          reason,
-          metadataType: entityName,
-          componentCount: packageMembers.length,
-        };
-      } else if (supportedTypes[entityName] && isIncludedInFilter(entityName, filter)) {
-        if (packageMembers.length > 0) {
-          this.emitResolveStatus(`Resolving ${packageMembers.length} ${entityName}s (${keyPrefix})`);
-        }
-        const newMembers = await supportedTypes[entityName].resolve(packageMembers);
-        garbageContainer.deprecatedMembers[entityName] = newMembers;
-        garbageContainer.totalDeprecatedComponentCount += newMembers.componentCount;
-        // in reality, Package2Member records may be corrupted and contain invalid SubjectIds
-        // if numbers are not matching, debug some info to the user
-        if (newMembers.componentCount !== packageMembers.length) {
-          this.emitResolveStatus(`Package members resolved to ${newMembers.componentCount} actual ${entityName}(s).`);
-        }
-      } else if (unsupportedTypes[entityName]) {
-        const unsupported = await unsupportedTypes[entityName].resolve(packageMembers);
-        if (packageMembers.length > 0) {
-          this.emitResolveStatus(
-            `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${unsupported.reason}`
-          );
-        }
-        garbageContainer.ignoredTypes[entityName] = unsupported;
-      } else if (keyPrefix.startsWith('m')) {
-        if (packageMembers.length > 0) {
-          this.emitResolveStatus(
-            `Resolving ${packageMembers.length} ${entityName} (${keyPrefix}) as CustomMetadata records.`
-          );
-        }
-        if (garbageContainer.deprecatedMembers['CustomMetadataRecord'] === undefined) {
-          garbageContainer.deprecatedMembers['CustomMetadataRecord'] = {
-            metadataType: 'CustomMetadata',
-            componentCount: 0,
-            components: [],
-          };
-        }
-        const newRecords = (await supportedTypes['CustomMetadataRecord'].resolve(packageMembers)).components;
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].components.push(...newRecords);
-        garbageContainer.deprecatedMembers['CustomMetadataRecord'].componentCount += newRecords.length;
-        garbageContainer.totalDeprecatedComponentCount += newRecords.length;
-      } else {
-        const reason = messages.getMessage('infos.not-yet-implemented');
-        if (packageMembers.length > 0) {
-          this.emitResolveStatus(
-            `Skipping ${packageMembers.length} members for ${entityName} (${keyPrefix}): ${reason}`
-          );
-        }
-        garbageContainer.notImplementedTypes.push({ keyPrefix, entityName, memberCount: packageMembers.length });
-      }
+  private async fetchPackageMembers2(filter?: GarbageFilter): Promise<Package2Member[]> {
+    const filteredEntityDefs = await this.toolingApiCache.resolveEntityDefinitionNames(filter?.includeOnly);
+    const memberFilter = new PackageMemberFilter(
+      await this.fetchSubscriberPackageVersions(filter?.packages),
+      filteredEntityDefs
+    );
+    let queryString;
+    if (filter?.includeOnly && filter.includeOnly.length > 0) {
+      const keyPrefixFilter = QueryBuilder.buildParamListFilter(
+        'SubjectKeyPrefix',
+        filteredEntityDefs.map((def) => def.KeyPrefix)
+      );
+      queryString = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
+        WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')
+        AND ${keyPrefixFilter}
+        AND SubjectKeyPrefix NOT IN ('300')
+        ORDER BY SubjectKeyPrefix`);
+    } else {
+      queryString = ALL_DEPRECATED_PACKAGE_MEMBERS;
     }
-    return garbageContainer;
-  }
-
-  private async fetchPackageMembers(filter?: GarbageFilter): Promise<PackageMembersContainer> {
-    let subscriberPgkIds: string[];
-    if (filter?.packages && filter.packages.length > 0) {
-      subscriberPgkIds = await this.fetchSubscriberPackageVersions(filter.packages);
-    }
-    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(PACKAGE_MEMBER_QUERY);
+    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(queryString);
     packageMembers.push(...(await this.buildFlowPackageMembers()));
-    const container: PackageMembersContainer = {};
-    packageMembers.forEach((member) => {
-      if (container[member.SubjectKeyPrefix] === undefined) {
-        container[member.SubjectKeyPrefix] = new Array<Package2Member>();
-      }
-      // subscriber id cannot be filtered in SOQL, therefore we have to remove manually
-      if (memberIsIncludedInPackageFilter(member, subscriberPgkIds)) {
-        container[member.SubjectKeyPrefix].push(member);
-      }
-    });
-    return container;
+    return packageMembers.filter((member) => memberFilter.isAllowed(member));
   }
 
   private async buildFlowPackageMembers(): Promise<Package2Member[]> {
     const packagedFlowDefinitions = await this.toolingObjectsRunner.fetchRecords<Package2Member>(
       QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} WHERE SubjectKeyPrefix = '300'`)
     );
-    const packageMembers: Package2Member[] = [];
-    packagedFlowDefinitions.forEach((flowDefMember) => {
-      packageMembers.push(flowDefMember);
-    });
-    return packageMembers;
+    return packagedFlowDefinitions;
   }
 
-  private async fetchSubscriberPackageVersions(packageIds: string[]): Promise<string[]> {
+  private async fetchSubscriberPackageVersions(packageIds?: string[]): Promise<Package2[]> {
+    if (!packageIds || packageIds.length === 0) {
+      return [];
+    }
     const package2s = await this.devhubQueryRunner!.fetchRecords<Package2>(
       `${PACKAGE_2} WHERE ${QueryBuilder.buildParamListFilter('Id', packageIds)}`
     );
-    const subscriberPackageIds: string[] = [];
     package2s.forEach((p2) => {
-      this.emit('resolveMemberStatus', {
-        status: ProcessingStatus.InProgress,
-        message: `Resolved ${p2.Id} (Package2) to ${p2.SubscriberPackageId} (SubscriberPackage)`,
-      } as CommandStatusEvent);
-      subscriberPackageIds.push(p2.SubscriberPackageId);
+      this.emitResolveStatus(`Resolved ${p2.Id} (Package2) to ${p2.SubscriberPackageId} (SubscriberPackage)`);
     });
-    return subscriberPackageIds;
+    return package2s;
+  }
+
+  private async resolveSubscriberPackage(members: Package2Member[]): Promise<void> {
+    const uniqueIds = [...new Set(members.map((member) => member.SubscriberPackageId))];
+    const packages = await this.toolingApiCache.resolveSubscriberPackageIds(uniqueIds);
+    for (const member of members) {
+      member.SubscriberPackage = packages.get(member.SubscriberPackageId);
+    }
   }
 
   private emitResolveStatus(message: string): void {
@@ -197,24 +133,3 @@ export default class GarbageCollector extends EventEmitter {
     } as CommandStatusEvent);
   }
 }
-
-function isIncludedInFilter(entityName: string, filter?: GarbageFilter): boolean {
-  const lowerCaseInclude = filter?.includeOnly?.map((str) => str.toLowerCase());
-  return lowerCaseInclude?.includes(entityName.toLowerCase()) ?? filter?.includeOnly === undefined;
-}
-
-function memberIsIncludedInPackageFilter(member: Package2Member, subscriberPgkIds?: string[]): boolean {
-  if (!subscriberPgkIds || subscriberPgkIds.length === 0) {
-    return true;
-  }
-  const subscriberPgkId =
-    member.MaxPackageVersion?.SubscriberPackageId ?? member.CurrentPackageVersion?.SubscriberPackageId;
-  if (subscriberPgkId === undefined) {
-    return false;
-  }
-  return subscriberPgkIds.includes(subscriberPgkId);
-}
-
-type PackageMembersContainer = {
-  [x: string]: Package2Member[];
-};

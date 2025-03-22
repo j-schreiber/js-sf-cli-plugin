@@ -20,11 +20,15 @@ const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
           developerName: 'Feedback1',
           fullyQualifiedName: 'Feedback1',
           subjectId: '1010X000009T4prQAC',
+          deprecatedSinceVersion: '1.2.3',
+          subscriberPackageId: '0330X0000000000AAA',
         },
         {
           developerName: 'Label_2',
           fullyQualifiedName: 'Label_2',
           subjectId: '1010X000009T4pqQAC',
+          deprecatedSinceVersion: '1.2.3',
+          subscriberPackageId: '0330X0000000000AAA',
         },
       ],
     },
@@ -36,12 +40,13 @@ const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
           developerName: 'TestField',
           fullyQualifiedName: 'TestObject__c.TestField__c',
           subjectId: '1010X000009T5prQAC',
+          deprecatedSinceVersion: '2.0.0',
+          subscriberPackageId: '0330X0000000000AAA',
         },
       ],
     },
   },
-  ignoredTypes: {},
-  notImplementedTypes: [],
+  unsupported: [],
   totalDeprecatedComponentCount: 3,
 };
 
@@ -53,8 +58,7 @@ const MOCK_EMPTY_GARBAGE_RESULT: PackageGarbageResult = {
       components: [],
     },
   },
-  ignoredTypes: {},
-  notImplementedTypes: [],
+  unsupported: [],
   totalDeprecatedComponentCount: 0,
 };
 
@@ -79,7 +83,7 @@ describe('jsc maintain garbage collect', () => {
     process.removeAllListeners();
   });
 
-  it('prints garbage result to cmd output as table with default parameters', async () => {
+  it('prints garbage result table with default parameters', async () => {
     // Arrange
     $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_GARBAGE_RESULT);
 
@@ -99,6 +103,7 @@ describe('jsc maintain garbage collect', () => {
       const labelRow = MOCK_GARBAGE_RESULT.deprecatedMembers.ExternalString.components[i];
       expect(tablesCallArgs.data[i].subjectId).to.equal(labelRow.subjectId);
       expect(tablesCallArgs.data[i].fullyQualifiedApiName).to.equal(labelRow.fullyQualifiedName);
+      expect(tablesCallArgs.data[i].deprecatedSinceVersion).to.equal(labelRow.deprecatedSinceVersion);
     }
     // custom fields 2-2
     for (let i = 2; i < 3; i++) {
@@ -106,6 +111,7 @@ describe('jsc maintain garbage collect', () => {
       const fieldRow = MOCK_GARBAGE_RESULT.deprecatedMembers.CustomField.components[i - 2];
       expect(tablesCallArgs.data[i].subjectId).to.equal(fieldRow.subjectId);
       expect(tablesCallArgs.data[i].fullyQualifiedApiName).to.equal(fieldRow.fullyQualifiedName);
+      expect(tablesCallArgs.data[i].deprecatedSinceVersion).to.equal(fieldRow.deprecatedSinceVersion);
     }
   });
 
@@ -127,8 +133,7 @@ describe('jsc maintain garbage collect', () => {
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers).to.deep.equal({});
-    expect(result.ignoredTypes).to.deep.equal({});
-    expect(result.notImplementedTypes).to.deep.equal([]);
+    expect(result.unsupported).to.deep.equal([]);
     expect(sfCommandStubs.info.args).to.deep.equal([]);
   });
 
@@ -153,8 +158,7 @@ describe('jsc maintain garbage collect', () => {
     // Assert
     expect(process.exitCode).to.equal(0);
     expect(result.deprecatedMembers.ExternalString).to.not.be.undefined;
-    expect(result.ignoredTypes).to.deep.equal({});
-    expect(result.notImplementedTypes).to.deep.equal([]);
+    expect(result.unsupported).to.deep.equal([]);
     // this should display the test event, but I am not able to emit on the
     // stubbed garbage collector instance
     expect(sfCommandStubs.info.args).to.deep.equal([]);

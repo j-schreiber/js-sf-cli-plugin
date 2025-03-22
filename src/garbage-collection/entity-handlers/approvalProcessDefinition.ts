@@ -6,9 +6,9 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class ApprovalProcessDefinition implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
 
@@ -20,11 +20,13 @@ export class ApprovalProcessDefinition implements EntityDefinitionHandler {
       if (approvalProcessDef) {
         // other entities have "01I" ids for custom objects, but approval processes have the
         // actual API name of the custom object (e.g. TestObject__c)
-        garbageList.push({
-          developerName: approvalProcessDef.DeveloperName,
-          fullyQualifiedName: `${approvalProcessDef.TableEnumOrId}.${approvalProcessDef.DeveloperName}`,
-          subjectId: member.SubjectId,
-        });
+        garbageList.push(
+          new PackageGarbage(
+            member,
+            approvalProcessDef.DeveloperName,
+            `${approvalProcessDef.TableEnumOrId}.${approvalProcessDef.DeveloperName}`
+          )
+        );
       }
     });
     return {

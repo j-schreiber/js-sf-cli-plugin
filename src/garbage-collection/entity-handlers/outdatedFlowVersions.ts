@@ -7,9 +7,9 @@ import QueryRunner from '../../common/utils/queryRunner.js';
 import { OBSOLETE_FLOWS } from '../queries.js';
 
 export class OutdatedFlowVersions implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
 
@@ -20,11 +20,12 @@ export class OutdatedFlowVersions implements EntityDefinitionHandler {
       const versions = outdatedVersions.get(packageMember.SubjectId);
       if (versions && versions.length > 0) {
         versions.forEach((flowVersion) => {
-          garbageList.push({
-            developerName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
-            fullyQualifiedName: `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`,
-            subjectId: flowVersion.Id,
-          });
+          const pg = new PackageGarbage(
+            packageMember,
+            `${flowVersion.Definition.DeveloperName}-${flowVersion.VersionNumber}`
+          );
+          pg.subjectId = flowVersion.Id;
+          garbageList.push(pg);
         });
       }
     });

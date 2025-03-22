@@ -1,0 +1,32 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JPzQAM"
+      },
+      "Id": "03v4P0000004JPzQAM",
+      "CurrentPackageVersionId": "04t4P0000000003AAA",
+      "MaxPackageVersionId": "04t4P0000000003AAA",
+      "SubjectId": "1014P00000B3v7KQAR",
+      "SubjectKeyPrefix": "101",
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
+    },
+    {
+      "attributes": {
+        "type": "Package2Member",
+        "url": "/services/data/v62.0/tooling/sobjects/Package2Member/03v4P0000004JGmQAM"
+      },
+      "Id": "03v4P0000004JGmQAM",
+      "CurrentPackageVersionId": "04t4P0000000001AAA",
+      "MaxPackageVersionId": "04t4P0000000001AAA",
+      "SubjectId": "00B4P000009HFvqUAG",
+      "SubjectKeyPrefix": "00B",
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
+    }
+  ],
+  "totalSize": 2,
+  "done": true
+}

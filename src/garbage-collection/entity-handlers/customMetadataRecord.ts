@@ -7,10 +7,10 @@ import QueryRunner from '../../common/utils/queryRunner.js';
 import ToolingApiConnection from '../toolingApiConnection.js';
 
 export class CustomMetadataRecord implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
-  private apiConnection: ToolingApiConnection;
+  private readonly queryRunner: QueryRunner;
+  private readonly apiConnection: ToolingApiConnection;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.queryRunner = new QueryRunner(this.queryConnection);
     this.apiConnection = ToolingApiConnection.getInstance(this.queryConnection);
   }
@@ -30,14 +30,12 @@ export class CustomMetadataRecord implements EntityDefinitionHandler {
         };
       }
       const records = await this.fetchRecords(packageMembers, metadataObject.QualifiedApiName);
-      packageMembers.forEach((deprecatedMember) => {
-        const record = records.get(deprecatedMember.SubjectId);
+      packageMembers.forEach((member) => {
+        const record = records.get(member.SubjectId);
         if (record !== undefined) {
-          garbageList.push({
-            developerName: record.DeveloperName,
-            fullyQualifiedName: `${metadataObject.DeveloperName}.${record.DeveloperName}`,
-            subjectId: deprecatedMember.Id,
-          });
+          garbageList.push(
+            new PackageGarbage(member, record.DeveloperName, `${metadataObject.DeveloperName}.${record.DeveloperName}`)
+          );
         }
       });
     }

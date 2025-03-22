@@ -11,9 +11,7 @@
       "SubjectId": "00B4P000009HFvqUAG",
       "SubjectKeyPrefix": "00B",
       "SubjectManageableState": "deprecatedEditable",
-      "MaxPackageVersion": {
-        "SubscriberPackageId": "0330X0000000000AAA"
-      }
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -23,9 +21,10 @@
       "Id": "03v4P0000004JHyQAM",
       "CurrentPackageVersionId": "04t4P0000000002AAA",
       "MaxPackageVersionId": "04t4P0000000002AAA",
-      "SubjectId": "00h4P00000XGMtGQAX",
+      "SubjectId": "00h0X00000XRV9HQAX",
       "SubjectKeyPrefix": "00h",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -35,9 +34,10 @@
       "Id": "03v4P0000004JI2QAM",
       "CurrentPackageVersionId": "04t4P0000000001AAA",
       "MaxPackageVersionId": "04t4P0000000001AAA",
-      "SubjectId": "00h4P00000XGMtKQAX",
+      "SubjectId": "00h0X00000Y4ruHQAR",
       "SubjectKeyPrefix": "00h",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -49,7 +49,8 @@
       "MaxPackageVersionId": "04t4P0000000003AAA",
       "SubjectId": "00l4P000000H9ajQAC",
       "SubjectKeyPrefix": "00l",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -61,7 +62,8 @@
       "MaxPackageVersionId": "04t4P0000000004AAA",
       "SubjectId": "00N4P00000GRKqHUAX",
       "SubjectKeyPrefix": "00N",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -73,7 +75,8 @@
       "MaxPackageVersionId": "04t4P0000000004AAA",
       "SubjectId": "00N4P00000GRKqGUAX",
       "SubjectKeyPrefix": "00N",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -85,7 +88,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "00N4P00000GRKpqUAH",
       "SubjectKeyPrefix": "00N",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -97,7 +101,8 @@
       "MaxPackageVersionId": "04t4P0000000004AAA",
       "SubjectId": "00N4P00000GRKqFUAX",
       "SubjectKeyPrefix": "00N",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -109,7 +114,8 @@
       "MaxPackageVersionId": "04t4P0000000001AAA",
       "SubjectId": "01I4P000000wXQ5UAM",
       "SubjectKeyPrefix": "01I",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -121,7 +127,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "01I4P000000wXQ1UAM",
       "SubjectKeyPrefix": "01I",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -133,7 +140,8 @@
       "MaxPackageVersionId": "04t4P0000000003AAA",
       "SubjectId": "1014P00000B3v7KQAR",
       "SubjectKeyPrefix": "101",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000000AAA"
     },
     {
       "attributes": {
@@ -146,9 +154,7 @@
       "SubjectId": "1014P00000B3laTQAR",
       "SubjectKeyPrefix": "101",
       "SubjectManageableState": "deprecatedEditable",
-      "MaxPackageVersion": {
-        "SubscriberPackageId": "0330X0000000000AAA"
-      }
+      "SubscriberPackageId": "0330X0000000001AAA"
     },
     {
       "attributes": {
@@ -161,9 +167,7 @@
       "SubjectId": "m004P0000009UQvQAM",
       "SubjectKeyPrefix": "m00",
       "SubjectManageableState": "deprecatedEditable",
-      "MaxPackageVersion": {
-        "SubscriberPackageId": "0330X0000000000AAA"
-      }
+      "SubscriberPackageId": "0330X0000000001AAA"
     },
     {
       "attributes": {
@@ -175,7 +179,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQwQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000001AAA"
     },
     {
       "attributes": {
@@ -187,7 +192,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQxQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000003AAA"
     },
     {
       "attributes": {
@@ -199,7 +205,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQyQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000002AAA"
     },
     {
       "attributes": {
@@ -211,7 +218,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQsQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000002AAA"
     },
     {
       "attributes": {
@@ -223,7 +231,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQtQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000003AAA"
     },
     {
       "attributes": {
@@ -235,7 +244,8 @@
       "MaxPackageVersionId": "04t4P0000000002AAA",
       "SubjectId": "m004P0000009UQuQAM",
       "SubjectKeyPrefix": "m00",
-      "SubjectManageableState": "deprecatedEditable"
+      "SubjectManageableState": "deprecatedEditable",
+      "SubscriberPackageId": "0330X0000000003AAA"
     }
   ],
   "totalSize": 19,

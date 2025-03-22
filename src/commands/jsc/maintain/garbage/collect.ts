@@ -91,6 +91,8 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
           subjectId: member.subjectId,
           metadataType: members.metadataType,
           fullyQualifiedApiName: member.fullyQualifiedName,
+          packageName: member.packageName,
+          deprecatedSinceVersion: member.deprecatedSinceVersion,
         });
       });
     });
@@ -113,8 +115,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     if (outputFormat === 'DestructiveChangesXML') {
       packageXml = await PackageXmlBuilder.parseGarbageResultToXml({
         deprecatedMembers: {},
-        ignoredTypes: {},
-        notImplementedTypes: [],
+        unsupported: [],
         totalDeprecatedComponentCount: 0,
       });
       const destructiveChangesXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
@@ -168,4 +169,6 @@ type TableOutputRow = {
   metadataType: string;
   subjectId: string;
   fullyQualifiedApiName: string;
+  deprecatedSinceVersion?: string;
+  packageName?: string;
 };

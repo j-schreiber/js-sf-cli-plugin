@@ -6,12 +6,12 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class FullNameSingleRecord implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection['tooling'],
-    private entityName: string,
-    private metadataTypeName?: string
+    private readonly queryConnection: Connection['tooling'],
+    private readonly entityName: string,
+    private readonly metadataTypeName?: string
   ) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
@@ -20,17 +20,13 @@ export class FullNameSingleRecord implements EntityDefinitionHandler {
     const garbageList: PackageGarbage[] = [];
     for (const packageMember of packageMembers) {
       // queries with "FullName" throw exception, if more than one record is queried
-      // so yes, we do "SOQL in a loop" here. For performance reasons. LOL.
+      // so yes, we do "SOQL in a loop" here. "For performance reasons" (as stated in the docs). LOL.
       // eslint-disable-next-line no-await-in-loop
       const entityDef = await this.queryRunner.fetchRecords<FullNameSingleRecordEntity>(
         `SELECT Id,FullName FROM ${this.entityName} WHERE Id = '${packageMember.SubjectId}' LIMIT 1`
       );
       if (entityDef.length > 0) {
-        garbageList.push({
-          developerName: entityDef[0].FullName,
-          fullyQualifiedName: entityDef[0].FullName,
-          subjectId: packageMember.SubjectId,
-        });
+        garbageList.push(new PackageGarbage(packageMember, entityDef[0].FullName));
       }
     }
     return {

@@ -6,12 +6,12 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class NameEntity implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
   public constructor(
-    private queryConnection: Connection | Connection['tooling'],
-    private entityName: string,
-    private metadataTypeName?: string
+    private readonly queryConnection: Connection | Connection['tooling'],
+    private readonly entityName: string,
+    private readonly metadataTypeName?: string
   ) {
     this.queryRunner = new QueryRunner(this.queryConnection);
   }
@@ -22,11 +22,7 @@ export class NameEntity implements EntityDefinitionHandler {
     packageMembers.forEach((packageMember) => {
       if (entityDefs.has(packageMember.SubjectId)) {
         const def = entityDefs.get(packageMember.SubjectId)!;
-        garbageList.push({
-          developerName: def.Name,
-          fullyQualifiedName: def.Name,
-          subjectId: packageMember.SubjectId,
-        });
+        garbageList.push(new PackageGarbage(packageMember, def.Name));
       }
     });
     return {

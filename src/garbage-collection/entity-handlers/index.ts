@@ -1,8 +1,7 @@
-import { Connection, Messages } from '@salesforce/core';
-import { EntityDefinitionHandler, EntityDefinitionIgnorer } from '../entityDefinitionHandler.js';
+import { Connection } from '@salesforce/core';
+import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';
 import { CustomObject } from './customObject.js';
 import { DeveloperNameEntity } from './developerNameEntity.js';
-import { UnsupportedEntity } from './unsupportedEntity.js';
 import { CustomField } from './customField.js';
 import { NameEntity } from './nameEntity.js';
 import { Layout } from './layout.js';
@@ -12,9 +11,6 @@ import { FullNameSingleRecord } from './fullNameSingleRecord.js';
 import { DynamicDevNamedEntityRelated } from './dynamicDevNamedEntityRelated.js';
 import { SObjectBasedDefNameEntity } from './sobjectBasedDevNameEntity.js';
 import { ApprovalProcessDefinition } from './approvalProcessDefinition.js';
-
-Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 // eslint-disable-next-line arrow-body-style
 export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: string]: EntityDefinitionHandler } => {
@@ -43,13 +39,5 @@ export const loadSupportedMetadataTypes = (orgConnection: Connection): { [x: str
     FieldSet: new DynamicDevNamedEntityRelated(orgConnection, 'FieldSet', 'DeveloperName'),
     CustomApplication: new DeveloperNameEntity(orgConnection.tooling, 'CustomApplication'),
     ProcessDefinition: new ApprovalProcessDefinition(orgConnection),
-  };
-};
-
-// eslint-disable-next-line arrow-body-style
-export const loadUnsupportedMetadataTypes = (): { [x: string]: EntityDefinitionIgnorer } => {
-  const toolingApiMsg = messages.getMessage('infos.not-fully-supported-by-tooling-api');
-  return {
-    ListView: new UnsupportedEntity('ListView', toolingApiMsg),
   };
 };

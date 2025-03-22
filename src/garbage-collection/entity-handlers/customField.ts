@@ -6,9 +6,9 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import ToolingApiConnection from '../toolingApiConnection.js';
 
 export class CustomField implements EntityDefinitionHandler {
-  private apiConnection: ToolingApiConnection;
+  private readonly apiConnection: ToolingApiConnection;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.apiConnection = ToolingApiConnection.getInstance(this.queryConnection);
   }
 
@@ -23,19 +23,19 @@ export class CustomField implements EntityDefinitionHandler {
         if (fieldDef.TableEnumOrId.startsWith('01I')) {
           const customObjDef = objectsByDurableId.get(fieldDef.TableEnumOrId.substring(0, 15));
           if (customObjDef) {
-            garbageList.push({
-              developerName: fieldDef.DeveloperName,
-              fullyQualifiedName: `${customObjDef.QualifiedApiName}.${fieldDef.DeveloperName}__c`,
-              subjectId: fieldDef.Id,
-            });
+            garbageList.push(
+              new PackageGarbage(
+                member,
+                fieldDef.DeveloperName,
+                `${customObjDef.QualifiedApiName}.${fieldDef.DeveloperName}__c`
+              )
+            );
           }
         } else {
           // must be a custom field to a standard object
-          garbageList.push({
-            developerName: fieldDef.DeveloperName,
-            fullyQualifiedName: `${fieldDef.TableEnumOrId}.${fieldDef.DeveloperName}__c`,
-            subjectId: fieldDef.Id,
-          });
+          garbageList.push(
+            new PackageGarbage(member, fieldDef.DeveloperName, `${fieldDef.TableEnumOrId}.${fieldDef.DeveloperName}__c`)
+          );
         }
       }
     });

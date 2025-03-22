@@ -3,9 +3,11 @@ import QueryBuilder from '../common/utils/queryBuilder.js';
 export const PACKAGE_MEMBER_BASE = `SELECT
   Id,
   CurrentPackageVersionId,
-  CurrentPackageVersion.SubscriberPackageId,
   MaxPackageVersionId,
-  MaxPackageVersion.SubscriberPackageId,
+  SubscriberPackageId,
+  MaxPackageVersion.MajorVersion,
+  MaxPackageVersion.MinorVersion,
+  MaxPackageVersion.PatchVersion,
   SubjectId,
   SubjectKeyPrefix,
   SubjectManageableState
@@ -13,7 +15,7 @@ FROM
   Package2Member`;
 
 // flow definitions (prefix 300) are processed separately
-export const PACKAGE_MEMBER_QUERY = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
+export const ALL_DEPRECATED_PACKAGE_MEMBERS = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
 WHERE
   SubjectManageableState IN ('deprecatedEditable', 'deprecated')
   AND SubjectKeyPrefix NOT IN ('300')
@@ -66,3 +68,5 @@ export const PACKAGE_2: string = QueryBuilder.sanitise(`SELECT
   SubscriberPackageId
 FROM
   Package2`);
+
+export const SUBSCRIBER_PACKAGE_FIELDS = ['Id', 'Name', 'Description', 'IsPackageValid', 'NamespacePrefix'];

@@ -1,8 +1,8 @@
 import { Connection } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { EntityDefinition, FieldDefinition } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, FieldDefinition, SubscriberPackage } from '../types/sfToolingApiTypes.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
-import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
+import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY, SUBSCRIBER_PACKAGE_FIELDS } from './queries.js';
 
 /**
  * Caches all custom objects from org and allows to retrieve & resolve by
@@ -11,16 +11,17 @@ import { ALL_CUSTOM_OBJECTS, ENTITY_DEFINITION_QUERY } from './queries.js';
 export default class ToolingApiConnection {
   private static activeConnection: ToolingApiConnection;
 
-  private toolingObjectsRunner: QueryRunner;
-  private objectsByKey = new Map<string, EntityDefinition>();
-  private objectsByDurableId = new Map<string, EntityDefinition>();
-  private objectsByDeveloperName = new Map<string, EntityDefinition>();
-  private objectsByApiName = new Map<string, EntityDefinition>();
+  private readonly toolingObjectsRunner: QueryRunner;
+  private readonly objectsByKey = new Map<string, EntityDefinition>();
+  private readonly objectsByDurableId = new Map<string, EntityDefinition>();
+  private readonly objectsByDeveloperName = new Map<string, EntityDefinition>();
+  private readonly objectsByApiName = new Map<string, EntityDefinition>();
+  private readonly allEntityDefinitionsByKey = new Map<string, EntityDefinition>();
+  private readonly customFieldsBySubjectId = new Map<string, FieldDefinition>();
+  private readonly subscriberPackages = new Map<string, SubscriberPackage | undefined>();
   private isInitialised = false;
-  private allEntityDefinitionsByKey = new Map<string, EntityDefinition>();
-  private customFieldsBySubjectId = new Map<string, FieldDefinition>();
 
-  private constructor(private targetOrgConnection: Connection) {
+  public constructor(private readonly targetOrgConnection: Connection) {
     this.toolingObjectsRunner = new QueryRunner(this.targetOrgConnection.tooling);
   }
 
@@ -66,6 +67,44 @@ export default class ToolingApiConnection {
   }
 
   /**
+   * Resolves a potentially invalid list of subscriber package ids in null/undefined safe way
+   * to a map of subscriber packages (by their id). All invalid ids are ignored.
+   *
+   * @param subscriberPackageIds
+   * @returns
+   */
+  public async resolveSubscriberPackageIds(subscriberPackageIds: string[]): Promise<Map<string, SubscriberPackage>> {
+    const subPackagePromises = new Array<Promise<SubscriberPackage | undefined>>();
+    subscriberPackageIds.forEach((id) => subPackagePromises.push(this.resolveSubscriberPackageId(id)));
+    const subpackages = await Promise.all(subPackagePromises);
+    const resolvedIds = new Map<string, SubscriberPackage>();
+    subpackages.forEach((potentialPackage) => {
+      if (potentialPackage) {
+        resolvedIds.set(potentialPackage.Id, potentialPackage);
+      }
+    });
+    return resolvedIds;
+  }
+
+  public async resolveSubscriberPackageId(subscriberPackageId: string): Promise<SubscriberPackage | undefined> {
+    if (subscriberPackageId === undefined || subscriberPackageId === null || subscriberPackageId.length === 0) {
+      return;
+    }
+    if (this.subscriberPackages.has(subscriberPackageId)) {
+      return this.subscriberPackages.get(subscriberPackageId);
+    }
+    const pkgs = await this.toolingObjectsRunner.fetchRecords<SubscriberPackage>(
+      `SELECT ${SUBSCRIBER_PACKAGE_FIELDS.join(',')} FROM SubscriberPackage WHERE Id = '${subscriberPackageId}'`
+    );
+    if (pkgs.length >= 1) {
+      this.subscriberPackages.set(subscriberPackageId, pkgs[0]);
+    } else {
+      this.subscriberPackages.set(subscriberPackageId, undefined);
+    }
+    return this.subscriberPackages.get(subscriberPackageId);
+  }
+
+  /**
    * Returns a entity definition by key prefix and caches the result.
    *
    * @param keyPrefix
@@ -92,6 +131,22 @@ export default class ToolingApiConnection {
       entityDefinitions.forEach((entityDef) => this.allEntityDefinitionsByKey.set(entityDef.KeyPrefix, entityDef));
     }
     return this.allEntityDefinitionsByKey;
+  }
+
+  /**
+   * Returns all entity definitions by "QualifiedApiName"
+   *
+   * @param qualifiedApiNames
+   * @returns
+   */
+  public async resolveEntityDefinitionNames(qualifiedApiNames?: string[]): Promise<EntityDefinition[]> {
+    if (!qualifiedApiNames || qualifiedApiNames.length === 0) {
+      return [];
+    }
+    const entityDefinitions = await this.toolingObjectsRunner.fetchRecords<EntityDefinition>(
+      `${ENTITY_DEFINITION_QUERY} WHERE ${QueryBuilder.buildParamListFilter('QualifiedApiName', qualifiedApiNames)}`
+    );
+    return entityDefinitions;
   }
 
   /**

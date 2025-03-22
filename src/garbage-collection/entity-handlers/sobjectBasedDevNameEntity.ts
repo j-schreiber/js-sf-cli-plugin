@@ -6,9 +6,13 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import QueryRunner from '../../common/utils/queryRunner.js';
 
 export class SObjectBasedDefNameEntity implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
+  private readonly queryRunner: QueryRunner;
 
-  public constructor(private queryConnection: Connection, private entityName: string, private metadataType?: string) {
+  public constructor(
+    private readonly queryConnection: Connection,
+    private readonly entityName: string,
+    private readonly metadataType?: string
+  ) {
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
 
@@ -18,11 +22,9 @@ export class SObjectBasedDefNameEntity implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       const actionDef = defs.get(member.SubjectId);
       if (actionDef) {
-        garbageList.push({
-          developerName: actionDef.DeveloperName,
-          fullyQualifiedName: `${actionDef.SobjectType}.${actionDef.DeveloperName}`,
-          subjectId: member.SubjectId,
-        });
+        garbageList.push(
+          new PackageGarbage(member, actionDef.DeveloperName, `${actionDef.SobjectType}.${actionDef.DeveloperName}`)
+        );
       }
     });
     return {

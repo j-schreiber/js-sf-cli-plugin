@@ -8,10 +8,10 @@ import QueryRunner from '../../common/utils/queryRunner.js';
 import QueryBuilder from '../../common/utils/queryBuilder.js';
 
 export class Layout implements EntityDefinitionHandler {
-  private queryRunner: QueryRunner;
-  private apiConnection: ToolingApiConnection;
+  private readonly queryRunner: QueryRunner;
+  private readonly apiConnection: ToolingApiConnection;
 
-  public constructor(private queryConnection: Connection) {
+  public constructor(private readonly queryConnection: Connection) {
     this.apiConnection = ToolingApiConnection.getInstance(this.queryConnection);
     this.queryRunner = new QueryRunner(this.queryConnection.tooling);
   }
@@ -23,23 +23,15 @@ export class Layout implements EntityDefinitionHandler {
     packageMembers.forEach((member) => {
       const def = definitions.get(member.SubjectId);
       if (def) {
-        // field belongs to a custom object (or custom metadata, platform event, etc)
+        // custom object
         if (def.TableEnumOrId.startsWith('01I')) {
           const customObjDef = objectsByDurableId.get(def.TableEnumOrId.substring(0, 15));
           if (customObjDef) {
-            garbageList.push({
-              developerName: def.Name,
-              fullyQualifiedName: `${customObjDef.QualifiedApiName}-${def.Name}`,
-              subjectId: def.Id,
-            });
+            garbageList.push(new PackageGarbage(member, def.Name, `${customObjDef.QualifiedApiName}-${def.Name}`));
           }
         } else {
-          // must be a custom field to a standard object
-          garbageList.push({
-            developerName: def.Name,
-            fullyQualifiedName: `${def.TableEnumOrId}-${def.Name}`,
-            subjectId: def.Id,
-          });
+          // standard object
+          garbageList.push(new PackageGarbage(member, def.Name, `${def.TableEnumOrId}-${def.Name}`));
         }
       }
     });

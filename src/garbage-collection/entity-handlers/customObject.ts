@@ -6,21 +6,17 @@ import { PackageGarbage, PackageGarbageContainer } from '../packageGarbageTypes.
 import ToolingApiConnection from '../toolingApiConnection.js';
 
 export class CustomObject implements EntityDefinitionHandler {
-  public constructor(private queryConnection: Connection) {}
+  public constructor(private readonly queryConnection: Connection) {}
 
   public async resolve(packageMembers: Package2Member[]): Promise<PackageGarbageContainer> {
     const garbageList: PackageGarbage[] = [];
     const objectsByDurableId = await ToolingApiConnection.getInstance(
       this.queryConnection
     ).fetchObjectDefinitionsByDurableId();
-    packageMembers.forEach((pm) => {
-      const definition = objectsByDurableId.get(pm.SubjectId.substring(0, 15));
+    packageMembers.forEach((member) => {
+      const definition = objectsByDurableId.get(member.SubjectId.substring(0, 15));
       if (definition) {
-        garbageList.push({
-          developerName: definition.DeveloperName,
-          fullyQualifiedName: definition.QualifiedApiName,
-          subjectId: pm.SubjectId,
-        });
+        garbageList.push(new PackageGarbage(member, definition.DeveloperName, definition.QualifiedApiName));
       }
     });
     return { metadataType: 'CustomObject', componentCount: garbageList.length, components: garbageList };

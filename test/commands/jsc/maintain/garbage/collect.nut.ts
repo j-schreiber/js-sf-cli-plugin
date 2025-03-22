@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect } from 'chai';
+import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
@@ -57,9 +57,9 @@ describe('jsc maintain garbage NUTs*', () => {
 
       // Assert
       // a new org is never supposed to have any package garbage
-      expect(result).to.not.be.undefined;
-      expect(result?.totalDeprecatedComponentCount).to.equal(0);
-      expect(result?.deprecatedMembers).to.deep.equal({});
+      assert.isDefined(result);
+      expect(result.totalDeprecatedComponentCount).to.equal(0);
+      expect(result.deprecatedMembers).to.deep.equal({});
     });
 
     it('collect garbage on fresh scratch org with package xml output', () => {
@@ -82,7 +82,7 @@ describe('jsc maintain garbage NUTs*', () => {
       // Arrange
       // Package versions are build here: https://github.com/j-schreiber/js-cli-plugin-test-package
       // Installs the latest package version (with a lot of metadata) and rolls back to 0.1.0 (almost empty)
-      // Actual package versions are resolved in the test project's sfdx-project.json
+      // The package alias from command parameter are resolved in the test project's sfdx-project.json
       execCmd(`package:install -p "Test Package @ LATEST" -o ${scratchOrgAlias} -w 10 --json`, {
         ensureExitCode: 0,
         cli: 'sf',
@@ -102,18 +102,23 @@ describe('jsc maintain garbage NUTs*', () => {
       ).jsonOutput?.result;
 
       // Assert
-      expect(result).to.not.be.undefined;
-      const deprecatedMembers = result!.deprecatedMembers;
+      assert.isDefined(result);
+      const deprecatedMembers = result.deprecatedMembers;
       // Update the JSON file from EXPECTED_E2E_GARBAGE for new assert
       // most important part of this test is running the individual handlers against
       // an actual org and executing real queries.
       const actualDeprecatedEntities = Object.keys(deprecatedMembers);
       const expectedDeprecatedEntities = EXPECTED_E2E_GARBAGE.deprecatedMembers;
-      // we care for qual values, but not for their order
+      // we care for equal values, but not for their order
       expect(actualDeprecatedEntities).to.have.deep.members(Object.keys(EXPECTED_E2E_GARBAGE.deprecatedMembers));
       for (const depEnt of actualDeprecatedEntities) {
         expect(deprecatedMembers[depEnt].componentCount).to.equal(expectedDeprecatedEntities[depEnt].componentCount);
         expect(deprecatedMembers[depEnt].metadataType).to.equal(expectedDeprecatedEntities[depEnt].metadataType);
+        // all components are expected to be deprecated since LATEST
+        // probably need to revisit that, and dynamically resolve LATEST to actual version
+        deprecatedMembers[depEnt].components.forEach((cmp) => {
+          expect(cmp.deprecatedSinceVersion).to.equal('1.0.0', JSON.stringify(cmp));
+        });
         // remove the "subjectId" from actual deprecated members, so we can compare only
         // the immutable properties with expected result from EXPECTED_E2E_GARBAGE.
         // eslint-disable-next-line arrow-body-style
@@ -122,6 +127,27 @@ describe('jsc maintain garbage NUTs*', () => {
         });
         expect(reducedMembers).to.have.deep.members(expectedDeprecatedEntities[depEnt].components);
       }
+    });
+
+    it('filters garbage output with metadata type filter', () => {
+      // Arrange
+      // not specifically needed, was done in test before
+
+      // Act
+      const result = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --metadata-type CustomField --metadata-type ExternalString --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(Object.keys(result.deprecatedMembers)).to.has.members(['CustomField', 'ExternalString']);
+      expect(result.deprecatedMembers.CustomField.components.length).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.CustomField.componentCount
+      );
+      expect(result.deprecatedMembers.ExternalString.components.length).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
+      );
     });
   });
 });

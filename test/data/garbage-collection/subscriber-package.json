@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "SubscriberPackage",
+        "url": "/services/data/v63.0/tooling/sobjects/SubscriberPackage/0330X0000000000AAA"
+      },
+      "Id": "0330X0000000000AAA",
+      "Name": "My Test Package",
+      "Description": "Awesome Apex and Visualforce utilities",
+      "IsPackageValid": true,
+      "NamespacePrefix": null
+    }
+  ],
+  "totalSize": 1,
+  "done": true
+}

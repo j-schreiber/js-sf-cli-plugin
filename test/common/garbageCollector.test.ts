@@ -1,20 +1,15 @@
 import { expect } from 'chai';
-import { SinonStub } from 'sinon';
-import { Record } from '@jsforce/jsforce-node';
 import { Messages } from '@salesforce/core';
+import { AnyJson } from '@salesforce/ts-types';
 import { TestContext, MockTestOrgData } from '@salesforce/core/testSetup';
 import GarbageCollector from '../../src/garbage-collection/garbageCollector.js';
-import QueryRunner from '../../src/common/utils/queryRunner.js';
 import {
   ALL_CUSTOM_OBJECTS,
   ENTITY_DEFINITION_QUERY,
-  PACKAGE_MEMBER_QUERY,
+  ALL_DEPRECATED_PACKAGE_MEMBERS,
 } from '../../src/garbage-collection/queries.js';
-import { Package2Member } from '../../src/types/sfToolingApiTypes.js';
-import {
-  loadSupportedMetadataTypes,
-  loadUnsupportedMetadataTypes,
-} from '../../src/garbage-collection/entity-handlers/index.js';
+import { EntityDefinition, Package2Member } from '../../src/types/sfToolingApiTypes.js';
+import { loadSupportedMetadataTypes } from '../../src/garbage-collection/entity-handlers/index.js';
 import GarbageCollectionMocks, { parseMockResult } from '../mock-utils/garbageCollectionMocks.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -26,29 +21,26 @@ describe('garbage collector', () => {
   const devhubOrg = new MockTestOrgData();
 
   let apiMocks: GarbageCollectionMocks;
-  let fetchRecordsStub: SinonStub;
 
   beforeEach(async () => {
     apiMocks = new GarbageCollectionMocks();
     testOrg.isDevHub = false;
     devhubOrg.isDevHub = true;
     await $$.stubAuths(testOrg, devhubOrg);
-    fetchRecordsStub = $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords');
-    fetchRecordsStub.callsFake(fakeFetchRecords);
+    $$.fakeConnectionRequest = mockQueryResults;
   });
 
   afterEach(() => {
     $$.SANDBOX.restore();
   });
 
-  function fakeFetchRecords<T extends Record>(queryString: string): Promise<Record[]> {
-    return apiMocks.fetchRecordsStub<T>(queryString);
+  function mockQueryResults(request: AnyJson): Promise<AnyJson> {
+    return apiMocks.mockQueryResults(request);
   }
 
   it('registry loads all supported and unsupported handlers', async () => {
     // Act
     const supportedTypes = loadSupportedMetadataTypes(await testOrg.getConnection());
-    const unsupportedTypes = loadUnsupportedMetadataTypes();
 
     // Assert
     expect(supportedTypes['ExternalString']).to.not.be.undefined;
@@ -56,11 +48,10 @@ describe('garbage collector', () => {
     expect(supportedTypes['CustomField']).to.not.be.undefined;
     expect(supportedTypes['CustomMetadataRecord']).to.not.be.undefined;
     expect(supportedTypes['CustomTab']).to.not.be.undefined;
-    expect(unsupportedTypes['ListView']).to.not.be.undefined;
   });
 
   it('has all queries initialised', async () => {
-    expect(PACKAGE_MEMBER_QUERY).to.contain('FROM Package2Member');
+    expect(ALL_DEPRECATED_PACKAGE_MEMBERS).to.contain('FROM Package2Member');
     expect(ENTITY_DEFINITION_QUERY).to.contain('FROM EntityDefinition');
     expect(ALL_CUSTOM_OBJECTS).to.contain("FROM EntityDefinition WHERE KeyPrefix LIKE 'a%");
   });
@@ -95,7 +86,29 @@ describe('garbage collector', () => {
     expect(garbage.deprecatedMembers['Flow']).to.be.undefined;
   });
 
-  it('receives mixed package members and has no export filter > includes all types', async () => {
+  it('contains package details for all package members', async () => {
+    // Arrange
+    apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+    apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+
+    // Act
+    const collector = new GarbageCollector(await testOrg.getConnection());
+    const garbage = await collector.export();
+
+    // Assert
+    const labels = garbage.deprecatedMembers['ExternalString'];
+    labels.components.forEach((labelGarbage) => {
+      expect(labelGarbage.deprecatedSinceVersion).to.equal('1.2.3');
+      expect(labelGarbage.packageName).to.equal('My Test Package');
+    });
+    const layouts = garbage.deprecatedMembers['Layout'];
+    layouts.components.forEach((layoutGarbage) => {
+      expect(layoutGarbage.deprecatedSinceVersion).to.equal('1.2.4');
+      expect(layoutGarbage.packageName).to.equal('My Test Package');
+    });
+  });
+
+  it('includes all package members on partial garbage filter', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     const garbage = await collector.export({ includeOnly: undefined });
@@ -109,27 +122,49 @@ describe('garbage collector', () => {
       'CustomObject',
       'CustomMetadataRecord',
     ]);
-    expect(Object.keys(garbage.ignoredTypes)).deep.equal(['ListView']);
-    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.unsupported.length).to.equal(2);
+    expect(garbage.unsupported[0]).to.deep.equal({
+      keyPrefix: '00B',
+      entityName: 'ListView',
+      componentCount: 1,
+      reason: listViewIgnoreReason,
+    });
+    expect(garbage.unsupported[1]).to.deep.equal({
+      keyPrefix: '00l',
+      entityName: 'Folder',
+      componentCount: 1,
+      reason: messages.getMessage('infos.not-yet-implemented', ['Folder', '00l', 1]),
+    });
     expect(garbage.deprecatedMembers.CustomField.componentCount).to.equal(3);
     expect(garbage.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(7);
     expect(garbage.deprecatedMembers.CustomObject.componentCount).to.equal(2);
     expect(garbage.deprecatedMembers.ExternalString.componentCount).to.equal(2);
     expect(garbage.deprecatedMembers.FlowDefinition.componentCount).to.equal(8);
-    expect(garbage.deprecatedMembers.Layout.componentCount).to.equal(0);
-    expect(garbage.totalDeprecatedComponentCount).to.equal(22);
+    expect(garbage.deprecatedMembers.Layout.componentCount).to.equal(2);
+    expect(garbage.totalDeprecatedComponentCount).to.equal(24);
   });
 
   it('has unsupported metadata type in include filter > includes with not-supported reason', async () => {
+    // Arrange
+    // mocking correct query results is critical - the implementation does not
+    // double-check results from the API and always assums, that database queries are correct
+    apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/label-and-list-view.json');
+    apiMocks.FILTERED_ENTITY_DEFINITIONS = parseMockResult<EntityDefinition>('label-listview-entity-definitions.json');
+
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     const garbage = await collector.export({ includeOnly: ['ExternalString', 'ListView'] });
 
     // Assert
-    expect(Object.keys(garbage.ignoredTypes)).contain('ListView');
-    const expectedReason = messages.getMessage('infos.not-fully-supported-by-tooling-api');
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
+    expect(garbage.unsupported).to.deep.equal([
+      {
+        entityName: 'ListView',
+        keyPrefix: '00B',
+        reason: listViewIgnoreReason,
+        componentCount: 1,
+      },
+    ]);
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString']);
   });
 
   it('package members have custom field > resolves only undeleted custom field components', async () => {
@@ -242,7 +277,7 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    expect(garbage.unsupported).to.deep.equal([], 'all types implemented');
     const wfAlerts = garbage.deprecatedMembers['WorkflowAlert'];
     expect(wfAlerts).to.not.be.undefined;
     expect(wfAlerts.metadataType).to.equal('WorkflowAlert');
@@ -263,7 +298,7 @@ describe('garbage collector', () => {
     const garbage = await collector.export();
 
     // Assert
-    expect(garbage.notImplementedTypes).to.deep.equal([], 'all types implemented');
+    expect(garbage.unsupported).to.deep.equal([], 'all types implemented');
     const wfUpdate = garbage.deprecatedMembers['WorkflowFieldUpdate'];
     expect(wfUpdate).to.not.be.undefined;
     expect(wfUpdate.metadataType).to.equal('WorkflowFieldUpdate');
@@ -273,86 +308,56 @@ describe('garbage collector', () => {
     expect(depComponents[0].fullyQualifiedName).to.equal('Account.My_Test_Field_Update');
   });
 
-  it('filters metadata present in package members > only includes requested metadata', async () => {
+  it('emits events with details when resolving with metadata type filter', async () => {
     // Arrange
     const resolveListener = $$.SANDBOX.stub();
 
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
     collector.addListener('resolveMemberStatus', resolveListener);
-    const garbage = await collector.export({ includeOnly: ['CustomObject', 'CustomField'] });
+    // the default filtered entities are mocked in apiMocks.FILTERED_ENTITY_DEFINITIONS
+    await collector.export({ includeOnly: ['ExternalString', 'CompanyData__mdt', 'Layout'] });
 
     // Assert
-    // custom fields contain 4 members, including 1 deleted field.
-    // this resolves to 3 fields only
     expect(resolveListener.callCount).to.equal(4);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(resolveListener.args.flat()[0].message).to.contain('CustomObject,CustomField');
-    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 4 CustomFields (00N)' });
-    expect(resolveListener.args.flat()[2]).to.deep.contain({
-      message: 'Package members resolved to 3 actual CustomField(s).',
+    expect(resolveListener.args.flat()[0].message).to.contain('ExternalString,CompanyData__mdt,Layout');
+    expect(resolveListener.args.flat()[1]).to.deep.contain({ message: 'Resolving 2 ExternalStrings (101)' });
+    expect(resolveListener.args.flat()[2]).to.deep.contain({ message: 'Resolving 2 Layouts (00h)' });
+    expect(resolveListener.args.flat()[3]).to.deep.contain({
+      message: 'Resolving 7 CompanyData__mdt (m00) as CustomMetadata records.',
     });
-    expect(resolveListener.args.flat()[3]).to.deep.contain({ message: 'Resolving 2 CustomObjects (01I)' });
-    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['CustomField', 'CustomObject']);
-    expect(Object.keys(garbage.ignoredTypes)).to.deep.equal([
-      'ExternalString',
-      'FlowDefinition',
-      'ListView',
-      'Layout',
-      'Folder',
-      'CompanyData__mdt',
-    ]);
-    const expectedReason = messages.getMessage('infos.excluded-from-result-not-in-filter');
-    expect(garbage.ignoredTypes['ExternalString'].reason).to.equal(expectedReason);
-    expect(garbage.ignoredTypes['ListView'].reason).to.equal(expectedReason);
-    expect(garbage.ignoredTypes['CompanyData__mdt'].reason).to.equal(expectedReason);
   });
 
   it('filters metadata types with case-sensitive input > all matches are case-insensitive', async () => {
     // Act
     const collector = new GarbageCollector(await testOrg.getConnection());
-    const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'CuStOmFIELD'] });
+    const garbage = await collector.export({ includeOnly: ['EXTERNALstring', 'lAyOUT', 'CompanyDATA__mdt'] });
 
     // Assert
-    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'CustomField']);
-  });
-
-  it('filters for packages > relevant queries include package ids', async () => {
-    // Act
-    const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
-    const result = await collector.export({ packages: ['0Ho6f000000TN1eCAG'] });
-
-    // Assert
-    // packages are filtered - first query must be to Package2
-    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho6f000000TN1eCAG')");
-    // SubscriberPackageId' can not be filtered in a query call, therefore we must filter manually
-    expect(fetchRecordsStub.args.flat()[1]).to.contain(
-      "FROM Package2Member WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')"
-    );
-    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
-    expect(result.deprecatedMembers.ExternalString.componentCount).to.equal(1);
-    expect(result.deprecatedMembers.CustomMetadataRecord.components.length).to.equal(1);
-    expect(result.deprecatedMembers.CustomMetadataRecord.componentCount).to.equal(1);
-    expect(result.ignoredTypes.ListView.componentCount).to.equal(1);
+    expect(Object.keys(garbage.deprecatedMembers)).to.deep.equal(['ExternalString', 'Layout', 'CustomMetadataRecord']);
   });
 
   it('filters for packages > all package members belong to other packages', async () => {
-    // Arrange
-    // package members are to subscriber id 0330X0000000000AAA
-    // expect flows, where first flow is 0330X0000000000AAA, second flow is 033000000000001AAA
-    apiMocks.PACKAGE_2.records[0].SubscriberPackageId = '033000000000001AAA';
-
     // Act
+    // most package members are to subscriber id 0330X0000000000AAA
+    // except flows, where first flow is 0330X0000000000AAA, second flow is 0330X0000000001AAA
     const collector = new GarbageCollector(await testOrg.getConnection(), await devhubOrg.getConnection());
-    const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+    // resolves subscriber package id from apiMocks.PACKAGE_2 (0330X0000000000AAA)
+    const result = await collector.export({ packages: ['0Ho000000000000AAA'] });
 
     // Assert
-    // packages are filtered - first query must be to Package2
-    expect(fetchRecordsStub.args.flat()[0]).to.contain("FROM Package2 WHERE Id IN ('0Ho000000000001AAA')");
-    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(0);
-    expect(result.deprecatedMembers.CustomField.components.length).to.equal(0);
-    expect(result.deprecatedMembers.CustomObject.components.length).to.equal(0);
-    expect(result.deprecatedMembers.Layout.components.length).to.equal(0);
-    expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(3);
+    expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
+    expect(result.deprecatedMembers.CustomField.components.length).to.equal(3);
+    expect(result.deprecatedMembers.CustomObject.components.length).to.equal(2);
+    expect(result.deprecatedMembers.Layout.components.length).to.equal(2);
+    expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(5);
   });
 });
+
+const listViewIgnoreReason = messages.getMessage('infos.not-fully-supported-by-tooling-api', [
+  'ListView',
+  '00B',
+  messages.getMessage('deprecated-list-views-not-accessible'),
+  1,
+]);
