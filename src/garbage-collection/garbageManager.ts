@@ -2,7 +2,7 @@
 import EventEmitter from 'node:events';
 import { Connection, Messages } from '@salesforce/core';
 import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
-import { loadSupportedMetadataTypes, loadUnsupportedMetadataTypes } from './entity-handlers/index.js';
+import { loadSupportedMetadataTypes } from './entity-handlers/index.js';
 import { PackageGarbageContainer, PackageGarbageResult, UnsupportedGarbageContainer } from './packageGarbageTypes.js';
 import ToolingApiConnection from './toolingApiConnection.js';
 
@@ -13,15 +13,22 @@ export default class GarbageManager extends EventEmitter {
   public deprecatedMembers: { [x: string]: PackageGarbageContainer };
   public unsupported: UnsupportedGarbageContainer[];
   private readonly supportedTypes;
-  private readonly unsupportedTypes;
   private readonly toolingApiCache: ToolingApiConnection;
+
+  /**
+   * All unsupported types can be added here. State an explicit reason
+   * why this metadata can't be processed by garbage collection.
+   */
+  private readonly unsupportedTypes: { [x: string]: string } = {
+    ListView: messages.getMessage('deprecated-list-views-not-accessible'),
+    RecordType: messages.getMessage('record-types-cannot-be-deleted'),
+  };
 
   public constructor(private readonly targetOrgConnection: Connection) {
     super();
     this.deprecatedMembers = {};
     this.unsupported = [];
     this.supportedTypes = loadSupportedMetadataTypes(this.targetOrgConnection);
-    this.unsupportedTypes = loadUnsupportedMetadataTypes();
     this.toolingApiCache = ToolingApiConnection.getInstance(this.targetOrgConnection);
   }
 
@@ -105,7 +112,12 @@ export default class GarbageManager extends EventEmitter {
     const entityName = entity?.QualifiedApiName;
     let reason;
     if (entityName && this.unsupportedTypes[entityName]) {
-      reason = messages.getMessage('infos.not-fully-supported-by-tooling-api', [entityName, keyPrefix, members.length]);
+      reason = messages.getMessage('infos.not-fully-supported-by-tooling-api', [
+        entityName,
+        keyPrefix,
+        this.unsupportedTypes[entityName],
+        members.length,
+      ]);
     } else if (entityName) {
       reason = messages.getMessage('infos.not-yet-implemented', [entityName, keyPrefix, members.length]);
     } else {

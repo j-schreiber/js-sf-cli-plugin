@@ -9,10 +9,7 @@ import {
   ALL_DEPRECATED_PACKAGE_MEMBERS,
 } from '../../src/garbage-collection/queries.js';
 import { EntityDefinition, Package2Member } from '../../src/types/sfToolingApiTypes.js';
-import {
-  loadSupportedMetadataTypes,
-  loadUnsupportedMetadataTypes,
-} from '../../src/garbage-collection/entity-handlers/index.js';
+import { loadSupportedMetadataTypes } from '../../src/garbage-collection/entity-handlers/index.js';
 import GarbageCollectionMocks, { parseMockResult } from '../mock-utils/garbageCollectionMocks.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -44,7 +41,6 @@ describe('garbage collector', () => {
   it('registry loads all supported and unsupported handlers', async () => {
     // Act
     const supportedTypes = loadSupportedMetadataTypes(await testOrg.getConnection());
-    const unsupportedTypes = loadUnsupportedMetadataTypes();
 
     // Assert
     expect(supportedTypes['ExternalString']).to.not.be.undefined;
@@ -52,7 +48,6 @@ describe('garbage collector', () => {
     expect(supportedTypes['CustomField']).to.not.be.undefined;
     expect(supportedTypes['CustomMetadataRecord']).to.not.be.undefined;
     expect(supportedTypes['CustomTab']).to.not.be.undefined;
-    expect(unsupportedTypes['ListView']).to.not.be.undefined;
   });
 
   it('has all queries initialised', async () => {
@@ -132,7 +127,7 @@ describe('garbage collector', () => {
       keyPrefix: '00B',
       entityName: 'ListView',
       componentCount: 1,
-      reason: messages.getMessage('infos.not-fully-supported-by-tooling-api', ['ListView', '00B', 1]),
+      reason: listViewIgnoreReason,
     });
     expect(garbage.unsupported[1]).to.deep.equal({
       keyPrefix: '00l',
@@ -165,7 +160,7 @@ describe('garbage collector', () => {
       {
         entityName: 'ListView',
         keyPrefix: '00B',
-        reason: messages.getMessage('infos.not-fully-supported-by-tooling-api', ['ListView', '00B', 1]),
+        reason: listViewIgnoreReason,
         componentCount: 1,
       },
     ]);
@@ -359,3 +354,10 @@ describe('garbage collector', () => {
     expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(5);
   });
 });
+
+const listViewIgnoreReason = messages.getMessage('infos.not-fully-supported-by-tooling-api', [
+  'ListView',
+  '00B',
+  messages.getMessage('deprecated-list-views-not-accessible'),
+  1,
+]);

@@ -4,7 +4,7 @@ Excluded from result because metadata type filter was active and this type was n
 
 # infos.not-fully-supported-by-tooling-api
 
-Entity %s (%s) is not fully supported by Tooling API. %s members are ignored.
+Entity %s (%s) is not fully supported by Tooling API: %s. %s members are ignored.
 
 # infos.not-yet-implemented
 
@@ -41,3 +41,11 @@ Packages filter specified, but no Devhub was provided.
 # provide-valid-devhub-with-filter
 
 Provide a valid DevHub, when you specify a packages filter.
+
+# record-types-cannot-be-deleted
+
+Record types cannot be deleted via metadata API.
+
+# deprecated-list-views-not-accessible
+
+List views are not accessible via APIs, when member is deprecated.
