@@ -1,30 +1,37 @@
 import { expect } from 'chai';
+import { AnyJson } from '@salesforce/ts-types';
 import { ExecuteService } from '@salesforce/apex-node';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { stubSfCommandUx, stubPrompter } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import JscApexScheduleStop from '../../../../src/commands/jsc/apex/schedule/stop.js';
 import JscApexScheduleExport from '../../../../src/commands/jsc/apex/schedule/export.js';
-import AnonymousApexMocks from '../../../mock-utils/anonApexMocks.js';
-import QueryRunner from '../../../../src/common/utils/queryRunner.js';
+import ApexSchedulerMocks from '../../../mock-utils/apexSchedulerMocks.js';
 
 describe('jsc apex schedule', () => {
   const $$ = new TestContext();
   let testOrg = new MockTestOrgData();
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let promptStub: ReturnType<typeof stubPrompter>;
-  let anonApexMocks: AnonymousApexMocks;
+  let anonApexMocks: ApexSchedulerMocks;
 
   beforeEach(async () => {
     testOrg = new MockTestOrgData();
     sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     promptStub = stubPrompter($$.SANDBOX);
-    anonApexMocks = new AnonymousApexMocks();
-    $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords').callsFake(anonApexMocks.queryStub);
-    await $$.stubAuths(testOrg);
+    anonApexMocks = new ApexSchedulerMocks();
+    $$.fakeConnectionRequest = mockQueryResults;
   });
 
-  it('executes stop script with id on target org when called with valid cron trigger id', async () => {
+  afterEach(async () => {
+    process.removeAllListeners();
+  });
+
+  function mockQueryResults(request: AnyJson): Promise<AnyJson> {
+    return anonApexMocks.mockQueryResults(request);
+  }
+
+  it('stops scheduled job filtered by cron trigger id', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
       anonApexMocks.SCHEDULE_STOP_SUCCESS
@@ -51,6 +58,26 @@ describe('jsc apex schedule', () => {
     expect(result[0].status).to.equal('STOPPED');
     expect(sfCommandStubs.logSuccess.args.flat()).to.deep.equal(['Successfully stopped 1 jobs.']);
     expect(promptStub.confirm.callCount).to.equal(0);
+  });
+
+  it('stops no scheduled jobs when called with unknown cron trigger id', async () => {
+    // Arrange
+    const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
+      anonApexMocks.SCHEDULE_STOP_SUCCESS
+    );
+
+    // Act
+    const result = await JscApexScheduleStop.run([
+      '--target-org',
+      testOrg.username,
+      '--id',
+      '08e000000000000AAA',
+      '--no-prompt',
+    ]);
+
+    // Assert
+    expect(executeServiceStub.callCount).to.equal(0);
+    expect(result.length).to.equal(0);
   });
 
   it('stops all scheduled jobs when called without parameters', async () => {

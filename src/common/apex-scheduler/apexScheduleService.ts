@@ -24,9 +24,9 @@ Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'apexscheduler');
 
 export default class ApexScheduleService extends EventEmitter {
-  private runner: QueryRunner;
+  private readonly runner: QueryRunner;
 
-  public constructor(private targetOrgCon: Connection) {
+  public constructor(private readonly targetOrgCon: Connection) {
     super();
     this.runner = new QueryRunner(targetOrgCon);
   }
@@ -50,7 +50,8 @@ export default class ApexScheduleService extends EventEmitter {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public async findJobs(filter: ScheduledJobSearchOptions): Promise<AsyncApexJobFlat[]> {
+  public async findJobs(filterCriteria: ScheduledJobSearchOptions): Promise<AsyncApexJobFlat[]> {
+    const filter = new ScheduledJobFilter(filterCriteria);
     const jobs = await this.runner.fetchRecords<AsyncApexJob>(
       `${CRON_TRIGGER_SOQL_TEMPLATE} WHERE JobType = 'ScheduledApex' AND Status = 'Queued'`
     );
@@ -66,13 +67,7 @@ export default class ApexScheduleService extends EventEmitter {
         TimesTriggered: job.CronTrigger.TimesTriggered,
         CronExpression: job.CronTrigger.CronExpression,
       };
-      if (!filter.ids && !filter.apexClassName && !filter.jobName) {
-        jobsOutput.push(output);
-      } else if (filter.ids && filter.ids.includes(job.CronTriggerId)) {
-        jobsOutput.push(output);
-      } else if (filter.apexClassName === output.ApexClassName) {
-        jobsOutput.push(output);
-      } else if (filter.jobName === output.CronJobDetailName) {
+      if (filter.satisfiesCriteria(output)) {
         jobsOutput.push(output);
       }
     });
@@ -112,3 +107,36 @@ export type ScheduledJobSearchOptions = {
   apexClassName?: string;
   ids?: string[];
 };
+
+class ScheduledJobFilter {
+  public constructor(private readonly criteria: ScheduledJobSearchOptions) {}
+
+  public satisfiesCriteria(job: AsyncApexJobFlat): boolean {
+    return (
+      this.matchesClassNameFilter(job.ApexClassName) &&
+      this.matchesJobName(job.CronJobDetailName) &&
+      this.matchesIdFilter(job.CronTriggerId)
+    );
+  }
+
+  private matchesClassNameFilter(apexClassName: string): boolean {
+    if (this.criteria.apexClassName) {
+      return this.criteria.apexClassName === apexClassName;
+    }
+    return true;
+  }
+
+  private matchesJobName(jobName: string): boolean {
+    if (this.criteria.jobName) {
+      return jobName.startsWith(this.criteria.jobName);
+    }
+    return true;
+  }
+
+  private matchesIdFilter(cronTriggerId: string): boolean {
+    if (this.criteria.ids) {
+      return this.criteria.ids.includes(cronTriggerId);
+    }
+    return true;
+  }
+}
