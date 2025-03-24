@@ -12,7 +12,7 @@ const ZUnlockedPackage = z.object({
   package_id: z.string(),
   installation_key: z.string().optional(),
   skip_if_installed: z.boolean().optional(),
-  version: z.string().regex(/^([0-9]+\.[0-9]+\.[0-9]+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
+  version: z.string().regex(/^(\d+\.\d+\.\d+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
 });
 
 const ZUnpackagedSource = z.object({
