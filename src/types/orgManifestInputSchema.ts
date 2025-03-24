@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { ArtifactTypes } from './orgManifestGlobalConstants.js';
+import { ScheduledJobConfig } from './scheduledApexTypes.js';
 
 /** All schema are YAML input - therefore snake_case */
 
@@ -20,7 +21,7 @@ const ZUnpackagedSource = z.object({
   path: z.string().or(z.record(z.string())),
 });
 
-const ZCronJob = z.object({
+const ZCronJob = ScheduledJobConfig.extend({
   type: z.literal(ArtifactTypes.Enum.CronJob),
 });
 

@@ -1,3 +1,6 @@
+/* eslint-disable camelcase */
+import { z } from 'zod';
+
 export type AsyncApexJob = {
   Id: string;
   CronTriggerId: string;
@@ -32,3 +35,21 @@ export type CronJobDetail = {
 export type ApexClass = {
   Name: string;
 };
+
+const ScheduledJobConfigOptions = z
+  .object({
+    restart_all_jobs: z.boolean().default(false),
+    stop_other_jobs: z.boolean().default(false),
+  })
+  .default({});
+
+const SingleScheduledJobConfig = z.object({ class: z.string().optional(), expression: z.string() });
+
+export const ScheduledJobConfig = z
+  .object({
+    options: ScheduledJobConfigOptions,
+    jobs: z.record(SingleScheduledJobConfig),
+  })
+  .strict();
+
+export type ScheduledJobConfigType = z.infer<typeof ScheduledJobConfig>;

@@ -61,6 +61,7 @@
           },
           "Name": "Disable Inactive Users"
         },
+        "CronExpression": "0 12 15 ? * * *",
         "State": "WAITING",
         "StartTime": "2023-01-24T14:10:44.000+0000",
         "NextFireTime": "2025-02-02T14:12:00.000+0000",
@@ -94,6 +95,7 @@
           },
           "Name": "Delete old Asset States"
         },
+        "CronExpression": "0 0 1 ? * * *",
         "State": "WAITING",
         "StartTime": "2023-09-28T06:35:30.000+0000",
         "NextFireTime": "2025-02-02T01:00:00.000+0000",
@@ -112,7 +114,7 @@
           "type": "ApexClass",
           "url": "/services/data/v63.0/sobjects/ApexClass/01p9Q000006GSOKQA4"
         },
-        "Name": "LicensingStatusRecalculationBatch"
+        "Name": "LicensingStatusRecalculation"
       },
       "CronTriggerId": "08e9Q00000G1e5lQAB",
       "CronTrigger": {
@@ -125,8 +127,9 @@
             "type": "CronJobDetail",
             "url": "/services/data/v63.0/sobjects/CronJobDetail/08a9Q00000G1sjpQAB"
           },
-          "Name": "Asset Licensing Status Recalculation"
+          "Name": "Asset Licensing Status"
         },
+        "CronExpression": "0 0 1 ? * * *",
         "State": "WAITING",
         "StartTime": "2024-07-23T11:56:08.000+0000",
         "NextFireTime": "2025-02-02T03:00:00.000+0000",
@@ -160,6 +163,7 @@
           },
           "Name": "Auto Case Reminder"
         },
+        "CronExpression": "0 0 1 ? * * *",
         "State": "WAITING",
         "StartTime": "2024-08-14T05:14:54.000+0000",
         "NextFireTime": "2025-02-03T08:00:00.000+0000",

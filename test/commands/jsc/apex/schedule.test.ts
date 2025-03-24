@@ -127,7 +127,7 @@ describe('jsc apex schedule', () => {
       '--target-org',
       testOrg.username,
       '--apex-class-name',
-      'LicensingStatusRecalculationBatch',
+      'LicensingStatusRecalculation',
       '--no-prompt',
     ]);
 

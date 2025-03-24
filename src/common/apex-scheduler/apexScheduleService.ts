@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { ExecuteAnonymousResponse } from '@salesforce/apex-node';
 import { Connection, Messages } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
-import { AsyncApexJob, AsyncApexJobFlat } from '../../types/scheduledApexTypes.js';
+import { AsyncApexJob, AsyncApexJobFlat, ScheduledJobConfigType } from '../../types/scheduledApexTypes.js';
 import QueryRunner from '../utils/queryRunner.js';
 import StopSingleJobTask, { StopScheduledApexResult } from './stopSingleJobTask.js';
 import ScheduleSingleJobTask, { ApexScheduleOptions, ScheduleApexResult } from './scheduleSingleJobTask.js';
@@ -31,6 +31,13 @@ export default class ApexScheduleService extends EventEmitter {
     this.runner = new QueryRunner(targetOrgCon);
   }
 
+  /**
+   * Starts an scheduled job on the target org with apex class name
+   * and cron expression.
+   *
+   * @param inputs
+   * @returns
+   */
   public async scheduleJob(inputs: ApexScheduleOptions): Promise<ScheduleApexResult> {
     const handler = new ScheduleSingleJobTask(this.targetOrgCon);
     handler.on('apexExecution', (result: ExecuteAnonymousResponse) => this.emitEvents(result));
@@ -38,6 +45,12 @@ export default class ApexScheduleService extends EventEmitter {
     return startResult;
   }
 
+  /**
+   * Stops a one or more scheduled jobs by their CronTriggerId.
+   *
+   * @param jobIds
+   * @returns
+   */
   public async stopJobs(jobIds: string[]): Promise<StopScheduledApexResult[]> {
     const handler = new StopSingleJobTask(this.targetOrgCon);
     handler.on('apexExecution', (result: ExecuteAnonymousResponse) => this.emitEvents(result));
@@ -49,7 +62,13 @@ export default class ApexScheduleService extends EventEmitter {
     return stoppedJobs;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /**
+   * Exports running scheduled jobs, filtered by cron trigger id, apex class or
+   * (partial) job detail name.
+   *
+   * @param filterCriteria
+   * @returns
+   */
   public async findJobs(filterCriteria: ScheduledJobSearchOptions): Promise<AsyncApexJobFlat[]> {
     const filter = new ScheduledJobFilter(filterCriteria);
     const jobs = await this.runner.fetchRecords<AsyncApexJob>(
@@ -74,6 +93,32 @@ export default class ApexScheduleService extends EventEmitter {
     return jobsOutput;
   }
 
+  /**
+   * Reads a jobs config (parsed from config file or org manifest)
+   * and identifies which jobs to start or stop.
+   *
+   * @param jobsConfig
+   * @returns
+   */
+  public async manageJobs(jobsConfig: ScheduledJobConfigType): Promise<ManageJobsResult> {
+    const runningJobs = await this.findJobs({});
+    const jobsToStart = filterJobsToStart(jobsConfig, runningJobs);
+    const startResults = new Array<ScheduleApexResult>();
+    if (jobsToStart.length > 0) {
+      startResults.push(...(await this.startAllJobs(jobsToStart)));
+    }
+    const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
+    if (jobsToStop.length > 0) {
+      await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
+    }
+    const untouched = runningJobs.filter(
+      (runningJob) => !jobsToStop.find((toStop) => toStop.CronTriggerId === runningJob.CronTriggerId)
+    );
+    return { started: startResults, stopped: jobsToStop, untouched };
+  }
+
+  //    PRIVATE ZONE
+
   private emitEvents(result: ExecuteAnonymousResponse): void {
     this.emit('logOutput', {
       message: result.logs,
@@ -86,6 +131,69 @@ export default class ApexScheduleService extends EventEmitter {
       } as CommandStatusEvent);
     }
   }
+
+  private async startAllJobs(jobInputs: ApexScheduleOptions[]): Promise<ScheduleApexResult[]> {
+    const schedulePromises = new Array<Promise<ScheduleApexResult>>();
+    jobInputs.forEach((startJob) => schedulePromises.push(this.scheduleJob(startJob)));
+    const startResults = await Promise.all(schedulePromises);
+    return startResults;
+  }
+}
+
+function buildJobStartInputs(jobsConfig: ScheduledJobConfigType): ApexScheduleOptions[] {
+  const result = new Array<ApexScheduleOptions>();
+  for (const [jobName, jobDefinition] of Object.entries(jobsConfig.jobs)) {
+    result.push({
+      apexClassName: jobDefinition.class ?? jobName,
+      cronExpression: jobDefinition.expression,
+      jobName,
+    });
+  }
+  return result;
+}
+
+function filterJobsToStart(jobsConfig: ScheduledJobConfigType, runningJobs: AsyncApexJobFlat[]): ApexScheduleOptions[] {
+  const initialOpts = buildJobStartInputs(jobsConfig);
+  return initialOpts.filter(
+    (startConfig) => !runningJobs.find((runningJob) => scheduleConfigMatchesExisting(startConfig, runningJob))
+  );
+}
+
+function filterJobsToStop(jobsConfig: ScheduledJobConfigType, runningJobs: AsyncApexJobFlat[]): AsyncApexJobFlat[] {
+  const initialOpts = buildJobStartInputs(jobsConfig);
+  const jobsToStop = new Array<AsyncApexJobFlat>();
+  if (jobsConfig.options.stop_other_jobs) {
+    runningJobs.forEach((job) => {
+      const matchingNewConfig = initialOpts.find((startConfig) => scheduleConfigMatchesExisting(startConfig, job));
+      if (matchingNewConfig === undefined) {
+        jobsToStop.push(job);
+      }
+    });
+  } else {
+    runningJobs.forEach((job) => {
+      const conflictingConfig = initialOpts.find((startConfig) => scheduleConfigMatchesPartial(startConfig, job));
+      if (conflictingConfig) {
+        jobsToStop.push(job);
+      }
+    });
+  }
+  return jobsToStop;
+}
+
+function scheduleConfigMatchesExisting(config: ApexScheduleOptions, existingJob: AsyncApexJobFlat): boolean {
+  return (
+    config.apexClassName === existingJob.ApexClassName &&
+    config.jobName === existingJob.CronJobDetailName &&
+    config.cronExpression === existingJob.CronExpression
+  );
+}
+
+function scheduleConfigMatchesPartial(config: ApexScheduleOptions, existingJob: AsyncApexJobFlat): boolean {
+  return (
+    config.apexClassName === existingJob.ApexClassName &&
+    config.jobName === existingJob.CronJobDetailName &&
+    config.cronExpression !== existingJob.CronExpression
+  );
 }
 
 export function assertCompileSuccess(result: ExecuteAnonymousResponse): void {
@@ -106,6 +214,12 @@ export type ScheduledJobSearchOptions = {
   jobName?: string;
   apexClassName?: string;
   ids?: string[];
+};
+
+export type ManageJobsResult = {
+  started: ScheduleApexResult[];
+  stopped: AsyncApexJobFlat[];
+  untouched: AsyncApexJobFlat[];
 };
 
 class ScheduledJobFilter {

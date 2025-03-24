@@ -31,6 +31,7 @@ import { eventBus } from '../../src/common/comms/eventBus.js';
 import OclifUtils from '../../src/common/utils/wrapChildprocess.js';
 import { DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 import { ProcessingStatus } from '../../src/common/comms/processingEvents.js';
+import { ScheduledJobConfigType } from '../../src/types/scheduledApexTypes.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -109,6 +110,21 @@ describe('org manifest', () => {
       expect(orgManifest.getEnvironmentName('admin@example.com.qa')).to.be.undefined;
       const artifactsMap = new Map(Object.entries(orgManifest.data.artifacts));
       expect(Array.from(artifactsMap.keys())).to.deep.equal(['basic_happy_soup']);
+    });
+
+    it('loads manifest with valid cron jobs artifact', () => {
+      // Act
+      const orgManifest = ReleaseManifestLoader.load('test/data/manifests/cron-job-manifest.yaml');
+
+      // Assert
+      expect(Object.keys(orgManifest.data.artifacts)).to.deep.equal(['scheduled_jobs']);
+      const jobsConfig = orgManifest.data.artifacts.scheduled_jobs as ScheduledJobConfigType;
+      expect(jobsConfig.options).to.deep.equal({ restart_all_jobs: false, stop_other_jobs: false });
+      expect(jobsConfig.jobs).to.deep.equal({
+        'Test Job 1': { class: 'TestJob', expression: '0 0 0 1 * * *' },
+        'Test Job 2': { class: 'TestSchedulable2', expression: '0 0 1 ? * * *' },
+        'Test Job 3': { class: 'TestSchedulable2', expression: '0 0 2 ? * * *' },
+      });
     });
 
     it('loads manifest with simple path-directory does not exist > throws error', () => {

@@ -1,0 +1,18 @@
+options:
+  restartAllJobs: false
+  stopOtherJobs: true
+jobs:
+  'Name of my job':
+    class: MyClass1
+    expression: '0 0 0 1 ...'
+  'My job 2':
+    class: MyClass1
+    expression: '0 0 0 2 ...'
+  Yet another job:
+    class: AnotherSchedulableClass
+    expression: '0 0 0 2 ...'
+  or_name_job_like_this:
+    class: ClassName
+    expression: '...'
+  AnotherSchedulableClass:
+    expression: '...'
