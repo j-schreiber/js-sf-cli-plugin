@@ -1,15 +1,25 @@
 import path from 'node:path';
-import { expect } from 'chai';
+import { assert, expect } from 'chai';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscApexScheduleStartResult } from '../../../../src/commands/jsc/apex/schedule/start.js';
 import { JscApexScheduleStopResult } from '../../../../src/commands/jsc/apex/schedule/stop.js';
 import { AsyncApexJobFlat } from '../../../../src/types/scheduledApexTypes.js';
+import { ManageJobsResult } from '../../../../src/common/apex-scheduler/apexScheduleService.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
 
 describe('jsc apex schedule NUTs', () => {
   let session: TestSession;
+
+  const expectedJobsFromConfig = [
+    { apexClassName: 'TestJob', jobName: 'Name of my job', cronExpression: '0 0 1 * * ?' },
+    { apexClassName: 'TestJob', jobName: 'My job 2', cronExpression: '0 0 2 * * ?' },
+    { apexClassName: 'TestSchedulable2', jobName: 'Yet another job', cronExpression: '0 0 1 * * ?' },
+    { apexClassName: 'TestSchedulable2', jobName: 'or_name_job_like_this', cronExpression: '0 0 1 * * ?' },
+    { apexClassName: 'TestSchedulable3', jobName: 'TestSchedulable3', cronExpression: '0 0 1 * * ?' },
+  ];
+
   before(async () => {
     session = await TestSession.create({
       project: {
@@ -93,10 +103,103 @@ describe('jsc apex schedule NUTs', () => {
     ).jsonOutput?.result;
 
     // Assert
-    expect(stopResult).to.not.be.undefined;
-    expect(stopResult?.length).to.equal(1);
-    expect(stopResult![0].jobId).to.equal(startResult?.jobId);
-    expect(exportResult).to.not.be.undefined;
-    expect(exportResult?.length).to.equal(0, 'jobs exported after stop');
+    assert.isDefined(stopResult);
+    assert.isDefined(exportResult);
+    expect(stopResult.length).to.equal(1);
+    expect(stopResult[0].jobId).to.equal(startResult?.jobId);
+    expect(exportResult.length).to.equal(0, 'jobs exported after stop');
+  });
+
+  it('starts all jobs from a valid config', () => {
+    // Act
+    const manageResult = execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Assert
+    assert.isDefined(manageResult);
+    expect(manageResult.started.length).to.equal(5);
+    const startedJobs = extractTestablePropsFromStarted(manageResult);
+    expect(startedJobs).to.have.deep.members(expectedJobsFromConfig);
+    expect(manageResult.stopped).to.deep.equal([]);
+    expect(manageResult.untouched).to.deep.equal([]);
+  });
+
+  it('stops all jobs with a config that specifies no jobs and is stop_other_jobs true', () => {
+    // Arrange
+    execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    );
+
+    // Act
+    const manageResult = execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/empty-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Assert
+    assert.isDefined(manageResult);
+    expect(manageResult.started).to.deep.equal([]);
+    expect(manageResult.stopped.length).to.equal(5);
+    const stoppedJobs = extractTestableProbsFromDetails(manageResult.stopped);
+    expect(stoppedJobs).to.have.deep.members(expectedJobsFromConfig);
+    expect(manageResult.untouched).to.deep.equal([]);
+  });
+
+  it('starts, updates, and stops jobs from a modified config', () => {
+    // Arrange
+    execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    );
+
+    // Act
+    const manageResult = execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/updated-scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Assert
+    assert.isDefined(manageResult);
+    expect(manageResult.started.length).to.equal(3);
+    const startedJobs = extractTestablePropsFromStarted(manageResult);
+    expect(startedJobs).to.have.deep.members([
+      { apexClassName: 'TestSchedulable2', jobName: 'or_name_job_like_this', cronExpression: '0 0 2 * * ?' },
+      { apexClassName: 'TestSchedulable3', jobName: 'TestSchedulable3', cronExpression: '0 0 2 * * ?' },
+      { apexClassName: 'TestJob', jobName: 'TestJob', cronExpression: '0 0 3 * * ?' },
+    ]);
+    const stoppedJobs = extractTestableProbsFromDetails(manageResult.stopped);
+    expect(stoppedJobs).to.have.deep.members([
+      { apexClassName: 'TestSchedulable2', jobName: 'or_name_job_like_this', cronExpression: '0 0 1 * * ?' },
+      { apexClassName: 'TestSchedulable3', jobName: 'TestSchedulable3', cronExpression: '0 0 1 * * ?' },
+    ]);
+    const unchangedJobs = extractTestableProbsFromDetails(manageResult.untouched);
+    expect(unchangedJobs).to.have.deep.members([
+      { apexClassName: 'TestJob', jobName: 'Name of my job', cronExpression: '0 0 1 * * ?' },
+      { apexClassName: 'TestJob', jobName: 'My job 2', cronExpression: '0 0 2 * * ?' },
+      { apexClassName: 'TestSchedulable2', jobName: 'Yet another job', cronExpression: '0 0 1 * * ?' },
+    ]);
   });
 });
+
+function extractTestablePropsFromStarted(
+  result: ManageJobsResult
+): Array<{ apexClassName: string; jobName: string; cronExpression: string }> {
+  return result.started.map(({ apexClassName, jobName, cronExpression }) => ({
+    apexClassName,
+    jobName,
+    cronExpression,
+  }));
+}
+
+function extractTestableProbsFromDetails(
+  jobDetails: AsyncApexJobFlat[]
+): Array<{ apexClassName: string; jobName: string; cronExpression?: string }> {
+  return jobDetails.map(({ ApexClassName, CronJobDetailName, CronExpression }) => ({
+    apexClassName: ApexClassName,
+    jobName: CronJobDetailName,
+    cronExpression: CronExpression,
+  }));
+}

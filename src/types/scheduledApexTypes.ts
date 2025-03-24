@@ -41,6 +41,7 @@ const ScheduledJobConfigOptions = z
     restart_all_jobs: z.boolean().default(false),
     stop_other_jobs: z.boolean().default(false),
   })
+  .strict('Valid options are: restart_all_jobs, stop_other_jobs')
   .default({});
 
 const SingleScheduledJobConfig = z.object({ class: z.string().optional(), expression: z.string() });
@@ -48,7 +49,7 @@ const SingleScheduledJobConfig = z.object({ class: z.string().optional(), expres
 export const ScheduledJobConfig = z
   .object({
     options: ScheduledJobConfigOptions,
-    jobs: z.record(SingleScheduledJobConfig),
+    jobs: z.record(SingleScheduledJobConfig).default({}),
   })
   .strict();
 

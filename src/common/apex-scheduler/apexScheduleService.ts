@@ -102,14 +102,14 @@ export default class ApexScheduleService extends EventEmitter {
    */
   public async manageJobs(jobsConfig: ScheduledJobConfigType): Promise<ManageJobsResult> {
     const runningJobs = await this.findJobs({});
+    const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
+    if (jobsToStop.length > 0) {
+      await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
+    }
     const jobsToStart = filterJobsToStart(jobsConfig, runningJobs);
     const startResults = new Array<ScheduleApexResult>();
     if (jobsToStart.length > 0) {
       startResults.push(...(await this.startAllJobs(jobsToStart)));
-    }
-    const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
-    if (jobsToStop.length > 0) {
-      await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
     }
     const untouched = runningJobs.filter(
       (runningJob) => !jobsToStop.find((toStop) => toStop.CronTriggerId === runningJob.CronTriggerId)

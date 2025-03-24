@@ -356,5 +356,41 @@ describe('apex scheduler', () => {
       expect(result.stopped).to.deep.equal([]);
       expect(result.untouched).to.deep.equal(existingJobs);
     });
+
+    it('stops all running jobs with stop_other_jobs true and empty jobs', async () => {
+      // Arrange
+      $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
+      const scheduler = new ApexScheduleService(await testOrg.getConnection());
+      const existingJobs = await scheduler.findJobs({});
+
+      // Act
+      const result = await scheduler.manageJobs({
+        options: { stop_other_jobs: true, restart_all_jobs: false },
+        jobs: {},
+      });
+
+      // Assert
+      expect(result.started).to.deep.equal([]);
+      expect(result.stopped).to.deep.equal(existingJobs);
+      expect(result.untouched).to.deep.equal([]);
+    });
+
+    it('leaves all running jobs untouched stop_other_jobs false and empty jobs', async () => {
+      // Arrange
+      $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
+      const scheduler = new ApexScheduleService(await testOrg.getConnection());
+      const existingJobs = await scheduler.findJobs({});
+
+      // Act
+      const result = await scheduler.manageJobs({
+        options: { stop_other_jobs: false, restart_all_jobs: false },
+        jobs: {},
+      });
+
+      // Assert
+      expect(result.started).to.deep.equal([]);
+      expect(result.stopped).to.deep.equal([]);
+      expect(result.untouched).to.deep.equal(existingJobs);
+    });
   });
 });
