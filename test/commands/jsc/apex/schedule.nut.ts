@@ -182,6 +182,27 @@ describe('jsc apex schedule NUTs', () => {
       { apexClassName: 'TestSchedulable2', jobName: 'Yet another job', cronExpression: '0 0 1 * * ?' },
     ]);
   });
+
+  it('has all previously started jobs as unchanged, when called with same config subsequently', () => {
+    // Arrange
+    execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    );
+
+    // Act
+    const manageResult = execCmd<ManageJobsResult>(
+      `jsc:apex:schedule:manage --config-file jobs/scheduled-jobs.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 0 }
+    ).jsonOutput?.result;
+
+    // Assert
+    assert.isDefined(manageResult);
+    expect(manageResult.started).to.deep.equal([]);
+    expect(manageResult.stopped).to.deep.equal([]);
+    const unchangedJobs = extractTestableProbsFromDetails(manageResult.untouched);
+    expect(unchangedJobs).to.have.deep.members(expectedJobsFromConfig);
+  });
 });
 
 function extractTestablePropsFromStarted(
