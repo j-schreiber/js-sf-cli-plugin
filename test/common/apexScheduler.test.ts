@@ -375,7 +375,7 @@ describe('apex scheduler', () => {
       expect(result.untouched).to.deep.equal([]);
     });
 
-    it('leaves all running jobs untouched stop_other_jobs false and empty jobs', async () => {
+    it('leaves all running jobs untouched with stop_other_jobs false and empty jobs', async () => {
       // Arrange
       $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_START_SUCCESS);
       const scheduler = new ApexScheduleService(await testOrg.getConnection());
@@ -391,6 +391,18 @@ describe('apex scheduler', () => {
       expect(result.started).to.deep.equal([]);
       expect(result.stopped).to.deep.equal([]);
       expect(result.untouched).to.deep.equal(existingJobs);
+    });
+
+    it('returns a preview but does not execute actions with simulate flag', async () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+
+    it('provides context in error, if it fails with partial success', async () => {
+      // Arrange
+      // Act
+      // Assert
     });
   });
 });

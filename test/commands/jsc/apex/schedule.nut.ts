@@ -207,7 +207,7 @@ describe('jsc apex schedule NUTs', () => {
 
 function extractTestablePropsFromStarted(
   result: ManageJobsResult
-): Array<{ apexClassName: string; jobName: string; cronExpression: string }> {
+): Array<{ apexClassName?: string; jobName?: string; cronExpression?: string }> {
   return result.started.map(({ apexClassName, jobName, cronExpression }) => ({
     apexClassName,
     jobName,

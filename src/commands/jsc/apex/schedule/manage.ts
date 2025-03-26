@@ -27,6 +27,10 @@ export default class JscApexScheduleManage extends SfCommand<ManageJobsResult> {
       summary: messages.getMessage('flags.config-file.summary'),
       description: messages.getMessage('flags.config-file.description'),
     }),
+    'dry-run': Flags.boolean({
+      summary: messages.getMessage('flags.dry-run.summary'),
+      description: messages.getMessage('flags.dry-run.description'),
+    }),
   };
 
   public async run(): Promise<ManageJobsResult> {
@@ -34,23 +38,34 @@ export default class JscApexScheduleManage extends SfCommand<ManageJobsResult> {
     const scheduleService = new ApexScheduleService(flags['target-org'].getConnection('62.0'));
     const yamlContent = yaml.load(fs.readFileSync(flags['config-file'], 'utf8'));
     const jobConfig = ScheduledJobConfig.parse(yamlContent);
-    const result = await scheduleService.manageJobs(jobConfig);
-    this.printStartedJobs(result.started);
-    this.printStoppedJobs(result.stopped);
+    if (flags['dry-run']) {
+      this.info(messages.getMessage('infos.dry-run-mode'));
+      this.info(messages.getMessage('infos.dry-run-cannot-compile'));
+      this.info('\n');
+    }
+    const result = await scheduleService.manageJobs(jobConfig, flags['dry-run']);
+    this.printStartedJobs(result.started, flags['dry-run']);
+    this.printStoppedJobs(result.stopped, flags['dry-run']);
     this.printUntouchedJobs(result.untouched);
     return result;
   }
 
-  private printStartedJobs(startedJobs: ScheduleApexResult[]): void {
+  private printStartedJobs(startedJobs: Array<Partial<ScheduleApexResult>>, dryRun: boolean): void {
+    const title = dryRun
+      ? `${startedJobs.length} Jobs Will Be Started`
+      : `${startedJobs.length} Jobs Successfully Started`;
     if (startedJobs.length > 0) {
       this.table({
         data: startedJobs,
-        title: StandardColors.success(`${startedJobs.length} Jobs Successfully Started`),
+        title: StandardColors.success(title),
       });
     }
   }
 
-  private printStoppedJobs(stoppedJobs: AsyncApexJobFlat[]): void {
+  private printStoppedJobs(stoppedJobs: AsyncApexJobFlat[], dryRun: boolean): void {
+    const title = dryRun
+      ? `${stoppedJobs.length} Jobs Will Be Stopped`
+      : `${stoppedJobs.length} Jobs Successfully Stopped`;
     if (stoppedJobs.length > 0) {
       this.table({
         columns: [
@@ -60,7 +75,7 @@ export default class JscApexScheduleManage extends SfCommand<ManageJobsResult> {
           { key: 'CronExpression' },
         ],
         data: stoppedJobs,
-        title: StandardColors.error(`${stoppedJobs.length} Jobs Successfully Stopped`),
+        title: StandardColors.error(title),
       });
     }
   }

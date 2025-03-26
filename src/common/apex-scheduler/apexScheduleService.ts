@@ -100,16 +100,16 @@ export default class ApexScheduleService extends EventEmitter {
    * @param jobsConfig
    * @returns
    */
-  public async manageJobs(jobsConfig: ScheduledJobConfigType): Promise<ManageJobsResult> {
+  public async manageJobs(jobsConfig: ScheduledJobConfigType, simulateOnly?: boolean): Promise<ManageJobsResult> {
     const runningJobs = await this.findJobs({});
     const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
-    if (jobsToStop.length > 0) {
+    if (jobsToStop.length > 0 && !simulateOnly) {
       await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
     }
     const jobsToStart = filterJobsToStart(jobsConfig, runningJobs);
-    const startResults = new Array<ScheduleApexResult>();
+    const startResults = new Array<Partial<ScheduleApexResult>>();
     if (jobsToStart.length > 0) {
-      startResults.push(...(await this.startAllJobs(jobsToStart)));
+      startResults.push(...(await this.startAllJobs(jobsToStart, simulateOnly)));
     }
     const untouched = runningJobs.filter(
       (runningJob) => !jobsToStop.find((toStop) => toStop.CronTriggerId === runningJob.CronTriggerId)
@@ -132,7 +132,13 @@ export default class ApexScheduleService extends EventEmitter {
     }
   }
 
-  private async startAllJobs(jobInputs: ApexScheduleOptions[]): Promise<ScheduleApexResult[]> {
+  private async startAllJobs(
+    jobInputs: ApexScheduleOptions[],
+    simulateOnly?: boolean
+  ): Promise<Array<Partial<ScheduleApexResult>>> {
+    if (simulateOnly) {
+      return jobInputs;
+    }
     const schedulePromises = new Array<Promise<ScheduleApexResult>>();
     jobInputs.forEach((startJob) => schedulePromises.push(this.scheduleJob(startJob)));
     const startResults = await Promise.all(schedulePromises);
@@ -217,7 +223,7 @@ export type ScheduledJobSearchOptions = {
 };
 
 export type ManageJobsResult = {
-  started: ScheduleApexResult[];
+  started: Array<Partial<ScheduleApexResult>>;
   stopped: AsyncApexJobFlat[];
   untouched: AsyncApexJobFlat[];
 };
