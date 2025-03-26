@@ -14,6 +14,10 @@ Target org to check.
 
 Only list jobs from a specific apex class.
 
+# flags.job-name.summary
+
+Only list jobs with a specific job name. Supports partial matches.
+
 # flags.concise.summary
 
 Minimize columns displayed in output table.
@@ -23,3 +27,7 @@ Minimize columns displayed in output table.
 - Lists all jobs on the target org
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg
+
+- Lists jobs that match apex class and job name
+
+  <%= config.bin %> <%= command.id %> -o MyTargetOrg -c MyScheduledJobClass -n "Scheduled Job Name"

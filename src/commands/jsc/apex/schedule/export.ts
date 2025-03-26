@@ -21,6 +21,10 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
       char: 'c',
       summary: messages.getMessage('flags.apex-class-name.summary'),
     }),
+    'job-name': Flags.string({
+      char: 'j',
+      summary: messages.getMessage('flags.job-name.summary'),
+    }),
     concise: Flags.boolean({
       summary: messages.getMessage('flags.concise.summary'),
     }),
@@ -31,6 +35,7 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
     const scheduleService = new ApexScheduleService(flags['target-org'].getConnection('62.0'));
     const jobs = await scheduleService.findJobs({
       apexClassName: flags['apex-class-name'],
+      jobName: flags['job-name'],
     });
     this.table({
       data: jobs,

@@ -1,0 +1,19 @@
+options:
+  stop_other_jobs: false
+jobs:
+  'Name of my job':
+    class: TestJob
+    expression: '0 0 1 * * ?'
+  'My job 2':
+    class: TestJob
+    expression: '0 0 2 * * ?'
+  Yet another job:
+    class: TestSchedulable2
+    expression: '0 0 1 * * ?'
+  or_name_job_like_this:
+    class: TestSchedulable2
+    expression: '0 0 2 * * ?'
+  TestSchedulable3:
+    expression: '0 0 2 * * ?'
+  TestJob:
+    expression: '0 0 3 * * ?'

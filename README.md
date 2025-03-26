@@ -60,6 +60,7 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 <!-- commands -->
 
 - [`sf jsc apex schedule export`](#sf-jsc-apex-schedule-export)
+- [`sf jsc apex schedule manage`](#sf-jsc-apex-schedule-manage)
 - [`sf jsc apex schedule start`](#sf-jsc-apex-schedule-start)
 - [`sf jsc apex schedule stop`](#sf-jsc-apex-schedule-stop)
 - [`sf jsc data export`](#sf-jsc-data-export)
@@ -73,10 +74,11 @@ List all scheduled jobs on the target org.
 
 ```
 USAGE
-  $ sf jsc apex schedule export -o <value> [--json] [--flags-dir <value>] [-c <value>] [--concise]
+  $ sf jsc apex schedule export -o <value> [--json] [--flags-dir <value>] [-c <value>] [-j <value>] [--concise]
 
 FLAGS
   -c, --apex-class-name=<value>  Only list jobs from a specific apex class.
+  -j, --job-name=<value>         Only list jobs with a specific job name. Supports partial matches.
   -o, --target-org=<value>       (required) Target org to check.
       --concise                  Minimize columns displayed in output table.
 
@@ -93,9 +95,60 @@ EXAMPLES
   Lists all jobs on the target org
 
     $ sf jsc apex schedule export -o MyTargetOrg
+
+  Lists jobs that match apex class and job name
+
+    $ sf jsc apex schedule export -o MyTargetOrg -c MyScheduledJobClass -n "Scheduled Job Name"
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/apex/schedule/export.ts)_
+
+## `sf jsc apex schedule manage`
+
+Manages all cron jobs on a target org from config file.
+
+```
+USAGE
+  $ sf jsc apex schedule manage -o <value> -f <value> [--json] [--flags-dir <value>] [--dry-run]
+
+FLAGS
+  -f, --config-file=<value>  (required) Path to a valid config file that configures scheduled jobs.
+  -o, --target-org=<value>   (required) Target org where the job will be scheduled.
+      --dry-run              Simulate a run and get information on how many jos would be started, stopped, and left
+                             untouched.
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Manages all cron jobs on a target org from config file.
+
+  Provide the path to a config file that contains a definition of scheduled jobs. The manage command will try to start
+  non-existing jobs and, depending on options, also stop obsolete running jobs. All options for this command are read
+  from the config file.
+
+EXAMPLES
+  Sync all jobs on target org with config file
+
+    $ sf jsc apex schedule manage -o MyTargetOrg -f scheduled-job-definitions.yaml
+
+FLAG DESCRIPTIONS
+  -f, --config-file=<value>  Path to a valid config file that configures scheduled jobs.
+
+    Specify the jobs to start, together with options how obsolete or redundant jobs should be treated. Jobs are
+    identified by their unique job name. You can specify the same apex class multiple times, as long as job names are
+    different. For convenience, you can also use the apex class as job name and omit class property - in that case, you
+    can only schedule an apex class once for obvious reasons.
+
+  --dry-run  Simulate a run and get information on how many jos would be started, stopped, and left untouched.
+
+    Queries existing jobs on the target org and evaluates, which jobs would be changed. However, dry-run cannot compile
+    the apex class and cron expression. This means, that invalid cron expressions or apex classes will not be caught and
+    the command may still fail, when run without this flag.
+```
+
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -159,7 +212,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -224,7 +277,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -258,7 +311,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -333,7 +386,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -367,7 +420,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -399,6 +452,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.11.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.12.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

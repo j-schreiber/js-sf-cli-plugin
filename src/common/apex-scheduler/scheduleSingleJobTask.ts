@@ -18,10 +18,10 @@ Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'apexscheduler');
 
 export default class ScheduleSingleJobTask extends EventEmitter {
-  private executor: ExecuteService;
-  private runner: QueryRunner;
+  private readonly executor: ExecuteService;
+  private readonly runner: QueryRunner;
 
-  public constructor(private targetOrgCon: Connection) {
+  public constructor(private readonly targetOrgCon: Connection) {
     super();
     this.executor = new ExecuteService(this.targetOrgCon);
     this.runner = new QueryRunner(targetOrgCon);
@@ -33,7 +33,13 @@ export default class ScheduleSingleJobTask extends EventEmitter {
     this.emit('apexExecution', result);
     const jobId = parseAnonymousApexResult(result, inputs);
     const jobDetails = await this.retrieveJobDetails(jobId);
-    return { jobId, nextFireTime: new Date(jobDetails.CronTrigger.NextFireTime) };
+    return {
+      jobId,
+      nextFireTime: new Date(jobDetails.CronTrigger.NextFireTime),
+      cronExpression: inputs.cronExpression,
+      jobName: inputs.jobName ?? inputs.apexClassName,
+      apexClassName: inputs.apexClassName,
+    };
   }
 
   private async retrieveJobDetails(jobId: string): Promise<AsyncApexJob> {
@@ -101,4 +107,7 @@ export type ApexScheduleOptions = {
 export type ScheduleApexResult = {
   jobId: string;
   nextFireTime: Date;
+  apexClassName: string;
+  jobName: string;
+  cronExpression: string;
 };

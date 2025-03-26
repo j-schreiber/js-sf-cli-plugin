@@ -1,33 +1,45 @@
 import { expect } from 'chai';
+import { AnyJson } from '@salesforce/ts-types';
 import { ExecuteService } from '@salesforce/apex-node';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { stubSfCommandUx, stubPrompter } from '@salesforce/sf-plugins-core';
-import { SfError } from '@salesforce/core';
+import { Messages, SfError } from '@salesforce/core';
 import JscApexScheduleStop from '../../../../src/commands/jsc/apex/schedule/stop.js';
 import JscApexScheduleExport from '../../../../src/commands/jsc/apex/schedule/export.js';
-import AnonymousApexMocks from '../../../mock-utils/anonApexMocks.js';
-import QueryRunner from '../../../../src/common/utils/queryRunner.js';
+import JscApexScheduleManage from '../../../../src/commands/jsc/apex/schedule/manage.js';
+import ApexSchedulerMocks from '../../../mock-utils/apexSchedulerMocks.js';
+import ApexScheduleService from '../../../../src/common/apex-scheduler/apexScheduleService.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.manage');
 
 describe('jsc apex schedule', () => {
   const $$ = new TestContext();
   let testOrg = new MockTestOrgData();
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let promptStub: ReturnType<typeof stubPrompter>;
-  let anonApexMocks: AnonymousApexMocks;
+  let schedulerMocks: ApexSchedulerMocks;
 
   beforeEach(async () => {
     testOrg = new MockTestOrgData();
     sfCommandStubs = stubSfCommandUx($$.SANDBOX);
     promptStub = stubPrompter($$.SANDBOX);
-    anonApexMocks = new AnonymousApexMocks();
-    $$.SANDBOX.stub(QueryRunner.prototype, 'fetchRecords').callsFake(anonApexMocks.queryStub);
-    await $$.stubAuths(testOrg);
+    schedulerMocks = new ApexSchedulerMocks();
+    $$.fakeConnectionRequest = mockQueryResults;
   });
 
-  it('executes stop script with id on target org when called with valid cron trigger id', async () => {
+  afterEach(async () => {
+    process.removeAllListeners();
+  });
+
+  function mockQueryResults(request: AnyJson): Promise<AnyJson> {
+    return schedulerMocks.mockQueryResults(request);
+  }
+
+  it('stops scheduled job filtered by cron trigger id', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
-      anonApexMocks.SCHEDULE_STOP_SUCCESS
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
     );
 
     // Act
@@ -53,10 +65,30 @@ describe('jsc apex schedule', () => {
     expect(promptStub.confirm.callCount).to.equal(0);
   });
 
+  it('stops no scheduled jobs when called with unknown cron trigger id', async () => {
+    // Arrange
+    const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
+    );
+
+    // Act
+    const result = await JscApexScheduleStop.run([
+      '--target-org',
+      testOrg.username,
+      '--id',
+      '08e000000000000AAA',
+      '--no-prompt',
+    ]);
+
+    // Assert
+    expect(executeServiceStub.callCount).to.equal(0);
+    expect(result.length).to.equal(0);
+  });
+
   it('stops all scheduled jobs when called without parameters', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
-      anonApexMocks.SCHEDULE_STOP_SUCCESS
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
     );
 
     // Act
@@ -92,7 +124,7 @@ describe('jsc apex schedule', () => {
   it('stops scheduled jobs filtered by a particular class name', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
-      anonApexMocks.SCHEDULE_STOP_SUCCESS
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
     );
 
     // Act
@@ -100,7 +132,7 @@ describe('jsc apex schedule', () => {
       '--target-org',
       testOrg.username,
       '--apex-class-name',
-      'LicensingStatusRecalculationBatch',
+      'LicensingStatusRecalculation',
       '--no-prompt',
     ]);
 
@@ -118,7 +150,7 @@ describe('jsc apex schedule', () => {
   it('stops scheduled jobs filtered by job name', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
-      anonApexMocks.SCHEDULE_STOP_SUCCESS
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
     );
 
     // Act
@@ -143,7 +175,7 @@ describe('jsc apex schedule', () => {
 
   it('prompts for confirmation without --no-prompt', async () => {
     // Arrange
-    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(anonApexMocks.SCHEDULE_STOP_SUCCESS);
+    $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(schedulerMocks.SCHEDULE_STOP_SUCCESS);
     promptStub.confirm.resolves(true);
 
     // Act
@@ -157,7 +189,7 @@ describe('jsc apex schedule', () => {
   it('aborts command with --no-prompt if user denies prompt', async () => {
     // Arrange
     const executeServiceStub = $$.SANDBOX.stub(ExecuteService.prototype, 'executeAnonymous').resolves(
-      anonApexMocks.SCHEDULE_STOP_SUCCESS
+      schedulerMocks.SCHEDULE_STOP_SUCCESS
     );
     promptStub.confirm.resolves(false);
 
@@ -179,7 +211,7 @@ describe('jsc apex schedule', () => {
     const result = await JscApexScheduleExport.run(['--target-org', testOrg.username]);
 
     // Assert
-    expect(result.length).to.equal(anonApexMocks.ALL_JOBS.records.length);
+    expect(result.length).to.equal(schedulerMocks.ALL_JOBS.records.length);
     expect(result[0].CronTriggerId).to.equal('08e7a00000VlWl2AAF');
     expect(result[0].CronExpression).to.equal('0 0 5 ? * * *');
     expect(result[0].ApexClassName).to.equal('AutoContractRenewalJob');
@@ -195,7 +227,7 @@ describe('jsc apex schedule', () => {
     const tableArgs = sfCommandStubs.table.args.flat()[0];
     expect(tableArgs.data.length).to.equal(5);
     tableArgs.data.forEach((tableRow, index) => {
-      const originalRecord = anonApexMocks.ALL_JOBS.records[index];
+      const originalRecord = schedulerMocks.ALL_JOBS.records[index];
       expect(tableRow).to.deep.equal({
         CronTriggerId: originalRecord.CronTriggerId,
         CronJobDetailName: originalRecord.CronTrigger.CronJobDetail.Name,
@@ -222,6 +254,52 @@ describe('jsc apex schedule', () => {
     expect(result.length).to.equal(1);
     expect(result[0].CronTriggerId).to.equal('08e7a00000cohZpAAI');
     expect(result[0].ApexClassName).to.equal('DisableInactiveUsersJob');
+  });
+
+  it('runs manage jobs with --dry-run flag', async () => {
+    // Arrange
+    const startJobStub = $$.SANDBOX.stub(ApexScheduleService.prototype, 'scheduleJob');
+    const stopJobsStub = $$.SANDBOX.stub(ApexScheduleService.prototype, 'stopJobs');
+
+    // Act
+    const result = await JscApexScheduleManage.run([
+      '--target-org',
+      testOrg.username,
+      '--config-file',
+      'test/data/test-sfdx-project/jobs/scheduled-jobs.yaml',
+      '--dry-run',
+    ]);
+
+    // Assert
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([
+      messages.getMessage('infos.dry-run-mode'),
+      messages.getMessage('infos.dry-run-cannot-compile'),
+      '\n',
+    ]);
+    expect(startJobStub.callCount).to.equal(0);
+    expect(stopJobsStub.callCount).to.equal(0);
+    expect(result.started.length).to.equal(5);
+    expect(result.stopped.length).to.deep.equal(schedulerMocks.ALL_JOBS.totalSize);
+    expect(result.untouched).to.deep.equal([]);
+  });
+
+  it('fails to start job when running manage jobs', async () => {
+    // Arrange
+    $$.SANDBOX.stub(ApexScheduleService.prototype, 'scheduleJob').rejects('Schedule failed');
+    $$.SANDBOX.stub(ApexScheduleService.prototype, 'stopJobs');
+
+    // Act
+    try {
+      await JscApexScheduleManage.run([
+        '--target-org',
+        testOrg.username,
+        '--config-file',
+        'test/data/test-sfdx-project/jobs/invalid-job-config.yaml',
+      ]);
+      expect.fail('Expected exception,but succeeded');
+    } catch (error) {
+      assertError(error, 'JobManagementFailureError', 'Schedule failed');
+    }
   });
 });
 

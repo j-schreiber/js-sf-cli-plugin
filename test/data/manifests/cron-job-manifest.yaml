@@ -1,0 +1,13 @@
+artifacts:
+  scheduled_jobs:
+    type: CronJob
+    jobs:
+      Test Job 1:
+        class: TestJob
+        expression: 0 0 0 1 * * *
+      Test Job 2:
+        class: TestSchedulable2
+        expression: 0 0 1 ? * * *
+      Test Job 3:
+        class: TestSchedulable2
+        expression: 0 0 2 ? * * *

@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { ArtifactTypes } from './orgManifestGlobalConstants.js';
+import { ScheduledJobConfig } from './scheduledApexTypes.js';
 
 /** All schema are YAML input - therefore snake_case */
 
@@ -12,7 +13,7 @@ const ZUnlockedPackage = z.object({
   package_id: z.string(),
   installation_key: z.string().optional(),
   skip_if_installed: z.boolean().optional(),
-  version: z.string().regex(/^([0-9]+\.[0-9]+\.[0-9]+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
+  version: z.string().regex(/^(\d+\.\d+\.\d+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
 });
 
 const ZUnpackagedSource = z.object({
@@ -20,7 +21,7 @@ const ZUnpackagedSource = z.object({
   path: z.string().or(z.record(z.string())),
 });
 
-const ZCronJob = z.object({
+const ZCronJob = ScheduledJobConfig.extend({
   type: z.literal(ArtifactTypes.Enum.CronJob),
 });
 
