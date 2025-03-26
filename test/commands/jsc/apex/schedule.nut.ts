@@ -203,6 +203,17 @@ describe('jsc apex schedule NUTs', () => {
     const unchangedJobs = extractTestableProbsFromDetails(manageResult.untouched);
     expect(unchangedJobs).to.have.deep.members(expectedJobsFromConfig);
   });
+
+  it('throws detailed error when jobs config fails to run successfully', () => {
+    // Act
+    const result = execCmd<JscApexScheduleStartResult>(
+      `jsc:apex:schedule:manage --config-file jobs/invalid-job-config.yaml --target-org ${scratchOrgAlias} --json`,
+      { ensureExitCode: 1 }
+    ).jsonOutput!;
+
+    // Assert
+    expect(result.name).to.equal('JobManagementFailureError');
+  });
 });
 
 function extractTestablePropsFromStarted(

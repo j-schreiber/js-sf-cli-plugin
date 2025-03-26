@@ -44,7 +44,9 @@ const ScheduledJobConfigOptions = z
   .strict('Valid options are: restart_all_jobs, stop_other_jobs')
   .default({});
 
-const SingleScheduledJobConfig = z.object({ class: z.string().optional(), expression: z.string() });
+const SingleScheduledJobConfig = z
+  .object({ class: z.string().optional(), expression: z.string().nonempty('A valid cron expression is required') })
+  .strict();
 
 export const ScheduledJobConfig = z
   .object({

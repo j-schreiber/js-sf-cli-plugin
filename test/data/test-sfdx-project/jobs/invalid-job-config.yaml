@@ -1,0 +1,6 @@
+options:
+  stop_other_jobs: false
+jobs:
+  'Testing Job':
+    class: SomeInvalidApexClass
+    expression: '0 0 1 * * ?'

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { ExecuteAnonymousResponse } from '@salesforce/apex-node';
-import { Connection, Messages } from '@salesforce/core';
+import { Connection, Messages, SfError } from '@salesforce/core';
 import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
 import { AsyncApexJob, AsyncApexJobFlat, ScheduledJobConfigType } from '../../types/scheduledApexTypes.js';
 import QueryRunner from '../utils/queryRunner.js';
@@ -101,20 +101,24 @@ export default class ApexScheduleService extends EventEmitter {
    * @returns
    */
   public async manageJobs(jobsConfig: ScheduledJobConfigType, simulateOnly?: boolean): Promise<ManageJobsResult> {
-    const runningJobs = await this.findJobs({});
-    const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
-    if (jobsToStop.length > 0 && !simulateOnly) {
-      await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
+    try {
+      const runningJobs = await this.findJobs({});
+      const jobsToStop = filterJobsToStop(jobsConfig, runningJobs);
+      if (jobsToStop.length > 0 && !simulateOnly) {
+        await this.stopJobs(jobsToStop.map((job) => job.CronTriggerId));
+      }
+      const jobsToStart = filterJobsToStart(jobsConfig, runningJobs);
+      const startResults = new Array<Partial<ScheduleApexResult>>();
+      if (jobsToStart.length > 0) {
+        startResults.push(...(await this.startAllJobs(jobsToStart, simulateOnly)));
+      }
+      const untouched = runningJobs.filter(
+        (runningJob) => !jobsToStop.find((toStop) => toStop.CronTriggerId === runningJob.CronTriggerId)
+      );
+      return { started: startResults, stopped: jobsToStop, untouched };
+    } catch (err) {
+      throw messages.createError('JobManagementFailure', [readSfErrorDetails(err)]);
     }
-    const jobsToStart = filterJobsToStart(jobsConfig, runningJobs);
-    const startResults = new Array<Partial<ScheduleApexResult>>();
-    if (jobsToStart.length > 0) {
-      startResults.push(...(await this.startAllJobs(jobsToStart, simulateOnly)));
-    }
-    const untouched = runningJobs.filter(
-      (runningJob) => !jobsToStop.find((toStop) => toStop.CronTriggerId === runningJob.CronTriggerId)
-    );
-    return { started: startResults, stopped: jobsToStop, untouched };
   }
 
   //    PRIVATE ZONE
@@ -214,6 +218,16 @@ export function assertSuccess(result: ExecuteAnonymousResponse): void {
     const exceptionMessage = result.diagnostic?.[0].exceptionMessage ?? 'Unknown error';
     throw messages.createError('Unexpected', [exceptionMessage]);
   }
+}
+
+export function readSfErrorDetails(err: unknown): string {
+  if (err instanceof SfError) {
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.name;
+  }
+  return 'Unknown';
 }
 
 export type ScheduledJobSearchOptions = {

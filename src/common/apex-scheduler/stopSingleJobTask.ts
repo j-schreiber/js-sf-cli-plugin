@@ -10,9 +10,9 @@ const JOB_ID_PLACEHOLDER = '%%%JOB_ID%%%';
 const STOP_SINGLE_JOB_TEMPLATE = `System.abortJob('${JOB_ID_PLACEHOLDER}');`;
 
 export default class StopSingleJobTask extends EventEmitter {
-  private executor: ExecuteService;
+  private readonly executor: ExecuteService;
 
-  public constructor(private targetOrgCon: Connection) {
+  public constructor(private readonly targetOrgCon: Connection) {
     super();
     this.executor = new ExecuteService(this.targetOrgCon);
   }
@@ -26,7 +26,6 @@ export default class StopSingleJobTask extends EventEmitter {
 }
 
 function parseExecutionResult(result: ExecuteAnonymousResponse): string {
-  // console.log(JSON.stringify(result));
   assertCompileSuccess(result);
   if (isAlreadyAborted(result.diagnostic)) {
     throw messages.createError('JobAlreadyAborted', [result.diagnostic![0].exceptionMessage.substring(24)]);

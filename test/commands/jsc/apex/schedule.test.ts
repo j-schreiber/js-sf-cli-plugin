@@ -282,6 +282,25 @@ describe('jsc apex schedule', () => {
     expect(result.stopped.length).to.deep.equal(schedulerMocks.ALL_JOBS.totalSize);
     expect(result.untouched).to.deep.equal([]);
   });
+
+  it('fails to start job when running manage jobs', async () => {
+    // Arrange
+    $$.SANDBOX.stub(ApexScheduleService.prototype, 'scheduleJob').rejects('Schedule failed');
+    $$.SANDBOX.stub(ApexScheduleService.prototype, 'stopJobs');
+
+    // Act
+    try {
+      await JscApexScheduleManage.run([
+        '--target-org',
+        testOrg.username,
+        '--config-file',
+        'test/data/test-sfdx-project/jobs/invalid-job-config.yaml',
+      ]);
+      expect.fail('Expected exception,but succeeded');
+    } catch (error) {
+      assertError(error, 'JobManagementFailureError', 'Schedule failed');
+    }
+  });
 });
 
 function assertError(err: unknown, expectedName: string, expectedMsg: string) {
