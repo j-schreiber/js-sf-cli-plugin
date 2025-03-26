@@ -119,7 +119,7 @@ describe('org manifest', () => {
       // Assert
       expect(Object.keys(orgManifest.data.artifacts)).to.deep.equal(['scheduled_jobs']);
       const jobsConfig = orgManifest.data.artifacts.scheduled_jobs as ScheduledJobConfigType;
-      expect(jobsConfig.options).to.deep.equal({ restart_all_jobs: false, stop_other_jobs: false });
+      expect(jobsConfig.options).to.deep.equal({ stop_other_jobs: false });
       expect(jobsConfig.jobs).to.deep.equal({
         'Test Job 1': { class: 'TestJob', expression: '0 0 0 1 * * *' },
         'Test Job 2': { class: 'TestSchedulable2', expression: '0 0 1 ? * * *' },

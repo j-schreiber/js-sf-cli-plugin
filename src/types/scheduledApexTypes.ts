@@ -38,10 +38,9 @@ export type ApexClass = {
 
 const ScheduledJobConfigOptions = z
   .object({
-    restart_all_jobs: z.boolean().default(false),
     stop_other_jobs: z.boolean().default(false),
   })
-  .strict('Valid options are: restart_all_jobs, stop_other_jobs')
+  .strict('Valid options are: stop_other_jobs')
   .default({});
 
 const SingleScheduledJobConfig = z

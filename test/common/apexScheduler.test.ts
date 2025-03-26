@@ -260,7 +260,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: false, restart_all_jobs: false },
+        options: { stop_other_jobs: false },
         jobs: { 'Job name with spaces': { class: 'SchedulableClass1', expression: '0 0 0 1 * * *' } },
       });
 
@@ -278,7 +278,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: false, restart_all_jobs: false },
+        options: { stop_other_jobs: false },
         jobs: {
           'Job name with spaces': { class: 'SchedulableClass1', expression: '0 0 0 1 * * *' },
           'Auto Contract Renewal': { class: 'AutoContractRenewalJob', expression: '0 0 5 ? * * *' },
@@ -299,7 +299,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: false, restart_all_jobs: false },
+        options: { stop_other_jobs: false },
         jobs: {
           'Auto Contract Renewal': { class: 'AutoContractRenewalJob', expression: '0 0 4 ? * * *' },
         },
@@ -320,7 +320,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: true, restart_all_jobs: false },
+        options: { stop_other_jobs: true },
         jobs: {
           'Auto Contract Renewal': { class: 'AutoContractRenewalJob', expression: '0 0 5 ? * * *' },
         },
@@ -341,7 +341,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: true, restart_all_jobs: false },
+        options: { stop_other_jobs: true },
         jobs: {
           'Disable Inactive Users': { class: 'DisableInactiveUsersJob', expression: '0 12 15 ? * * *' },
           'Auto Contract Renewal': { class: 'AutoContractRenewalJob', expression: '0 0 5 ? * * *' },
@@ -365,7 +365,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: true, restart_all_jobs: false },
+        options: { stop_other_jobs: true },
         jobs: {},
       });
 
@@ -383,7 +383,7 @@ describe('apex scheduler', () => {
 
       // Act
       const result = await scheduler.manageJobs({
-        options: { stop_other_jobs: false, restart_all_jobs: false },
+        options: { stop_other_jobs: false },
         jobs: {},
       });
 
@@ -395,14 +395,22 @@ describe('apex scheduler', () => {
 
     it('returns a preview but does not execute actions with simulate flag', async () => {
       // Arrange
-      // Act
-      // Assert
-    });
+      const scheduler = new ApexScheduleService(await testOrg.getConnection());
+      const existingJobs = await scheduler.findJobs({});
 
-    it('provides context in error, if it fails with partial success', async () => {
-      // Arrange
       // Act
+      const result = await scheduler.manageJobs(
+        {
+          options: { stop_other_jobs: true },
+          jobs: {},
+        },
+        true
+      );
+
       // Assert
+      expect(result.started).to.deep.equal([]);
+      expect(result.stopped).to.deep.equal(existingJobs);
+      expect(result.untouched).to.deep.equal([]);
     });
   });
 });

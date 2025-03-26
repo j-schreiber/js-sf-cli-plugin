@@ -1,5 +1,4 @@
 options:
-  restart_all_jobs: false
   stop_other_jobs: true
 jobs:
   'Name of my job':
