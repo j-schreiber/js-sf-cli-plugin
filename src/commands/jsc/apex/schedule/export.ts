@@ -31,7 +31,6 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
     }),
     'output-dir': Flags.directory({
       summary: messages.getMessage('flags.output-dir.summary'),
-      description: messages.getMessage('flags.output-dir.description'),
       char: 'd',
     }),
     concise: Flags.boolean({

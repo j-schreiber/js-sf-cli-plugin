@@ -16,6 +16,7 @@ import { parseYaml } from '../../../../src/common/utils/fileUtils.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.manage');
+const exportMsgs = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.export');
 const TEST_PATH = path.join('tmp', 'tests', 'apex', 'schedule');
 
 describe('jsc apex schedule', () => {
@@ -230,10 +231,9 @@ describe('jsc apex schedule', () => {
     await JscApexScheduleExport.run(['--target-org', testOrg.username, '--output-dir', TEST_PATH]);
 
     // Assert
-    expect(sfCommandStubs.info.args.flat()).to.deep.equal([
-      'Successfully wrote export to config file: tmp/tests/apex/schedule/jobs.yaml',
-    ]);
     const expectedPath = path.join(TEST_PATH, 'jobs.yaml');
+    const expectedInfoMsg = exportMsgs.getMessage('info.wrote-output-to-file', [expectedPath]);
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([expectedInfoMsg]);
     expect(fs.existsSync(expectedPath)).to.be.true;
     const jobsConfig = parseYaml<typeof ScheduledJobConfig>(expectedPath, ScheduledJobConfig);
     const expectedJobs = [

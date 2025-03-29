@@ -20,25 +20,25 @@ Only list jobs with a specific job name. Supports partial matches.
 
 # flags.output-dir.summary
 
-Writes all results to a jobs.yaml file at destination directory.
+Writes exported jobs to a config file that can be used with "manage" command.
 
 # flags.concise.summary
 
 Minimize columns displayed in output table.
 
-# flags.output-dir.description
-
-Use this file to call the manage command.
-
 # examples
 
-- Lists all jobs on the target org
+- List all jobs on the target org
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg
 
-- Lists jobs that match apex class and job name
+- List jobs that match apex class and job name
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg -c MyScheduledJobClass -n "Scheduled Job Name"
+
+- List jobs that start with "Auto" and export them to tmp/dev/jobs.yaml
+
+  <%= config.bin %> <%= command.id %> -j "Auto" -d tmp/dev
 
 # info.wrote-output-to-file
 
