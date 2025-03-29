@@ -1,0 +1,7 @@
+invalidProperty:
+  boolProp: true
+  stringProp: test
+record:
+  Entry 1:
+    prop1: entry 1 prop
+    prop2: entry 1 prop2

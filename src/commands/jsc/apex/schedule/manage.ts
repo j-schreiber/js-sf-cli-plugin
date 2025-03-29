@@ -1,11 +1,10 @@
-import fs from 'node:fs';
-import yaml from 'js-yaml';
 import ansis from 'ansis';
 import { SfCommand, Flags, StandardColors } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import ApexScheduleService, { ManageJobsResult } from '../../../../common/apex-scheduler/apexScheduleService.js';
 import { AsyncApexJobFlat, ScheduledJobConfig } from '../../../../types/scheduledApexTypes.js';
 import { ScheduleApexResult } from '../../../../common/apex-scheduler/scheduleSingleJobTask.js';
+import { parseYaml } from '../../../../common/utils/fileUtils.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.manage');
@@ -36,8 +35,7 @@ export default class JscApexScheduleManage extends SfCommand<ManageJobsResult> {
   public async run(): Promise<ManageJobsResult> {
     const { flags } = await this.parse(JscApexScheduleManage);
     const scheduleService = new ApexScheduleService(flags['target-org'].getConnection('62.0'));
-    const yamlContent = yaml.load(fs.readFileSync(flags['config-file'], 'utf8'));
-    const jobConfig = ScheduledJobConfig.parse(yamlContent);
+    const jobConfig = parseYaml<typeof ScheduledJobConfig>(flags['config-file'], ScheduledJobConfig);
     if (flags['dry-run']) {
       this.info(messages.getMessage('infos.dry-run-mode'));
       this.info(messages.getMessage('infos.dry-run-cannot-compile'));

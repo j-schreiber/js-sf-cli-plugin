@@ -1,8 +1,7 @@
 import fs from 'node:fs';
-import yaml from 'js-yaml';
 import { Messages, SfError } from '@salesforce/core';
 import { ZReleaseManifest, ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
-import { pathHasNoFiles } from '../common/utils/fileUtils.js';
+import { parseYaml, pathHasNoFiles } from '../common/utils/fileUtils.js';
 import OrgManifest from './OrgManifest.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -10,14 +9,9 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'orgmanifest');
 
 export default class ReleaseManifestLoader {
   public static load(filePath: string): OrgManifest {
-    if (fs.existsSync(filePath)) {
-      const yamlContent = yaml.load(fs.readFileSync(filePath, 'utf8')) as ZReleaseManifestType;
-      const manifestType = ZReleaseManifest.parse(yamlContent);
-      ReleaseManifestLoader.parseArtifactPaths(manifestType);
-      return new OrgManifest(manifestType);
-    } else {
-      throw new SfError(`Invalid path, file does not exist: ${filePath}`, 'FileDoesNotExist');
-    }
+    const manifestType = parseYaml<typeof ZReleaseManifest>(filePath, ZReleaseManifest);
+    ReleaseManifestLoader.parseArtifactPaths(manifestType);
+    return new OrgManifest(manifestType);
   }
 
   private static parseArtifactPaths(manifestType: ZReleaseManifestType): void {
