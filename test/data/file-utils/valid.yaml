@@ -1,0 +1,13 @@
+options:
+  boolProp: true
+  stringProp: test
+record:
+  Entry 1:
+    prop1: entry 1 prop
+    prop2: entry 1 prop2
+  Entry 2:
+    prop1: entry 2 prop
+    prop2: entry 2 prop2
+  Entry 3:
+    prop1: entry 3 prop
+    prop2: entry 3 prop2

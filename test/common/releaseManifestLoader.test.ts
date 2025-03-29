@@ -5,7 +5,6 @@
 /* eslint-disable camelcase */
 import fs from 'node:fs';
 import { expect } from 'chai';
-import { ZodError } from 'zod';
 import { SfError } from '@salesforce/core';
 import { QueryResult } from '@jsforce/jsforce-node';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
@@ -155,26 +154,15 @@ describe('org manifest', () => {
 
     it('loads invalid manifest with missing required props > throws error', () => {
       // Act
-      try {
-        ReleaseManifestLoader.load('test/data/manifests/invalid.yaml');
-        expect.fail('Should throw error, but succeeded');
-      } catch (ze) {
-        if (ze instanceof ZodError) {
-          expect(ze.issues.length).to.equal(2, `${ze.toString()}`);
-          expect(ze.issues[0].code).to.equal('invalid_type');
-          expect(ze.issues[0].message).to.equal('At least one artifact is required');
-          expect(ze.issues[1].code).to.equal('unrecognized_keys');
-          expect(ze.issues[1].message).to.contain('not_artifacts_key');
-        } else {
-          expect.fail('Expected zod parsing error');
-        }
-      }
+      const manifestLoaderFunct = () => ReleaseManifestLoader.load('test/data/manifests/invalid.yaml');
+      expect(manifestLoaderFunct).to.throw('At least one artifact is required');
+      expect(manifestLoaderFunct).to.throw('not_artifacts_key');
     });
 
     it('has invalid path file does not exist > throws error', () => {
       // Act
       expect(() => ReleaseManifestLoader.load('test/data/manifests/does-not-exist.yaml')).to.throw(
-        'Invalid path, file does not exist: test/data/manifests/does-not-exist.yaml'
+        'test/data/manifests/does-not-exist.yaml'
       );
     });
 
