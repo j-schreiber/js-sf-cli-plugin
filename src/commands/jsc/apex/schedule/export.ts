@@ -1,10 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import yaml from 'js-yaml';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import ApexScheduleService from '../../../../common/apex-scheduler/apexScheduleService.js';
-import { AsyncApexJobFlat } from '../../../../types/scheduledApexTypes.js';
+import { AsyncApexJobFlat, ScheduledJobConfigType } from '../../../../types/scheduledApexTypes.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.export');
+const DEFAULT_EXPORT_FILE_NAME = 'jobs.yaml';
 
 export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]> {
   public static readonly summary = messages.getMessage('summary');
@@ -25,6 +29,11 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
       char: 'j',
       summary: messages.getMessage('flags.job-name.summary'),
     }),
+    'output-dir': Flags.directory({
+      summary: messages.getMessage('flags.output-dir.summary'),
+      description: messages.getMessage('flags.output-dir.description'),
+      char: 'd',
+    }),
     concise: Flags.boolean({
       summary: messages.getMessage('flags.concise.summary'),
     }),
@@ -43,6 +52,27 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
         ? [{ key: 'CronTriggerId' }, { key: 'ApexClassName' }, { key: 'TimesTriggered' }]
         : undefined,
     });
+    this.writeResults(jobs, flags['output-dir']);
     return jobs;
+  }
+
+  private writeResults(data: AsyncApexJobFlat[], filePath?: string): void {
+    if (!filePath) {
+      return;
+    }
+    const outputPath = path.join(filePath, DEFAULT_EXPORT_FILE_NAME);
+    // eslint-disable-next-line camelcase
+    const jobsConfig: ScheduledJobConfigType = { options: { stop_other_jobs: false }, jobs: {} };
+    data.forEach(
+      (apexJob) =>
+        (jobsConfig.jobs[apexJob.CronJobDetailName] = {
+          class: apexJob.ApexClassName,
+          expression: apexJob.CronExpression!,
+        })
+    );
+    const fileContent = yaml.dump(jobsConfig);
+    fs.mkdirSync(filePath, { recursive: true });
+    fs.writeFileSync(outputPath, fileContent);
+    this.info(messages.getMessage('info.wrote-output-to-file', [outputPath]));
   }
 }

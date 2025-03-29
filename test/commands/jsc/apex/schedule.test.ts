@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect } from 'chai';
 import { AnyJson } from '@salesforce/ts-types';
 import { ExecuteService } from '@salesforce/apex-node';
@@ -9,9 +11,12 @@ import JscApexScheduleExport from '../../../../src/commands/jsc/apex/schedule/ex
 import JscApexScheduleManage from '../../../../src/commands/jsc/apex/schedule/manage.js';
 import ApexSchedulerMocks from '../../../mock-utils/apexSchedulerMocks.js';
 import ApexScheduleService from '../../../../src/common/apex-scheduler/apexScheduleService.js';
+import { ScheduledJobConfig } from '../../../../src/types/scheduledApexTypes.js';
+import { parseYaml } from '../../../../src/common/utils/fileUtils.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.apex.schedule.manage');
+const TEST_PATH = path.join('tmp', 'tests', 'apex', 'schedule');
 
 describe('jsc apex schedule', () => {
   const $$ = new TestContext();
@@ -26,10 +31,12 @@ describe('jsc apex schedule', () => {
     promptStub = stubPrompter($$.SANDBOX);
     schedulerMocks = new ApexSchedulerMocks();
     $$.fakeConnectionRequest = mockQueryResults;
+    fs.mkdirSync(TEST_PATH, { recursive: true });
   });
 
   afterEach(async () => {
     process.removeAllListeners();
+    fs.rmSync(TEST_PATH, { recursive: true, force: true });
   });
 
   function mockQueryResults(request: AnyJson): Promise<AnyJson> {
@@ -216,6 +223,48 @@ describe('jsc apex schedule', () => {
     expect(result[0].CronExpression).to.equal('0 0 5 ? * * *');
     expect(result[0].ApexClassName).to.equal('AutoContractRenewalJob');
     expect(result[0].TimesTriggered).to.equal(1059);
+  });
+
+  it('exports all scheduled jobs to a valid jobs.yaml', async () => {
+    // Act
+    await JscApexScheduleExport.run(['--target-org', testOrg.username, '--output-dir', TEST_PATH]);
+
+    // Assert
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([
+      'Successfully wrote export to config file: tmp/tests/apex/schedule/jobs.yaml',
+    ]);
+    const expectedPath = path.join(TEST_PATH, 'jobs.yaml');
+    expect(fs.existsSync(expectedPath)).to.be.true;
+    const jobsConfig = parseYaml<typeof ScheduledJobConfig>(expectedPath, ScheduledJobConfig);
+    const expectedJobs = [
+      'Auto Contract Renewal',
+      'Disable Inactive Users',
+      'Delete old Asset States',
+      'Asset Licensing Status',
+      'Auto Case Reminder',
+    ];
+    expect(Object.keys(jobsConfig.jobs)).to.deep.equal(expectedJobs);
+    expectedJobs.forEach((jobName, index) => {
+      const originalRecord = schedulerMocks.ALL_JOBS.records[index];
+      expect(jobsConfig.jobs[jobName]).to.deep.equal({
+        class: originalRecord.ApexClass.Name,
+        expression: originalRecord.CronTrigger.CronExpression,
+      });
+    });
+  });
+
+  it('exports empty scheduled jobs result to a valid jobs.yaml', async () => {
+    // Arrange
+    schedulerMocks.ALL_JOBS.records = [];
+
+    // Act
+    await JscApexScheduleExport.run(['--target-org', testOrg.username, '--output-dir', TEST_PATH]);
+
+    // Assert
+    const expectedPath = path.join(TEST_PATH, 'jobs.yaml');
+    expect(fs.existsSync(expectedPath)).to.be.true;
+    const jobsConfig = parseYaml<typeof ScheduledJobConfig>(expectedPath, ScheduledJobConfig);
+    expect(Object.keys(jobsConfig.jobs)).to.deep.equal([]);
   });
 
   it('prints all exported scheduled jobs to output table', async () => {

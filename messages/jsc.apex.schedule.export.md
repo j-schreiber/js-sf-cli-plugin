@@ -18,9 +18,17 @@ Only list jobs from a specific apex class.
 
 Only list jobs with a specific job name. Supports partial matches.
 
+# flags.output-dir.summary
+
+Writes all results to a jobs.yaml file at destination directory.
+
 # flags.concise.summary
 
 Minimize columns displayed in output table.
+
+# flags.output-dir.description
+
+Use this file to call the manage command.
 
 # examples
 
@@ -31,3 +39,7 @@ Minimize columns displayed in output table.
 - Lists jobs that match apex class and job name
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg -c MyScheduledJobClass -n "Scheduled Job Name"
+
+# info.wrote-output-to-file
+
+Successfully wrote export to config file: %s
