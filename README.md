@@ -44,12 +44,13 @@ sf plugins
 
 ## Development
 
-Ensure that husky is installed and initialised. Otherwise, you will miss out on pre-push validation and have more failed pipelines.
+SF CLI Development uses `yarn` as its package manager. Make sure, yarn is intalled on your system, then run
 
 ```bash
-yarn add --dev husky
-npx husky init
+yarn
 ```
+
+... to install all dependencies.
 
 ## Contribute
 
