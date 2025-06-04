@@ -68,6 +68,7 @@ describe('org manifest', () => {
   afterEach(async () => {
     cleanSourceDirectories();
     eventBus.removeAllListeners();
+    delete process.env.MY_INSTALLATION_KEY;
   });
 
   describe('loading', () => {

@@ -1,59 +1,46 @@
 /* eslint-disable no-underscore-dangle */
-import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
-import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 import { SfError } from '@salesforce/core';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
-import {
-  cleanSourceDirectories,
-  initSourceDirectories,
-  MockInstalledVersionQueryResult,
-  MockPackageVersionQueryResult,
-} from '../../../mock-utils/releaseManifestMockUtils.js';
-import { eventBus } from '../../../../src/common/comms/eventBus.js';
+import { initSourceDirectories, MockPackageVersionQueryResult } from '../../../mock-utils/releaseManifestMockUtils.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
 import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
+import ManifestTextContext from '../../../mock-utils/ManifestTestContext.js';
 
-const MockLwcUtilsInstallationKey = 'lwcutils1234';
 const MockVersionId = MockPackageVersionQueryResult.records[0].SubscriberPackageVersionId;
 
 describe('jsc manifest rollout', () => {
-  const $$ = new TestContext();
-  const testDevHub = new MockTestOrgData();
-  const testTargetOrg = new MockTestOrgData();
+  const cont = new ManifestTextContext();
   let oclifWrapperStub: SinonStub;
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
   beforeEach(async () => {
-    testDevHub.isDevHub = true;
-    sfCommandStubs = stubSfCommandUx($$.SANDBOX);
-    sfSpinnerStub = stubSpinner($$.SANDBOX);
+    await cont.init();
+    sfCommandStubs = stubSfCommandUx(cont.$$.SANDBOX);
+    sfSpinnerStub = stubSpinner(cont.$$.SANDBOX);
     initSourceDirectories();
-    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
       status: 0,
       result: { status: 0, message: 'Success' },
     });
-    await $$.stubAuths(testDevHub, testTargetOrg);
   });
 
   afterEach(() => {
     oclifWrapperStub.restore();
-    eventBus.removeAllListeners();
-    cleanSourceDirectories();
-    process.removeAllListeners();
+    cont.reset();
   });
 
   it('runs command with json flag > unpackaged only manifest => exits OK', async () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
     ]);
@@ -68,7 +55,7 @@ describe('jsc manifest rollout', () => {
       name: 'project:deploy:start',
       args: [
         '--target-org',
-        testTargetOrg.username,
+        cont.testTargetOrg.username,
         '--source-dir',
         'test/data/mock-src/unpackaged/my-happy-soup',
         '--wait',
@@ -76,21 +63,18 @@ describe('jsc manifest rollout', () => {
       ],
     });
     expect(sfCommandStubs.info.args.flat()).to.deep.equal([
-      `Target org for rollout: ${testTargetOrg.username}`,
-      `Devhub to resolve packages: ${testDevHub.username}`,
+      `Target org for rollout: ${cont.testTargetOrg.username}`,
+      `Devhub to resolve packages: ${cont.testDevHub.username}`,
     ]);
   });
 
   it('runs command with json flag > package manifest => exits OK', async () => {
-    // Arrange
-    mockSubscriberVersionsForAllPackages();
-
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-global-options.yaml',
     ]);
@@ -103,15 +87,12 @@ describe('jsc manifest rollout', () => {
   });
 
   it('runs command with regular output > unpackaged manifest => shows details', async () => {
-    // Arrange
-    mockSubscriberVersionsForAllPackages();
-
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
     ]);
@@ -127,15 +108,12 @@ describe('jsc manifest rollout', () => {
   });
 
   it('runs command with regular output > package manifest => shows details', async () => {
-    // Arrange
-    mockSubscriberVersionsForAllPackages();
-
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-envs.yaml',
     ]);
@@ -179,18 +157,20 @@ describe('jsc manifest rollout', () => {
 
   it('has failing artifact and no-json run => exits error & log details', async () => {
     // Arrange
-    mockSubscriberVersionsForAllPackages();
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+      status: 1,
+      result: subCommandError,
+    });
 
     // Act
     try {
       await JscManifestRollout.run([
         '--devhub-org',
-        testDevHub.username,
+        cont.testDevHub.username,
         '--target-org',
-        testTargetOrg.username,
+        cont.testTargetOrg.username,
         '--manifest',
         'test/data/manifests/minimal.yaml',
       ]);
@@ -225,17 +205,19 @@ describe('jsc manifest rollout', () => {
 
   it('has failing artifact but runs with --json => exits result without exception', async () => {
     // Arrange
-    mockSubscriberVersionsForAllPackages();
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+      status: 1,
+      result: subCommandError,
+    });
 
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
       '--json',
@@ -252,17 +234,19 @@ describe('jsc manifest rollout', () => {
 
   it('first artifact fails with --json flag => aborts execution immediately', async () => {
     // Arrange
-    mockSubscriberVersionsForAllPackages();
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({ status: 1, result: subCommandError });
+    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+      status: 1,
+      result: subCommandError,
+    });
 
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/simple-multi-step.yaml',
       '--json',
@@ -284,15 +268,15 @@ describe('jsc manifest rollout', () => {
 
   it('runs unpackaged only manifest in non-DX directory => throws error', async () => {
     // Arrange
-    $$.inProject(false);
+    cont.$$.inProject(false);
 
     // Act
     try {
       await JscManifestRollout.run([
         '--devhub-org',
-        testDevHub.username,
+        cont.testDevHub.username,
         '--target-org',
-        testTargetOrg.username,
+        cont.testTargetOrg.username,
         '--manifest',
         'test/data/manifests/minimal.yaml',
       ]);
@@ -311,15 +295,14 @@ describe('jsc manifest rollout', () => {
 
   it('runs package manifest in non-DX directory => exits OK', async () => {
     // Arrange
-    $$.inProject(false);
-    mockSubscriberVersionsForAllPackages();
+    cont.$$.inProject(false);
 
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-global-options.yaml',
     ]);
@@ -333,9 +316,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      testDevHub.username,
+      cont.testDevHub.username,
       '--target-org',
-      testTargetOrg.username,
+      cont.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
       '--validate-only',
@@ -348,31 +331,4 @@ describe('jsc manifest rollout', () => {
     expect(oclifWrapperStub.callCount).to.equal(0);
     expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.Enum.Resolved);
   });
-
-  function mockSubscriberVersionsForAllPackages() {
-    process.env.APEX_UTILS_INSTALLATION_KEY = '123apexkey';
-    process.env.LWC_UTILS_INSTALLATION_KEY = MockLwcUtilsInstallationKey;
-    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-      if (isPackageVersionDevhubQuery(request)) {
-        return Promise.resolve(MockPackageVersionQueryResult);
-      } else if (isTargetOrgInstalledVersionQuery(request)) {
-        const returnValue = structuredClone(MockInstalledVersionQueryResult);
-        returnValue.records[0].SubscriberPackageVersionId =
-          MockPackageVersionQueryResult.records[0].SubscriberPackageVersionId;
-        return Promise.resolve(returnValue);
-      } else {
-        return Promise.resolve({ records: [] });
-      }
-    };
-  }
-
-  function isPackageVersionDevhubQuery(request: AnyJson): boolean {
-    const _request = ensureJsonMap(request);
-    return Boolean(request && ensureString(_request.url).includes(testDevHub.instanceUrl));
-  }
-
-  function isTargetOrgInstalledVersionQuery(request: AnyJson): boolean {
-    const _request = ensureJsonMap(request);
-    return Boolean(request && ensureString(_request.url).includes(testTargetOrg.instanceUrl));
-  }
 });
