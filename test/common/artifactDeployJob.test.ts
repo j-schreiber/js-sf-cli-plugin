@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
-import { newOrgManifest } from '../mock-utils/releaseManifestMockUtils.js';
+import { newOrgManifest } from '../mock-utils/manifestTestContext.js';
 import { ArtifactTypes, DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 import UnpackagedDeployStep from '../../src/release-manifest/artifact-deploy-strategies/unpackagedDeployStep.js';
 

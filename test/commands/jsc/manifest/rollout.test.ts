@@ -4,26 +4,22 @@ import { SinonStub } from 'sinon';
 import { SfError } from '@salesforce/core';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
-import { initSourceDirectories, MockPackageVersionQueryResult } from '../../../mock-utils/releaseManifestMockUtils.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
 import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
 import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
-import ManifestTextContext from '../../../mock-utils/ManifestTestContext.js';
-
-const MockVersionId = MockPackageVersionQueryResult.records[0].SubscriberPackageVersionId;
+import ManifestTestContext from '../../../mock-utils/manifestTestContext.js';
 
 describe('jsc manifest rollout', () => {
-  const cont = new ManifestTextContext();
+  const $$ = new ManifestTestContext();
   let oclifWrapperStub: SinonStub;
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
   let sfSpinnerStub: ReturnType<typeof stubSpinner>;
 
   beforeEach(async () => {
-    await cont.init();
-    sfCommandStubs = stubSfCommandUx(cont.$$.SANDBOX);
-    sfSpinnerStub = stubSpinner(cont.$$.SANDBOX);
-    initSourceDirectories();
-    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+    await $$.init();
+    sfCommandStubs = stubSfCommandUx($$.$$.SANDBOX);
+    sfSpinnerStub = stubSpinner($$.$$.SANDBOX);
+    oclifWrapperStub = $$.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
       status: 0,
       result: { status: 0, message: 'Success' },
     });
@@ -31,16 +27,16 @@ describe('jsc manifest rollout', () => {
 
   afterEach(() => {
     oclifWrapperStub.restore();
-    cont.reset();
+    $$.restore();
   });
 
   it('runs command with json flag > unpackaged only manifest => exits OK', async () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
     ]);
@@ -55,7 +51,7 @@ describe('jsc manifest rollout', () => {
       name: 'project:deploy:start',
       args: [
         '--target-org',
-        cont.testTargetOrg.username,
+        $$.testTargetOrg.username,
         '--source-dir',
         'test/data/mock-src/unpackaged/my-happy-soup',
         '--wait',
@@ -63,8 +59,8 @@ describe('jsc manifest rollout', () => {
       ],
     });
     expect(sfCommandStubs.info.args.flat()).to.deep.equal([
-      `Target org for rollout: ${cont.testTargetOrg.username}`,
-      `Devhub to resolve packages: ${cont.testDevHub.username}`,
+      `Target org for rollout: ${$$.testTargetOrg.username}`,
+      `Devhub to resolve packages: ${$$.testDevHub.username}`,
     ]);
   });
 
@@ -72,9 +68,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-global-options.yaml',
     ]);
@@ -90,9 +86,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
     ]);
@@ -109,11 +105,12 @@ describe('jsc manifest rollout', () => {
 
   it('runs command with regular output > package manifest => shows details', async () => {
     // Act
+    const mockVersionId = $$.getInstalledSubscriberPackageVersionId();
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-envs.yaml',
     ]);
@@ -143,12 +140,12 @@ describe('jsc manifest rollout', () => {
       [
         'Success! All artifacts resolved.', // validation
         'Deployed test/data/mock-src/unpackaged/org-shape.', // org_shape_settings
-        `Installed 1.28.0 (${MockVersionId}).`, // apex_utils has skip_if_installed = false
-        `Skipped. 0.12.0 (${MockVersionId}) already installed.`, // lwc_utils
-        `Skipped. 2.4.2 (${MockVersionId}) already installed.`, // core_crm
+        `Installed 1.28.0 (${mockVersionId}).`, // apex_utils has skip_if_installed = false
+        `Skipped. 0.12.0 (${mockVersionId}) already installed.`, // lwc_utils
+        `Skipped. 2.4.2 (${mockVersionId}) already installed.`, // core_crm
         'Skipped. Resolves to empty path.', // core_crm_overrides resolves to empty path
         'Deployed test/data/mock-src/package-extensions/core-crm.', // core_crm_extensions
-        `Skipped. 2.9.0 (${MockVersionId}) already installed.`, // pims
+        `Skipped. 2.9.0 (${mockVersionId}) already installed.`, // pims
         'Deployed test/data/mock-src/package-overrides/pims.', // pims_overrides
       ],
       'args for spinner.stop() calls'
@@ -159,7 +156,7 @@ describe('jsc manifest rollout', () => {
     // Arrange
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+    oclifWrapperStub = $$.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
       status: 1,
       result: subCommandError,
     });
@@ -168,9 +165,9 @@ describe('jsc manifest rollout', () => {
     try {
       await JscManifestRollout.run([
         '--devhub-org',
-        cont.testDevHub.username,
+        $$.testDevHub.username,
         '--target-org',
-        cont.testTargetOrg.username,
+        $$.testTargetOrg.username,
         '--manifest',
         'test/data/manifests/minimal.yaml',
       ]);
@@ -207,7 +204,7 @@ describe('jsc manifest rollout', () => {
     // Arrange
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+    oclifWrapperStub = $$.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
       status: 1,
       result: subCommandError,
     });
@@ -215,9 +212,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
       '--json',
@@ -236,7 +233,7 @@ describe('jsc manifest rollout', () => {
     // Arrange
     const subCommandError = { status: 1, message: 'Complex error from child process' };
     oclifWrapperStub.restore();
-    oclifWrapperStub = cont.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
+    oclifWrapperStub = $$.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
       status: 1,
       result: subCommandError,
     });
@@ -244,9 +241,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/simple-multi-step.yaml',
       '--json',
@@ -268,15 +265,15 @@ describe('jsc manifest rollout', () => {
 
   it('runs unpackaged only manifest in non-DX directory => throws error', async () => {
     // Arrange
-    cont.$$.inProject(false);
+    $$.$$.inProject(false);
 
     // Act
     try {
       await JscManifestRollout.run([
         '--devhub-org',
-        cont.testDevHub.username,
+        $$.testDevHub.username,
         '--target-org',
-        cont.testTargetOrg.username,
+        $$.testTargetOrg.username,
         '--manifest',
         'test/data/manifests/minimal.yaml',
       ]);
@@ -295,14 +292,14 @@ describe('jsc manifest rollout', () => {
 
   it('runs package manifest in non-DX directory => exits OK', async () => {
     // Arrange
-    cont.$$.inProject(false);
+    $$.$$.inProject(false);
 
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/complex-with-global-options.yaml',
     ]);
@@ -316,9 +313,9 @@ describe('jsc manifest rollout', () => {
     // Act
     const result = await JscManifestRollout.run([
       '--devhub-org',
-      cont.testDevHub.username,
+      $$.testDevHub.username,
       '--target-org',
-      cont.testTargetOrg.username,
+      $$.testTargetOrg.username,
       '--manifest',
       'test/data/manifests/minimal.yaml',
       '--validate-only',
