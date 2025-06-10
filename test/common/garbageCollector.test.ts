@@ -120,30 +120,72 @@ describe('garbage collector', () => {
       ]);
     });
 
-    it('filters for packages > all package members belong to other packages', async () => {
+    it('filters package members if filtered package id can be resolved', async () => {
+      // Arrange
+      // package members are subscriber package id 0330X0000000000AAA
+      // but if package resolves to 0330X0000000001AAA, no results will be shown
+      $$.apiMocks.PACKAGE_2 = {
+        records: [{ Id: '0Ho000000000000AAA', SubscriberPackageId: '0330X0000000001AAA' }],
+        totalSize: 0,
+        done: true,
+      };
+      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+
       // Act
-      // most package members are to subscriber id 0330X0000000000AAA
-      // except flows, where first flow is 0330X0000000000AAA, second flow is 0330X0000000001AAA
       const collector = new GarbageCollector(await $$.targetOrg.getConnection(), await $$.devHub.getConnection());
-      // resolves subscriber package id from $$.PACKAGE_2 (0330X0000000000AAA)
       const result = await collector.export({ packages: ['0Ho000000000000AAA'] });
 
       // Assert
-      expect(result.deprecatedMembers.ExternalString.components.length).to.equal(1);
-      expect(result.deprecatedMembers.CustomField.components.length).to.equal(3);
-      expect(result.deprecatedMembers.CustomObject.components.length).to.equal(2);
-      expect(result.deprecatedMembers.Layout.components.length).to.equal(2);
-      expect(result.deprecatedMembers.FlowDefinition.components.length).to.equal(5);
+      expect(result.totalDeprecatedComponentCount).to.equal(0);
     });
 
-    it('includes only package members of packages that are present in filters', async () => {
+    it('does not filter package members if the filtered package id cannot be resolved', async () => {
       // Arrange
-      // package members on a subscriber org only have SubscriberPackageId (033), not the 0Ho.
-      // As a result, package filters only work reliably, when the available DevHub owns the
-      // packages. If it doesn't, they 033 id does not resolve.
-      // $$.apiMocks.PACKAGE_2_MEMBERS = '';
+      $$.apiMocks.PACKAGE_2 = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+      const collector = new GarbageCollector(await $$.targetOrg.getConnection(), await $$.devHub.getConnection());
+
       // Act
+      const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+
       // Assert
+      expect(result.totalDeprecatedComponentCount).to.equal(2);
+    });
+
+    it('shows warning to user if package id is filtered that does not exist on the dev hub', async () => {
+      // Arrange
+      // package members on a subscriber org only know their SubscriberPackageId (033), not the 0Ho.
+      // As a result, package filters only work, when the available DevHub owns the package.
+      // If it doesn't, the 0Ho id from filter cannot resolve to a 033 and therefore the
+      // package member cannot be filtered.
+      $$.apiMocks.PACKAGE_2 = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGE_2_MEMBERS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+      const resolveListener = $$.coreTestContext.SANDBOX.stub();
+      const collector = new GarbageCollector(await $$.targetOrg.getConnection(), await $$.devHub.getConnection());
+      collector.addListener('resolveMemberStatus', resolveListener);
+
+      // Act
+      const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+
+      // Assert
+      expect(result.totalDeprecatedComponentCount).to.equal(0);
+      expect(resolveListener.callCount).to.equal(2);
+      expect(resolveListener.args.flat()).to.deep.equal([
+        { message: messages.getMessage('infos.packages-filter-active', ['0Ho000000000001AAA']), status: 1 },
+        {
+          message: messages.getMessage('warnings.failed-to-resolved-package-id', [
+            '0Ho000000000001AAA',
+            $$.devHub.username,
+          ]),
+          status: 1,
+        },
+      ]);
     });
   });
 
@@ -176,13 +218,6 @@ describe('garbage collector', () => {
       expect(customObjsComponents[1].developerName).to.equal('CompanyData');
       expect(customObjsComponents[1].fullyQualifiedName).to.equal('CompanyData__mdt');
       expect(garbage.deprecatedMembers['Flow']).to.be.undefined;
-    });
-
-    it('has no devhub and skips package name resolution with info', async () => {
-      // Assert
-      // package members still correctly exported
-      // displays package id (which one?) instead of package name & version
-      // emits info that names are not resolved, because devhub is missing
     });
 
     it('contains package details for all package members', async () => {

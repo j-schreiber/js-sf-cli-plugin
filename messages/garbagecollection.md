@@ -34,6 +34,14 @@ Packages filter active. Only include members from these packages: %s
 
 Metadata types filter active. Only include members of these types: %s
 
+# infos.resolved-package-id
+
+Resolved %s (Package2) to %s (SubscriberPackage)
+
+# warnings.failed-to-resolved-package-id
+
+Could not resolve %s (Package2) to its corresponding SubscriberPackageId (033). The Id does not exist on DevHub (%s). Id will be ignored for filtering package members. Did you use the correct DevHub?
+
 # packages-filter-no-devhub
 
 Packages filter specified, but no Devhub was provided.

@@ -2,7 +2,7 @@
 import EventEmitter from 'node:events';
 import { Connection, Messages, SfError } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
-import { Package2, Package2Member } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, Package2, Package2Member } from '../types/sfToolingApiTypes.js';
 import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
@@ -75,25 +75,10 @@ export default class GarbageCollector extends EventEmitter {
 
   private async fetchPackageMembers2(filter?: GarbageFilter): Promise<Package2Member[]> {
     const filteredEntityDefs = await this.toolingApiCache.resolveEntityDefinitionNames(filter?.includeOnly);
-    const memberFilter = new PackageMemberFilter(
-      await this.fetchSubscriberPackageVersions(filter?.packages),
-      filteredEntityDefs
+    const memberFilter = new PackageMemberFilter(await this.resolvePackageIds(filter?.packages), filteredEntityDefs);
+    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(
+      buildPackageMemberQueryString(filteredEntityDefs, filter)
     );
-    let queryString;
-    if (filter?.includeOnly && filter.includeOnly.length > 0) {
-      const keyPrefixFilter = QueryBuilder.buildParamListFilter(
-        'SubjectKeyPrefix',
-        filteredEntityDefs.map((def) => def.KeyPrefix)
-      );
-      queryString = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
-        WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')
-        AND ${keyPrefixFilter}
-        AND SubjectKeyPrefix NOT IN ('300')
-        ORDER BY SubjectKeyPrefix`);
-    } else {
-      queryString = ALL_DEPRECATED_PACKAGE_MEMBERS;
-    }
-    const packageMembers = await this.toolingObjectsRunner.fetchRecords<Package2Member>(queryString);
     packageMembers.push(...(await this.buildFlowPackageMembers()));
     return packageMembers.filter((member) => memberFilter.isAllowed(member));
   }
@@ -105,15 +90,29 @@ export default class GarbageCollector extends EventEmitter {
     return packagedFlowDefinitions;
   }
 
-  private async fetchSubscriberPackageVersions(packageIds?: string[]): Promise<Package2[]> {
+  /**
+   * Input is list of 0Ho "Package2Ids", output is a resolved list of Package2 records.
+   *
+   * @param packageIds
+   * @returns
+   */
+  private async resolvePackageIds(packageIds?: string[]): Promise<Package2[]> {
     if (!packageIds || packageIds.length === 0) {
       return [];
     }
     const package2s = await this.devhubQueryRunner!.fetchRecords<Package2>(
       `${PACKAGE_2} WHERE ${QueryBuilder.buildParamListFilter('Id', packageIds)}`
     );
+    const resolvedIds: string[] = [];
     package2s.forEach((p2) => {
-      this.emitResolveStatus(`Resolved ${p2.Id} (Package2) to ${p2.SubscriberPackageId} (SubscriberPackage)`);
+      this.emitResolveStatus(messages.getMessage('infos.resolved-package-id', [p2.Id, p2.SubscriberPackageId]));
+      resolvedIds.push(p2.Id);
+    });
+    const unresolvedPackageIds = packageIds.filter((id) => !resolvedIds.includes(id));
+    unresolvedPackageIds.forEach((id) => {
+      this.emitResolveStatus(
+        messages.getMessage('warnings.failed-to-resolved-package-id', [id, this.devhubConnection?.getUsername()])
+      );
     });
     return package2s;
   }
@@ -132,4 +131,22 @@ export default class GarbageCollector extends EventEmitter {
       message,
     } as CommandStatusEvent);
   }
+}
+
+function buildPackageMemberQueryString(entityDefs: EntityDefinition[], filter?: GarbageFilter): string {
+  let queryString;
+  if (filter?.includeOnly && filter.includeOnly.length > 0) {
+    const keyPrefixFilter = QueryBuilder.buildParamListFilter(
+      'SubjectKeyPrefix',
+      entityDefs.map((def) => def.KeyPrefix)
+    );
+    queryString = QueryBuilder.sanitise(`${PACKAGE_MEMBER_BASE} 
+        WHERE SubjectManageableState IN ('deprecatedEditable', 'deprecated')
+        AND ${keyPrefixFilter}
+        AND SubjectKeyPrefix NOT IN ('300')
+        ORDER BY SubjectKeyPrefix`);
+  } else {
+    queryString = ALL_DEPRECATED_PACKAGE_MEMBERS;
+  }
+  return queryString;
 }

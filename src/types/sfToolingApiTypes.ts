@@ -8,7 +8,9 @@ export type Package2Version = {
 };
 
 export type Package2 = {
+  /** 0Ho... */
   Id: string;
+  /** 033... */
   SubscriberPackageId: string;
 };
 
