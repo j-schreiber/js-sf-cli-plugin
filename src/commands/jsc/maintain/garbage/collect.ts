@@ -76,7 +76,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       includeOnly: flags['metadata-type'],
       packages: await this.resolvePackageIds(orgConnection, flags.package),
     });
-    await this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
+    this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
     this.printTable(deprecatedPackageMembers);
     process.exitCode = 0;
     return deprecatedPackageMembers;
@@ -101,11 +101,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     }
   }
 
-  private async writePackageXml(
-    collectedGarbage: PackageGarbageResult,
-    outputPath?: string,
-    outputFormat?: string
-  ): Promise<void> {
+  private writePackageXml(collectedGarbage: PackageGarbageResult, outputPath?: string, outputFormat?: string): void {
     if (outputPath === undefined) {
       return;
     }
@@ -113,16 +109,16 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     fs.mkdirSync(outputPath, { recursive: true });
     let packageXml;
     if (outputFormat === 'DestructiveChangesXML') {
-      packageXml = await PackageXmlBuilder.parseGarbageResultToXml({
+      packageXml = PackageXmlBuilder.parseGarbageResultToXml({
         deprecatedMembers: {},
         unsupported: [],
         totalDeprecatedComponentCount: 0,
       });
-      const destructiveChangesXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+      const destructiveChangesXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
       fs.writeFileSync(`${outputPath}/destructiveChanges.xml`, destructiveChangesXml);
     } else {
       fs.rmSync(`${outputPath}/destructiveChanges.xml`, { force: true });
-      packageXml = await PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+      packageXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
     }
     fs.writeFileSync(`${outputPath}/package.xml`, packageXml);
   }
