@@ -8,8 +8,8 @@ import QueryBuilder from '../common/utils/queryBuilder.js';
 import { GarbageFilter, PackageGarbageResult } from './packageGarbageTypes.js';
 import { PACKAGE_2, PACKAGE_MEMBER_BASE, ALL_DEPRECATED_PACKAGE_MEMBERS } from './queries.js';
 import ToolingApiConnection from './toolingApiConnection.js';
-import GarbageManager from './garbageManager.js';
 import PackageMemberFilter from './packageMemberFilter.js';
+import TrashBin from './trashBin.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
@@ -37,15 +37,15 @@ export default class GarbageCollector extends EventEmitter {
   //      PUBLIC API
 
   public async export(filter?: GarbageFilter): Promise<PackageGarbageResult> {
-    const garbageMan = new GarbageManager(this.targetOrgConnection);
-    garbageMan.on('resolve', (payload: CommandStatusEvent) => {
+    const bin = new TrashBin(this.targetOrgConnection);
+    bin.on('resolve', (payload: CommandStatusEvent) => {
       this.emitResolveStatus(payload.message!);
     });
     this.parseInputs(filter);
     const members = await this.fetchPackageMembers2(filter);
     await this.resolveSubscriberPackage(members);
-    await garbageMan.pushPackageMembers(members);
-    return garbageMan.format();
+    await bin.pushPackageMembers(members);
+    return bin.format();
   }
 
   //      PRIVATE ZONE

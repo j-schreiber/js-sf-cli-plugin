@@ -40,14 +40,14 @@ export const INSTALLED_PACKAGE_VERSIONS = [
   },
 ];
 
-const DEFAULT_MANIFEST_OPTIONS = {
+export const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
   requires_promoted_versions: true,
   strict_environments: false,
   pipefail: true,
 };
 
-const TEST_ENVS = {
+export const TEST_ENVS = {
   dev: 'admin@example.com.dev',
   stage: 'admin@example.com.stage',
   'pre-prod': 'admin@example.com.qa',
@@ -123,6 +123,7 @@ export default class ManifestTestContext {
    * all query-result mocks.
    */
   public restore() {
+    this.$$.restore();
     this.resolvedPackageVersions = structuredClone(RESOLVED_PACKAGE_VERSIONS);
     this.installedPackageVersion = structuredClone(INSTALLED_PACKAGE_VERSIONS);
     clearEnvVars(this.installationKeyEnvVars);
