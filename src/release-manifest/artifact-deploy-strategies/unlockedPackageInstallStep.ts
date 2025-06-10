@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 
-import { isEmpty } from '@salesforce/kit';
+import { env, isEmpty } from '@salesforce/kit';
 import { Connection, Messages, SfError } from '@salesforce/core';
 import OclifUtils from '../../common/utils/wrapChildprocess.js';
 import { ZPackageInstallResultType } from '../../types/orgManifestOutputSchema.js';
@@ -93,14 +93,14 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
         'InstallationKeyRequired'
       );
     }
-    if (!isEmpty(this.artifact.installation_key) && isEmpty(process.env[this.artifact.installation_key!])) {
+    if (!isEmpty(this.artifact.installation_key) && isEmpty(env.getString(this.artifact.installation_key!))) {
       throw new SfError(
         messages.getMessage('errors.install-key-defined-but-empty', [this.artifact.installation_key]),
         'InstallationKeyEmpty'
       );
     }
     this.internalState.useInstallationKey = true;
-    this.internalState.installationKey = process.env[this.artifact.installation_key!];
+    this.internalState.installationKey = env.getString(this.artifact.installation_key!);
   }
 
   private buildCommandArgs(): string[] {

@@ -9,7 +9,10 @@ import ToolingApiConnection from './toolingApiConnection.js';
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
-export default class GarbageManager extends EventEmitter {
+/**
+ * Container to collect and store all garbage that is found on an org.
+ */
+export default class TrashBin extends EventEmitter {
   public deprecatedMembers: { [x: string]: PackageGarbageContainer };
   public unsupported: UnsupportedGarbageContainer[];
   private readonly supportedTypes;
@@ -34,7 +37,7 @@ export default class GarbageManager extends EventEmitter {
 
   /**
    * Accepts an unsorted/unorganized list of `Package2Member` and resolves their
-   * deprecated components. Ignores unknowne entities or key prefixes.
+   * deprecated components. Ignores unknown entities or key prefixes.
    *
    * @param unstructuredMembers
    */

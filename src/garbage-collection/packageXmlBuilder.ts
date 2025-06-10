@@ -3,7 +3,7 @@ import { PackageGarbageResult } from './packageGarbageTypes.js';
 import { PackageManifestObject, XML_NS_KEY, XML_NS_URL } from './packageManifestTypes.js';
 
 export default class PackageXmlBuilder {
-  public static parseGarbageResultToXml(input: PackageGarbageResult): Promise<string> {
+  public static parseGarbageResultToXml(input: PackageGarbageResult): string {
     const builder = new XMLBuilder({
       format: true,
       indentBy: ''.padEnd(4, ' '),
@@ -20,7 +20,6 @@ export default class PackageXmlBuilder {
       }
     });
     packageXml.Package[XML_NS_KEY] = XML_NS_URL;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return builder.build(packageXml);
   }
 }

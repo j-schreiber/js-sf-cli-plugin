@@ -6,19 +6,9 @@
 import fs from 'node:fs';
 import { expect } from 'chai';
 import { SfError } from '@salesforce/core';
-import { QueryResult } from '@jsforce/jsforce-node';
-import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
-import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
 import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/types/orgManifestOutputSchema.js';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
-import { InstalledSubscriberPackage, Package2Version } from '../../src/types/sfToolingApiTypes.js';
-import {
-  cleanSourceDirectories,
-  initSourceDirectories,
-  MockInstalledVersionQueryResult,
-  MockPackageVersionQueryResult,
-} from '../mock-utils/releaseManifestMockUtils.js';
 import {
   ZArtifactType,
   ZReleaseManifestType,
@@ -26,11 +16,10 @@ import {
   ZUnpackagedSourceArtifact,
 } from '../../src/types/orgManifestInputSchema.js';
 import OrgManifest from '../../src/release-manifest/OrgManifest.js';
-import { eventBus } from '../../src/common/comms/eventBus.js';
-import OclifUtils from '../../src/common/utils/wrapChildprocess.js';
 import { DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 import { ProcessingStatus } from '../../src/common/comms/processingEvents.js';
 import { ScheduledJobConfigType } from '../../src/types/scheduledApexTypes.js';
+import ManifestTestContext from '../mock-utils/manifestTestContext.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,
@@ -53,24 +42,16 @@ const TEST_MANIFEST = new OrgManifest({
 } as ZReleaseManifestType);
 
 describe('org manifest', () => {
-  const $$ = new TestContext();
-  const mockDevHubOrg = new MockTestOrgData();
-  const mockTargetOrg = new MockTestOrgData();
-
-  beforeEach(async () => {
-    mockDevHubOrg.username = 'devhub-admin@example.com';
-    mockTargetOrg.username = 'admin@example.com.qa';
-    mockDevHubOrg.isDevHub = true;
-    await $$.stubAuths(mockDevHubOrg, mockTargetOrg);
-    initSourceDirectories();
-  });
-
-  afterEach(async () => {
-    cleanSourceDirectories();
-    eventBus.removeAllListeners();
-  });
-
   describe('loading', () => {
+    const $$ = new ManifestTestContext();
+    beforeEach(async () => {
+      await $$.init();
+    });
+
+    afterEach(async () => {
+      $$.restore();
+    });
+
     it('parse complex manifest > loads successfully', () => {
       // Arrange
       const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml');
@@ -191,6 +172,16 @@ describe('org manifest', () => {
   });
 
   describe('manifest functionality', () => {
+    const $$ = new ManifestTestContext();
+
+    beforeEach(async () => {
+      await $$.init();
+    });
+
+    afterEach(async () => {
+      $$.restore();
+    });
+
     it('loads full manifest > all artifacts loaded as deploy jobs', () => {
       // Act
       const orgManifest = ReleaseManifestLoader.load('test/data/manifests/complex-with-envs.yaml');
@@ -238,11 +229,10 @@ describe('org manifest', () => {
   });
 
   describe('resolve package install jobs', () => {
-    let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
-    let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
+    const $$ = new ManifestTestContext();
+    // let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
+    // let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
     const testPackageId = '0Ho0X0000000001AAA';
-    const testSubscriberPackageId = '033000000000000AAA';
-    const testExistingVersionId = '04t0X0000000000AAA';
     const testNewVersionId = '04t0X0000000001AAA';
 
     const MockNoSkipInstallPackage: ZUnlockedPackageArtifact = {
@@ -251,6 +241,7 @@ describe('org manifest', () => {
       version: '1.2.3',
       skip_if_installed: false,
     };
+
     const MockSkipInstallPackage: ZUnlockedPackageArtifact = {
       type: 'UnlockedPackage',
       package_id: testPackageId,
@@ -258,20 +249,19 @@ describe('org manifest', () => {
       skip_if_installed: true,
     };
 
-    beforeEach(() => {
-      DEFAULT_INSTALLED_PACKAGE_RESULT = MockInstalledVersionQueryResult;
-      DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId = testExistingVersionId;
-      DEFAULT_PACKAGE_VERSION = MockPackageVersionQueryResult;
+    beforeEach(async () => {
+      await $$.init();
+    });
+
+    afterEach(async () => {
+      $$.restore();
     });
 
     it('loads version ids with devhub and target org connection', async () => {
-      // Arrange
-      mockPackageInstallRequestQueries('0Ho0X0000000001AAA', '033000000000000AAA');
-
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -281,27 +271,20 @@ describe('org manifest', () => {
       expect(installStep.status).to.equal('Resolved');
       expect(installStep.requestedVersion).to.equal('1.2.3');
       expect(installStep.requestedVersionId).to.equal('04t0X0000000001AAA');
-      expect(installStep.installedVersionId).to.equal('04t0X0000000000AAA');
-      expect(installStep.installedVersion).to.equal('1.2.2');
+      expect(installStep.installedVersionId).to.equal('04t0X0000000001AAA');
+      expect(installStep.installedVersion).to.equal('1.2.3');
       expect(installStep.useInstallationKey).to.equal(false);
       expect(installStep.shouldSkipIfInstalled).to.equal(false);
     });
 
     it('target org has no version installed > loads version from devhub and prepares install', async () => {
       // Arrange
-      // only return a subscriber version id for the devhub query
-      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-        if (isPackageVersionDevhubQuery(request, '0Ho0X0000000001AAA')) {
-          return Promise.resolve(DEFAULT_PACKAGE_VERSION);
-        } else {
-          return Promise.resolve({ records: [] });
-        }
-      };
+      $$.installedPackageVersion = [];
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -316,47 +299,39 @@ describe('org manifest', () => {
 
     it('explicitly sets skip if installed true > same version already installed > prepares to skip', async () => {
       // Arrange
-      // only return a subscriber version id for the devhub query
-      const packageId = MockSkipInstallPackage.package_id;
-      const subscriberId = '033000000000000AAA';
-      const defaultPackageVersionId = DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId;
-      mockSameInstalledPackageVersions(packageId, subscriberId, defaultPackageVersionId);
+      // default config of manifest has same resolved version as installed version
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
       expect(steps.length).to.equal(1, steps.toString());
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.status).to.equal('Skipped');
-      expect(installStep.requestedVersionId).to.equal(defaultPackageVersionId);
+      expect(installStep.requestedVersionId).to.equal('04t0X0000000001AAA');
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
-      expect(installStep.installedVersionId).to.equal(defaultPackageVersionId);
+      expect(installStep.installedVersionId).to.equal('04t0X0000000001AAA');
     });
 
     it('implicitly skips if installed from default options > same version already installed > prepares to skip', async () => {
       // Arrange
-      // only return a subscriber version id for the devhub query
-      const packageId = '0Ho0X0000000001AAA';
-      const subscriberId = '033000000000000AAA';
-      const defaultPackageVersionId = DEFAULT_INSTALLED_PACKAGE_RESULT.records![0].SubscriberPackageVersionId;
-      mockSameInstalledPackageVersions(packageId, subscriberId, defaultPackageVersionId);
+      // default config of manifest has same resolved version as installed version
 
       // Act
       const packageJob = new ArtifactDeployJob(
         'test_package',
         {
           type: 'UnlockedPackage',
-          package_id: packageId,
-          version: '1.2.2',
+          package_id: '0Ho000000000000AAA',
+          version: '1.2.3',
         },
         TEST_MANIFEST
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -364,15 +339,14 @@ describe('org manifest', () => {
       const installStep = steps[0] as ZPackageInstallResultType;
       expect(installStep.shouldSkipIfInstalled).to.equal(true);
       expect(installStep.status).to.equal('Skipped');
-      expect(installStep.displayMessage).to.equal('Installed version matches requested version (1.2.2)');
+      expect(installStep.displayMessage).to.equal('Installed version matches requested version (1.2.3)');
     });
 
     it('package has no released version > throws error', async () => {
       // Arrange
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
-      // different id than the one in package job
-      mockPackageInstallRequestQueries('0Ho0X0000000000AAA', '033000000000000AAA');
+      $$.resolvedPackageVersions = [];
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
 
       // Act
       const packageJob = new ArtifactDeployJob(
@@ -395,7 +369,7 @@ describe('org manifest', () => {
         if (err instanceof SfError) {
           expect(err.name).to.equal('NoReleasedPackageVersionFound');
           expect(err.message).to.equal(
-            `No released version found for package id 0Ho0X000000000XAAA and version 2.0.0 on devhub ${mockDevHubOrg.username}.`
+            `No released version found for package id 0Ho0X000000000XAAA and version 2.0.0 on devhub ${$$.testDevHub.username}.`
           );
         }
       }
@@ -403,22 +377,21 @@ describe('org manifest', () => {
 
     it('package requires installation key but none configured > throws error', async () => {
       // Arrange
-      const packageId = '0Ho0X0000000001AAA';
-      mockPackageVersionWithInstallationKey(packageId);
+      $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
 
       // Act
       const packageJob = new ArtifactDeployJob(
         'test_package',
         {
           type: 'UnlockedPackage',
-          package_id: packageId,
+          package_id: $$.getPackageId(),
           version: '2.0.0',
           skip_if_installed: false,
         },
         TEST_MANIFEST
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
 
       // Assert
       try {
@@ -436,23 +409,22 @@ describe('org manifest', () => {
 
     it('package requires installation key but env is not set > throws error', async () => {
       // Arrange
-      const packageId = '0Ho0X0000000001AAA';
-      mockPackageVersionWithInstallationKey(packageId);
+      $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
 
       // Act
       const packageJob = new ArtifactDeployJob(
         'test_package',
         {
           type: 'UnlockedPackage',
-          package_id: packageId,
+          package_id: $$.getPackageId(),
           version: '2.0.0',
           skip_if_installed: false,
           installation_key: 'MY_INSTALLATION_KEY',
         },
         TEST_MANIFEST
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
 
       // Assert
       try {
@@ -469,8 +441,7 @@ describe('org manifest', () => {
 
     it('package requires installation that is set > resolves successfully', async () => {
       // Arrange
-      const packageId = '0Ho0X0000000001AAA';
-      mockPackageVersionWithInstallationKey(packageId);
+      $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
       process.env.MY_INSTALLATION_KEY = '123testkey';
 
       // Act
@@ -478,15 +449,15 @@ describe('org manifest', () => {
         'test_package',
         {
           type: 'UnlockedPackage',
-          package_id: packageId,
+          package_id: $$.getPackageId(),
           version: '2.0.0',
           skip_if_installed: false,
           installation_key: 'MY_INSTALLATION_KEY',
         },
         TEST_MANIFEST
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await packageJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -499,36 +470,32 @@ describe('org manifest', () => {
     });
 
     it('should install new version > status generates useful display message', async () => {
-      // Arrange
-      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
-      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
-      const targetConnection = await mockTargetOrg.getConnection();
-
       // Act
-      const resolveResult = await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
+      const resolveResult = await packageJob.resolve(
+        await $$.testTargetOrg.getConnection(),
+        await $$.testDevHub.getConnection()
+      );
 
       // Assert
       expect(resolveResult.length).to.equal(1, resolveResult.toString());
       const installStep = resolveResult[0] as ZPackageInstallResultType;
-      expect(installStep.displayMessage).to.equal('Installing 1.2.3 over 1.2.2');
+      expect(installStep.displayMessage).to.equal('Installing 1.2.3 over 1.2.3');
     });
 
     it('should install package version > delegates to sf package install', async () => {
       // Arrange
-      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
-      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
-        status: 0,
-        result: { status: 0, message: 'Success' },
-      });
-      const statusListener = $$.SANDBOX.stub();
+      $$.resolvedPackageVersions[0].SubscriberPackageVersionId = '04t0X0000000001AAA';
+      $$.installedPackageVersion[0].SubscriberPackageVersion.PatchVersion = 2;
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+      const statusListener = $$.$$.SANDBOX.stub();
       const packageJob = new ArtifactDeployJob('test_package', MockNoSkipInstallPackage, TEST_MANIFEST);
       packageJob.on('artifactDeployStart', statusListener);
       packageJob.on('artifactDeployProgress', statusListener);
       packageJob.on('artifactDeployCompleted', statusListener);
-      const targetConnection = await mockTargetOrg.getConnection();
 
       // Act
-      await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      await packageJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
       const jobResults = await packageJob.deploy();
 
       // Assert
@@ -538,7 +505,7 @@ describe('org manifest', () => {
       }
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'package:install',
-        args: ['--target-org', mockTargetOrg.username, '--package', testNewVersionId, '--wait', '10', '--no-prompt'],
+        args: ['--target-org', $$.testTargetOrg.username, '--package', testNewVersionId, '--wait', '10', '--no-prompt'],
       });
       expect(statusListener.callCount).to.equal(3);
       expect(statusListener.args[0][0]).to.deep.contain({ status: ProcessingStatus.Started });
@@ -551,84 +518,22 @@ describe('org manifest', () => {
 
     it('should skip installation package version > step is skipped and command informed', async () => {
       // Arrange
-      mockSameInstalledPackageVersions(testPackageId, testSubscriberPackageId, testNewVersionId);
-      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
-        status: 0,
-        result: { status: 0, message: 'Success' },
-      });
+      const oclifWrapperStub = $$.getOclifWrapperStub();
 
       // Act
       const packageJob = new ArtifactDeployJob('test_package', MockSkipInstallPackage, TEST_MANIFEST);
-      const targetConnection = await mockTargetOrg.getConnection();
-      await packageJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      await packageJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
       const installResult = await packageJob.getSteps()[0].deploy();
 
       // Assert
       expect(oclifWrapperStub.called).to.be.false;
       expect(installResult.status).to.equal(DeployStatus.Enum.Skipped);
     });
-
-    function mockSameInstalledPackageVersions(packageId: string, subscriberId: string, versionId: string) {
-      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-        if (isPackageVersionDevhubQuery(request, packageId)) {
-          const returnValue = structuredClone(DEFAULT_PACKAGE_VERSION);
-          returnValue.records![0].SubscriberPackageVersionId = versionId;
-          returnValue.records![0].SubscriberPackageVersion.IsPasswordProtected = false;
-          return Promise.resolve(returnValue);
-        } else if (isTargetOrgInstalledVersionQuery(request, subscriberId)) {
-          const returnValue = structuredClone(DEFAULT_INSTALLED_PACKAGE_RESULT);
-          returnValue.records![0].SubscriberPackageVersionId = versionId;
-          return Promise.resolve(returnValue);
-        } else {
-          return Promise.resolve({ records: [] });
-        }
-      };
-    }
-
-    function mockPackageInstallRequestQueries(packageId: string, subscriberId: string) {
-      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-        if (isPackageVersionDevhubQuery(request, packageId)) {
-          return Promise.resolve(DEFAULT_PACKAGE_VERSION);
-        } else if (isTargetOrgInstalledVersionQuery(request, subscriberId)) {
-          return Promise.resolve(DEFAULT_INSTALLED_PACKAGE_RESULT);
-        } else {
-          return Promise.resolve({ records: [] });
-        }
-      };
-    }
-
-    function mockPackageVersionWithInstallationKey(packageId: string) {
-      $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-        if (isPackageVersionDevhubQuery(request, packageId)) {
-          const returnValue = { ...DEFAULT_PACKAGE_VERSION };
-          returnValue.records![0].SubscriberPackageVersion.IsPasswordProtected = true;
-          return Promise.resolve(returnValue);
-        } else {
-          return Promise.resolve({ records: [] });
-        }
-      };
-    }
-
-    function isPackageVersionDevhubQuery(request: AnyJson, packageId: string): boolean {
-      const _request = ensureJsonMap(request);
-      return Boolean(
-        request &&
-          ensureString(_request.url).includes(`Package2Id%20%3D%20'${packageId}'`) &&
-          ensureString(_request.url).includes(mockDevHubOrg.instanceUrl)
-      );
-    }
-
-    function isTargetOrgInstalledVersionQuery(request: AnyJson, packageId: string): boolean {
-      const _request = ensureJsonMap(request);
-      return Boolean(
-        request &&
-          ensureString(_request.url).includes(`SubscriberPackageId%20%3D%20'${packageId}'`) &&
-          ensureString(_request.url).includes(mockTargetOrg.instanceUrl)
-      );
-    }
   });
 
   describe('unpackage source deploy jobs', () => {
+    const $$ = new ManifestTestContext();
+
     const MockHappySoupArtifact: ZUnpackagedSourceArtifact = {
       type: 'Unpackaged',
       path: 'test/data/mock-src/unpackaged/my-happy-soup',
@@ -636,16 +541,26 @@ describe('org manifest', () => {
     const MultiPathCoreOverrides: ZUnpackagedSourceArtifact = {
       type: 'Unpackaged',
       path: {
-        'pre-prod': 'test/data/mock-src/package-overrides/core-crm/dev',
+        dev: 'test/data/mock-src/package-overrides/core-crm/dev',
         prod: 'test/data/mock-src/package-overrides/core-crm/prod',
       },
     };
 
+    beforeEach(async () => {
+      $$.testDevHub.username = 'devhub-admin@example.com';
+      $$.testTargetOrg.username = 'admin@example.com.dev';
+      await $$.init();
+    });
+
+    afterEach(async () => {
+      $$.restore();
+    });
+
     it('has single source path > resolves to one step with path', async () => {
       // Act
       const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const steps = await sourceJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -660,8 +575,8 @@ describe('org manifest', () => {
       // Act
       const qaSourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
       const prodSourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const stepsResolvedToQa = await qaSourceJob.resolve(targetConnection, devhubConnection);
       const stepsResolvedToProd = await prodSourceJob.resolve(devhubConnection, devhubConnection);
 
@@ -689,8 +604,8 @@ describe('org manifest', () => {
       // Act
       const qaSourceJob = new ArtifactDeployJob('core_overrides', mockArtifact, new OrgManifest(STRICT_MANIFEST));
       const prodSourceJob = new ArtifactDeployJob('core_overrides', mockArtifact, new OrgManifest(STRICT_MANIFEST));
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const stepsResolvedToQa = await qaSourceJob.resolve(targetConnection, devhubConnection);
       const stepsResolvedToProd = await prodSourceJob.resolve(devhubConnection, devhubConnection);
 
@@ -717,8 +632,8 @@ describe('org manifest', () => {
         MultiPathCoreOverrides,
         new OrgManifest(MANIFEST_NO_ENVS)
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
       const stepsResolvedToQa = await sourceJob.resolve(targetConnection, devhubConnection);
 
       // Assert
@@ -739,8 +654,8 @@ describe('org manifest', () => {
         MultiPathCoreOverrides,
         new OrgManifest(MANIFEST_NO_ENVS)
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
 
       // Assert
       try {
@@ -750,19 +665,19 @@ describe('org manifest', () => {
         expect(err).to.be.instanceOf(SfError);
         if (err instanceof SfError) {
           expect(err.message).to.equal(
-            `No environment configured for target org ${mockTargetOrg.username}, but strict validation was set.`
+            `No environment configured for target org ${$$.testTargetOrg.username}, but strict validation was set.`
           );
         }
       }
     });
 
-    it('has no env for username configred but envs are strict > throws error', async () => {
+    it('has no env for username configured but envs are strict > throws error', async () => {
       // Arrange
       const MANIFEST = structuredClone(TEST_MANIFEST.data);
       MANIFEST.environments = {
-        dev: 'admin@example.com.dev',
-        stage: 'admin@example.com.stage',
-        prod: 'devhub-admin@example.com',
+        dev: 'admin2@example.com.dev',
+        stage: 'admin2@example.com.stage',
+        prod: 'devhub-admin2@example.com',
       };
       MANIFEST.options.strict_environments = true;
 
@@ -777,8 +692,8 @@ describe('org manifest', () => {
         },
         new OrgManifest(MANIFEST)
       );
-      const devhubConnection = await mockDevHubOrg.getConnection();
-      const targetConnection = await mockTargetOrg.getConnection();
+      const devhubConnection = await $$.testDevHub.getConnection();
+      const targetConnection = await $$.testTargetOrg.getConnection();
 
       // Assert
       try {
@@ -788,7 +703,7 @@ describe('org manifest', () => {
         expect(err).to.be.instanceOf(SfError);
         if (err instanceof SfError) {
           expect(err.message).to.equal(
-            `No environment configured for target org ${mockTargetOrg.username}, but strict validation was set.`
+            `No environment configured for target org ${$$.testTargetOrg.username}, but strict validation was set.`
           );
         }
       }
@@ -796,15 +711,12 @@ describe('org manifest', () => {
 
     it('rollout with single source path > delegates to sf project deploy start', async () => {
       // Arrange
-      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
-        status: 0,
-        result: { status: 0, message: 'Success' },
-      });
+      const oclifWrapperStub = $$.getOclifWrapperStub();
 
       // Act
       const sourceJob = new ArtifactDeployJob('org_shape', MockHappySoupArtifact, TEST_MANIFEST);
-      const targetConnection = await mockTargetOrg.getConnection();
-      await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const targetConnection = await $$.testTargetOrg.getConnection();
+      await sourceJob.resolve(targetConnection, await $$.testDevHub.getConnection());
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
@@ -813,7 +725,7 @@ describe('org manifest', () => {
         name: 'project:deploy:start',
         args: [
           '--target-org',
-          mockTargetOrg.username,
+          $$.testTargetOrg.username,
           '--source-dir',
           'test/data/mock-src/unpackaged/my-happy-soup',
           '--wait',
@@ -824,17 +736,19 @@ describe('org manifest', () => {
 
     it('rollout with no resolved source > skips sf project deploy', async () => {
       // Arrange
-      // username is a mapped env, but no source path is configured
-      mockTargetOrg.username = 'admin@example.com.dev';
-      const oclifWrapperStub = $$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
-        status: 0,
-        result: { status: 0, message: 'Success' },
-      });
+      // target connection is a mapped env, but no source path is configured
+      const multiPathUnpackaged: ZUnpackagedSourceArtifact = {
+        type: 'Unpackaged',
+        path: {
+          dev: '',
+          prod: 'test/data/mock-src/package-overrides/core-crm/prod',
+        },
+      };
+      const oclifWrapperStub = $$.getOclifWrapperStub();
 
       // Act
-      const sourceJob = new ArtifactDeployJob('core_overrides', MultiPathCoreOverrides, TEST_MANIFEST);
-      const targetConnection = await mockTargetOrg.getConnection();
-      await sourceJob.resolve(targetConnection, await mockDevHubOrg.getConnection());
+      const sourceJob = new ArtifactDeployJob('core_overrides', multiPathUnpackaged, TEST_MANIFEST);
+      await sourceJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
