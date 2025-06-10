@@ -516,6 +516,41 @@ describe('org manifest', () => {
       expect(statusListener.args[2][0]).to.deep.contain({ status: ProcessingStatus.Completed });
     });
 
+    it('should install package version with installation key > delegates to sf package install', async () => {
+      // Arrange
+      $$.resolvedPackageVersions[0].SubscriberPackageVersionId = '04t0X0000000001AAA';
+      $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
+      $$.installedPackageVersion[0].SubscriberPackageVersion.PatchVersion = 2;
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+      const packageArtifact = structuredClone(MockNoSkipInstallPackage);
+      packageArtifact.installation_key = 'APEX_UTILS_INSTALLATION_KEY';
+      const packageJob = new ArtifactDeployJob('test_package', packageArtifact, TEST_MANIFEST);
+
+      // Act
+      await packageJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const jobResults = await packageJob.deploy();
+
+      // Assert
+      expect(jobResults.length).to.equal(1);
+      for (const res of jobResults) {
+        expect(res.status).to.equal(DeployStatus.Enum.Success);
+      }
+      expect(oclifWrapperStub.args[0][0]).to.deep.equal({
+        name: 'package:install',
+        args: [
+          '--target-org',
+          $$.testTargetOrg.username,
+          '--package',
+          testNewVersionId,
+          '--wait',
+          '10',
+          '--no-prompt',
+          '--installation-key',
+          $$.installationKeyEnvVars.APEX_UTILS_INSTALLATION_KEY,
+        ],
+      });
+    });
+
     it('should skip installation package version > step is skipped and command informed', async () => {
       // Arrange
       const oclifWrapperStub = $$.getOclifWrapperStub();

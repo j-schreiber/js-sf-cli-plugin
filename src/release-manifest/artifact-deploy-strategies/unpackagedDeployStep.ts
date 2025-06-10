@@ -6,6 +6,7 @@ import OclifUtils from '../../common/utils/wrapChildprocess.js';
 import { ZSourceDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZUnpackagedSourceArtifact } from '../../types/orgManifestInputSchema.js';
 import { DeployStatus, DeployStrategies } from '../../types/orgManifestGlobalConstants.js';
+import ArtifactDeploySfCommand from '../artifactDeploySfCommand.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -31,7 +32,12 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
       this.internalState.displayMessage = 'Skipped. Resolves to empty path.';
       return this.internalState;
     }
-    const result = await OclifUtils.execCoreCommand({ name: 'project:deploy:start', args: this.buildCommandArgs() });
+    const projectDeployCmd = new ArtifactDeploySfCommand('project:deploy:start', [
+      { name: 'target-org', value: this.internalState.targetUsername! },
+      { name: 'source-dir', value: this.internalState.sourcePath! },
+      { name: 'wait', value: '10' },
+    ]);
+    const result = await OclifUtils.execCoreCommand(projectDeployCmd.buildConfig());
     this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
@@ -66,16 +72,5 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
       }
       return manifestInput[envName];
     }
-  }
-
-  private buildCommandArgs(): string[] {
-    return [
-      '--target-org',
-      this.internalState.targetUsername!,
-      '--source-dir',
-      this.internalState.sourcePath!,
-      '--wait',
-      '10',
-    ];
   }
 }

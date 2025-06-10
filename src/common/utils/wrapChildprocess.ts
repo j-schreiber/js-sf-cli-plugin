@@ -1,6 +1,6 @@
 import util from 'node:util';
 import childProcess from 'node:child_process';
-import { SfCommandConfig } from '../../release-manifest/artifact-deploy-strategies/artifactDeployStrategy.js';
+import { SfCommandConfig } from './sfCommandConfig.js';
 
 const exec = util.promisify(childProcess.exec);
 

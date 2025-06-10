@@ -28,8 +28,3 @@ export type ArtifactDeployStrategy = {
    */
   resolve(targetOrg: Connection, devhubOrg: Connection): Promise<ZArtifactDeployResultType>;
 };
-
-export type SfCommandConfig = {
-  args: string[];
-  name?: string;
-};

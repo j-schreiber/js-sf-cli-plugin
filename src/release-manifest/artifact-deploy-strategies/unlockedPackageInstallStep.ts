@@ -11,6 +11,7 @@ import {
   resolveInstalledVersionId,
   resolvePackageVersionId,
 } from '../../common/metadata/toolingApiHelper.js';
+import ArtifactDeploySfCommand from '../artifactDeploySfCommand.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -38,7 +39,16 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
       this.internalState.displayMessage = `Skipped. ${this.internalState.requestedVersion} (${this.internalState.requestedVersionId}) already installed.`;
       return this.internalState as ZPackageInstallResultType;
     }
-    const result = await OclifUtils.execCoreCommand({ name: 'package:install', args: this.buildCommandArgs() });
+    const packageInstallCmd = new ArtifactDeploySfCommand('package:install', [
+      { name: 'target-org', value: this.internalState.targetUsername },
+      { name: 'package', value: this.internalState.requestedVersionId },
+      { name: 'wait', value: '10' },
+      { name: 'no-prompt' },
+    ]);
+    if (this.internalState.useInstallationKey) {
+      packageInstallCmd.addFlag('installation-key', this.internalState.installationKey);
+    }
+    const result = await OclifUtils.execCoreCommand(packageInstallCmd.buildConfig());
     this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
@@ -101,21 +111,5 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     }
     this.internalState.useInstallationKey = true;
     this.internalState.installationKey = env.getString(this.artifact.installation_key!);
-  }
-
-  private buildCommandArgs(): string[] {
-    const args = [
-      '--target-org',
-      this.internalState.targetUsername!,
-      '--package',
-      this.internalState.requestedVersionId!,
-      '--wait',
-      '10',
-      '--no-prompt',
-    ];
-    if (this.internalState.useInstallationKey) {
-      args.push(...['--installation-key', this.internalState.installationKey!]);
-    }
-    return args;
   }
 }
