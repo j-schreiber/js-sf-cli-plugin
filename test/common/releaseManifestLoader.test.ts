@@ -44,6 +44,7 @@ const TEST_MANIFEST = new OrgManifest({
 describe('org manifest', () => {
   describe('loading', () => {
     const $$ = new ManifestTestContext();
+
     beforeEach(async () => {
       await $$.init();
     });
@@ -789,6 +790,58 @@ describe('org manifest', () => {
       // Assert
       expect(deployResult.status).to.equal(DeployStatus.Enum.Skipped);
       expect(oclifWrapperStub.called).to.be.false;
+    });
+
+    it('ignores empty flags key in artifact definition', async () => {
+      // Arrange
+      const testUnpackagedArtifact: ZUnpackagedSourceArtifact = {
+        type: 'Unpackaged',
+        path: 'test/data/mock-src/unpackaged/org-shape',
+        flags: '',
+      };
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('org_shape', testUnpackagedArtifact, TEST_MANIFEST);
+      await sourceJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const deployResult = await sourceJob.getSteps()[0].deploy();
+
+      // Assert
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
+        name: 'project:deploy:start',
+        args: ['--target-org', $$.testTargetOrg.username, '--source-dir', testUnpackagedArtifact.path, '--wait', '10'],
+      });
+    });
+
+    it('ignores obviously invalid flags in artifact definition', async () => {
+      // Arrange
+      const testUnpackagedArtifact: ZUnpackagedSourceArtifact = {
+        type: 'Unpackaged',
+        path: 'test/data/mock-src/unpackaged/org-shape',
+        flags: '===  === -a --ignore-conflicts',
+      };
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('org_shape', testUnpackagedArtifact, TEST_MANIFEST);
+      await sourceJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const deployResult = await sourceJob.getSteps()[0].deploy();
+
+      // Assert
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
+        name: 'project:deploy:start',
+        args: [
+          '--target-org',
+          $$.testTargetOrg.username,
+          '--source-dir',
+          testUnpackagedArtifact.path,
+          '--wait',
+          '10',
+          '--ignore-conflicts',
+        ],
+      });
     });
   });
 });

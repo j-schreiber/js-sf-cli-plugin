@@ -37,7 +37,9 @@ export default class ArtifactDeploySfCommand {
       .split(/\s+/)
       .forEach((flagIdentifier) => {
         const flagKeyValue = flagIdentifier.replace(/^-+/, '').split('=');
-        this.commandFlags.set(flagKeyValue[0], flagKeyValue[1]);
+        if (flagKeyValue[0].length > 1) {
+          this.commandFlags.set(flagKeyValue[0], flagKeyValue[1]);
+        }
       });
   }
 
