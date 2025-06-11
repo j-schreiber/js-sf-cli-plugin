@@ -19,10 +19,7 @@ describe('jsc manifest rollout', () => {
     await $$.init();
     sfCommandStubs = stubSfCommandUx($$.$$.SANDBOX);
     sfSpinnerStub = stubSpinner($$.$$.SANDBOX);
-    oclifWrapperStub = $$.$$.SANDBOX.stub(OclifUtils, 'execCoreCommand').resolves({
-      status: 0,
-      result: { status: 0, message: 'Success' },
-    });
+    oclifWrapperStub = $$.getOclifWrapperStub();
   });
 
   afterEach(() => {
@@ -327,5 +324,56 @@ describe('jsc manifest rollout', () => {
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
     expect(oclifWrapperStub.callCount).to.equal(0);
     expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.Enum.Resolved);
+  });
+
+  it('reads flags overrides from manifest and passes them to core commands', async () => {
+    // Arrange
+    // this flag ensures, that installation key is resolved from env var
+    $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
+
+    // Act
+    const result = await JscManifestRollout.run([
+      '--devhub-org',
+      $$.testDevHub.username,
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/with-flags.yaml',
+    ]);
+
+    // Assert
+    expect(result).to.be.ok;
+    expect(oclifWrapperStub.callCount).to.equal(2);
+    expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
+      name: 'project:deploy:start',
+      args: [
+        '--target-org',
+        $$.testTargetOrg.username,
+        '--source-dir',
+        'test/data/mock-src/unpackaged/org-shape',
+        '--wait',
+        '10',
+        '--ignore-conflicts',
+        '--concise',
+      ],
+    });
+    expect(oclifWrapperStub.args.flat()[1]).to.deep.equal({
+      name: 'package:install',
+      args: [
+        '--target-org',
+        $$.testTargetOrg.username,
+        '--package',
+        $$.resolvedPackageVersions[0].SubscriberPackageVersionId,
+        '--wait',
+        '20',
+        '--no-prompt',
+        '--installation-key',
+        $$.installationKeyEnvVars.APEX_UTILS_INSTALLATION_KEY,
+        '--upgrade-type',
+        'DeprecateOnly',
+        '--apex-compile',
+        'package',
+      ],
+    });
   });
 });

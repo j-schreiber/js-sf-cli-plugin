@@ -8,7 +8,11 @@ import { ScheduledJobConfig } from './scheduledApexTypes.js';
 
 const ZEnvironments = z.record(z.string());
 
-const ZUnlockedPackage = z.object({
+const ZArtifactBase = z.object({
+  flags: z.string().optional(),
+});
+
+const ZUnlockedPackage = ZArtifactBase.extend({
   type: z.literal(ArtifactTypes.Enum.UnlockedPackage),
   package_id: z.string(),
   installation_key: z.string().optional(),
@@ -16,12 +20,13 @@ const ZUnlockedPackage = z.object({
   version: z.string().regex(/^(\d+\.\d+\.\d+)$/, { message: 'Set version as MAJOR.MINOR.PATH (e.g. 1.4.0)' }),
 });
 
-const ZUnpackagedSource = z.object({
+const ZUnpackagedSource = ZArtifactBase.extend({
   type: z.literal(ArtifactTypes.Enum.Unpackaged),
   path: z.string().or(z.record(z.string())),
 });
 
-const ZCronJob = ScheduledJobConfig.extend({
+const ZCronJob = ZArtifactBase.extend({
+  ...ScheduledJobConfig.shape,
   type: z.literal(ArtifactTypes.Enum.CronJob),
 });
 

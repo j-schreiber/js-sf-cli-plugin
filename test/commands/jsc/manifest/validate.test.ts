@@ -73,4 +73,20 @@ describe('jsc manifest validate', () => {
       'args for spinner.stop() calls'
     );
   });
+
+  it('validates yaml with syntactically correct flags', async () => {
+    // Act
+    const result = await JscManifestValidate.run([
+      '--devhub-org',
+      $$.testDevHub.username,
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--manifest',
+      'test/data/manifests/with-flags.yaml',
+    ]);
+
+    // Assert
+    expect(result.deployedArtifacts['org_shape_settings'][0].status).to.equal(DeployStatus.Enum.Resolved);
+    expect(result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.Enum.Resolved);
+  });
 });

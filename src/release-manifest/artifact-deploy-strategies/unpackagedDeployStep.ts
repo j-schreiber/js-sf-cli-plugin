@@ -37,6 +37,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
       { name: 'source-dir', value: this.internalState.sourcePath! },
       { name: 'wait', value: '10' },
     ]);
+    projectDeployCmd.parseFlags(this.artifact.flags);
     const result = await OclifUtils.execCoreCommand(projectDeployCmd.buildConfig());
     this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
     if (result.status !== 0) {

@@ -48,6 +48,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     if (this.internalState.useInstallationKey) {
       packageInstallCmd.addFlag('installation-key', this.internalState.installationKey);
     }
+    packageInstallCmd.parseFlags(this.artifact.flags);
     const result = await OclifUtils.execCoreCommand(packageInstallCmd.buildConfig());
     this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
     if (result.status !== 0) {
