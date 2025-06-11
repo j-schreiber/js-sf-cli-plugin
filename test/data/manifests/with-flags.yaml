@@ -1,0 +1,16 @@
+environments:
+  dev: admin-salesforce@mobilityhouse.com.dev
+  qa: admin@example.com.qa
+  prod: admin@example.com
+artifacts:
+  org_shape_settings:
+    type: Unpackaged
+    path: test/data/mock-src/unpackaged/org-shape
+    flags: ignore-conflicts concise
+  apex_utils:
+    type: UnlockedPackage
+    package_id: 0Ho690000000000AAA
+    installation_key: APEX_UTILS_INSTALLATION_KEY
+    version: 1.28.0
+    skip_if_installed: false
+    flags: upgrade-type=DeprecateOnly wait=20 apex-compile=package

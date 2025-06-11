@@ -44,6 +44,7 @@ const TEST_MANIFEST = new OrgManifest({
 describe('org manifest', () => {
   describe('loading', () => {
     const $$ = new ManifestTestContext();
+
     beforeEach(async () => {
       await $$.init();
     });
@@ -516,6 +517,41 @@ describe('org manifest', () => {
       expect(statusListener.args[2][0]).to.deep.contain({ status: ProcessingStatus.Completed });
     });
 
+    it('should install package version with installation key > delegates to sf package install', async () => {
+      // Arrange
+      $$.resolvedPackageVersions[0].SubscriberPackageVersionId = '04t0X0000000001AAA';
+      $$.resolvedPackageVersions[0].SubscriberPackageVersion.IsPasswordProtected = true;
+      $$.installedPackageVersion[0].SubscriberPackageVersion.PatchVersion = 2;
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+      const packageArtifact = structuredClone(MockNoSkipInstallPackage);
+      packageArtifact.installation_key = 'APEX_UTILS_INSTALLATION_KEY';
+      const packageJob = new ArtifactDeployJob('test_package', packageArtifact, TEST_MANIFEST);
+
+      // Act
+      await packageJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const jobResults = await packageJob.deploy();
+
+      // Assert
+      expect(jobResults.length).to.equal(1);
+      for (const res of jobResults) {
+        expect(res.status).to.equal(DeployStatus.Enum.Success);
+      }
+      expect(oclifWrapperStub.args[0][0]).to.deep.equal({
+        name: 'package:install',
+        args: [
+          '--target-org',
+          $$.testTargetOrg.username,
+          '--package',
+          testNewVersionId,
+          '--wait',
+          '10',
+          '--no-prompt',
+          '--installation-key',
+          $$.installationKeyEnvVars.APEX_UTILS_INSTALLATION_KEY,
+        ],
+      });
+    });
+
     it('should skip installation package version > step is skipped and command informed', async () => {
       // Arrange
       const oclifWrapperStub = $$.getOclifWrapperStub();
@@ -754,6 +790,58 @@ describe('org manifest', () => {
       // Assert
       expect(deployResult.status).to.equal(DeployStatus.Enum.Skipped);
       expect(oclifWrapperStub.called).to.be.false;
+    });
+
+    it('ignores empty flags key in artifact definition', async () => {
+      // Arrange
+      const testUnpackagedArtifact: ZUnpackagedSourceArtifact = {
+        type: 'Unpackaged',
+        path: 'test/data/mock-src/unpackaged/org-shape',
+        flags: '',
+      };
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('org_shape', testUnpackagedArtifact, TEST_MANIFEST);
+      await sourceJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const deployResult = await sourceJob.getSteps()[0].deploy();
+
+      // Assert
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
+        name: 'project:deploy:start',
+        args: ['--target-org', $$.testTargetOrg.username, '--source-dir', testUnpackagedArtifact.path, '--wait', '10'],
+      });
+    });
+
+    it('ignores obviously invalid flags in artifact definition', async () => {
+      // Arrange
+      const testUnpackagedArtifact: ZUnpackagedSourceArtifact = {
+        type: 'Unpackaged',
+        path: 'test/data/mock-src/unpackaged/org-shape',
+        flags: '===  === -a --ignore-conflicts',
+      };
+      const oclifWrapperStub = $$.getOclifWrapperStub();
+
+      // Act
+      const sourceJob = new ArtifactDeployJob('org_shape', testUnpackagedArtifact, TEST_MANIFEST);
+      await sourceJob.resolve(await $$.testTargetOrg.getConnection(), await $$.testDevHub.getConnection());
+      const deployResult = await sourceJob.getSteps()[0].deploy();
+
+      // Assert
+      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
+        name: 'project:deploy:start',
+        args: [
+          '--target-org',
+          $$.testTargetOrg.username,
+          '--source-dir',
+          testUnpackagedArtifact.path,
+          '--wait',
+          '10',
+          '--ignore-conflicts',
+        ],
+      });
     });
   });
 });
