@@ -73,6 +73,9 @@
             "subtopics": {
               "garbage": {
                 "description": "Analyse and clean garbage from package installs"
+              },
+              "field-usage": {
+                "description": "description for jsc.maintain.field-usage"
               }
             }
           },

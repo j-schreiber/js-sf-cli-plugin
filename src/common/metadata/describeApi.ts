@@ -4,9 +4,9 @@ import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { LOCAL_CACHE_DIR } from '../constants.js';
 
 export default class DescribeApi {
-  private cachePath: string;
+  private readonly cachePath: string;
 
-  public constructor(private conn: Connection) {
+  public constructor(private readonly conn: Connection) {
     this.cachePath = `./${LOCAL_CACHE_DIR}/${conn.getUsername() as string}/describes`;
   }
 
