@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { MultiStageOutput } from '@oclif/multi-stage-output';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import SObjectAnalyser from '../../../../field-usage/sobjectAnalyser.js';
@@ -10,6 +11,10 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.f
 export type JscMaintainFieldUsageAnalyseResult = {
   usageReports: FieldUsageTable[];
 };
+
+const DESCRIBE_STAGE = 'Describe SObject';
+const FIELD_STAGE = 'Analyse Fields';
+const OUTPUT_STAGE = 'Format Output';
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
   public static readonly summary = messages.getMessage('summary');
@@ -41,20 +46,63 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
     const analyser = new SObjectAnalyser(targetOrg);
-    const sobjects = flags.sobject;
 
-    // show spinner that informs of status
-    //  sobject describes (+ name validation)
-    //  sobject analysis (update spinner per field)
-    //  output formatting (sort table by count descending)
     const fieldUsageTables: FieldUsageTable[] = [];
-    for (const sobj of sobjects) {
+    for (const sobj of flags.sobject) {
+      const ms = new MultiStageOutput<MultiStageData>({
+        jsonEnabled: false,
+        stages: [DESCRIBE_STAGE, FIELD_STAGE, OUTPUT_STAGE],
+        stageSpecificBlock: [
+          {
+            get: (data) => data?.totalRecords,
+            stage: DESCRIBE_STAGE,
+            type: 'dynamic-key-value',
+            label: 'Records retrieved',
+          },
+          {
+            get: (data) => data?.fieldCount,
+            stage: FIELD_STAGE,
+            type: 'dynamic-key-value',
+            label: 'Total fields to analyse',
+          },
+          {
+            get: (data) => data?.fieldInAnalysis,
+            stage: FIELD_STAGE,
+            type: 'message',
+          },
+        ],
+        title: `Analyse ${sobj}`,
+      });
+
+      analyser.on('describeSuccess', (data: { fieldCount: number }) => {
+        ms.goto(FIELD_STAGE, { fieldCount: `${data.fieldCount}` });
+      });
+      analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
+        ms.updateData({ totalRecords: `${data.totalCount}` });
+      });
+      analyser.on('fieldAnalysis', (data: { fieldName: string; fieldCounter: string }) => {
+        ms.goto(FIELD_STAGE, { fieldInAnalysis: `Analysing ${data.fieldCounter}: ${data.fieldName}` });
+      });
+
+      ms.goto(DESCRIBE_STAGE);
       const sobjectUsageResult = await analyser.analyseFieldUsage(sobj, {
         customFieldsOnly: flags['custom-fields-only'],
       });
+      ms.goto(OUTPUT_STAGE);
       fieldUsageTables.push(sobjectUsageResult);
-      this.table({ data: sobjectUsageResult.fields, title: sobjectUsageResult.name });
+      ms.stop();
+      analyser.removeAllListeners();
+      this.table({
+        data: sobjectUsageResult.fields,
+        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
+      });
     }
     return { usageReports: fieldUsageTables };
   }
 }
+
+type MultiStageData = {
+  fieldCount: string;
+  totalRecords: string;
+  fieldInAnalysis: string;
+};

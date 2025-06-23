@@ -8,6 +8,18 @@ export type FieldUsageOptions = {
   customFieldsOnly: boolean;
 };
 
+const WHITELISTED_FIELD_TYPES = [
+  'textarea',
+  'string',
+  'double',
+  'picklist',
+  'id',
+  'reference',
+  'date',
+  'datetime',
+  'boolean',
+];
+
 export default class SObjectAnalyser extends EventEmitter {
   private readonly describeCache: DescribeApi;
 
@@ -18,38 +30,48 @@ export default class SObjectAnalyser extends EventEmitter {
 
   public async analyseFieldUsage(sobjectName: string, options?: FieldUsageOptions): Promise<FieldUsageTable> {
     const sobjectDescribe = await this.describeCache.describeSObject(sobjectName);
+    const fieldsToAnalyse = filterFields(sobjectDescribe.fields, options);
+    this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length });
     const totalCount = await getTotalCount(sobjectDescribe.name, this.targetOrgConnection);
+    this.emit('totalRecordsRetrieve', { totalCount });
     const usageTable: FieldUsageTable = { name: sobjectDescribe.name, totalRecords: totalCount, fields: [] };
-    if (totalCount && totalCount > 0) {
-      for (const field of sobjectDescribe.fields) {
-        if (!options?.customFieldsOnly && !field.custom) {
-          continue;
-        }
-        // map for fields of filterable and types first?
-        if (
-          field.filterable &&
-          ['textarea', 'string', 'double', 'picklist', 'id', 'reference', 'date', 'datetime'].includes(field.type)
-        ) {
-          // eslint-disable-next-line no-await-in-loop
-          const fieldsPopulatedCount = await getPopulatedFieldCount(
-            sobjectDescribe.name,
-            field,
-            this.targetOrgConnection
-          );
-          usageTable.fields.push({
-            name: field.name,
-            type: field.type,
-            absolutePopulated: fieldsPopulatedCount,
-            percentagePopulated: (fieldsPopulatedCount / totalCount).toLocaleString('de', {
-              style: 'percent',
-              minimumFractionDigits: 2,
-            }),
-          });
-        }
-      }
+    if (!totalCount || totalCount === 0) {
+      return usageTable;
     }
-    return usageTable;
+    for (const field of fieldsToAnalyse) {
+      this.emit('fieldAnalysis', {
+        fieldName: field.name,
+        fieldCounter: `${fieldsToAnalyse.indexOf(field) + 1} of ${fieldsToAnalyse.length}`,
+      });
+      // eslint-disable-next-line no-await-in-loop
+      const fieldsPopulatedCount = await getPopulatedFieldCount(sobjectDescribe.name, field, this.targetOrgConnection);
+      usageTable.fields.push({
+        name: field.name,
+        type: field.type,
+        absolutePopulated: fieldsPopulatedCount,
+        percentagePopulated: fieldsPopulatedCount / totalCount,
+        percentFormatted: (fieldsPopulatedCount / totalCount).toLocaleString('de', {
+          style: 'percent',
+          minimumFractionDigits: 2,
+        }),
+      });
+    }
+    return formatTable(usageTable);
   }
+}
+
+function formatTable(table: FieldUsageTable): FieldUsageTable {
+  table.fields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
+  return table;
+}
+
+function filterFields(fields: Field[], options?: FieldUsageOptions): Field[] {
+  return fields.filter(
+    (field) =>
+      ((field.custom && options?.customFieldsOnly) ?? !options?.customFieldsOnly) &&
+      WHITELISTED_FIELD_TYPES.includes(field.type) &&
+      field.filterable
+  );
 }
 
 async function getTotalCount(sobjectName: string, conn: Connection): Promise<number> {
