@@ -1,4 +1,5 @@
 /* eslint-disable class-methods-use-this */
+import fs from 'node:fs';
 import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import { AnyJson, isObject, isString } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
@@ -42,6 +43,7 @@ export default class FieldUsageTestContext {
     this.coreContext.restore();
     this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
     this.totalRecords = 100;
+    clearPluginCache();
   }
 
   public readonly mockDescribeFailure = (request: AnyJson): Promise<AnyJson> => {
@@ -63,4 +65,8 @@ export default class FieldUsageTestContext {
     }
     return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
   };
+}
+
+function clearPluginCache() {
+  fs.rmSync('.jsc', { recursive: true, force: true });
 }
