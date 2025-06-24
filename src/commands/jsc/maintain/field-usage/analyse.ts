@@ -31,7 +31,6 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     }),
     'target-org': Flags.requiredOrg({
       summary: messages.getMessage('flags.target-org.summary'),
-      description: messages.getMessage('flags.target-org.description'),
       char: 'o',
       required: true,
     }),
