@@ -44,7 +44,14 @@ export default class FieldUsageTestContext {
     this.totalRecords = 100;
   }
 
-  private readonly mockQueryResults = (request: AnyJson): Promise<AnyJson> => {
+  public readonly mockDescribeFailure = (request: AnyJson): Promise<AnyJson> => {
+    if (isString(request) && request.endsWith('/describe')) {
+      return Promise.reject({ data: { errorCode: 'NOT_FOUND', message: 'The requested resource does not exist' } });
+    }
+    return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
+  };
+
+  public readonly mockQueryResults = (request: AnyJson): Promise<AnyJson> => {
     if (isString(request) && request.endsWith('/describe')) {
       const requestUrl = request.split('/');
       const sobjectName = requestUrl[requestUrl.length - 2];

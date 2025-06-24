@@ -1,7 +1,10 @@
 import fs from 'node:fs';
-import { Connection } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 import { DescribeSObjectResult } from '@jsforce/jsforce-node';
 import { LOCAL_CACHE_DIR } from '../constants.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 
 export default class DescribeApi {
   private readonly cachePath: string;
@@ -18,12 +21,22 @@ export default class DescribeApi {
       return describeResult;
     }
     fs.mkdirSync(this.cachePath, { recursive: true });
-    if (isToolingObject) {
-      describeResult = await this.conn.tooling.describe(objectName);
-    } else {
-      describeResult = await this.conn.describe(objectName);
-    }
+    describeResult = await this.fetchDescribe(objectName, isToolingObject);
     fs.writeFileSync(fullFilePath, JSON.stringify(describeResult, null, 2));
     return describeResult;
+  }
+
+  private async fetchDescribe(objectName: string, isToolingObject?: boolean): Promise<DescribeSObjectResult> {
+    try {
+      if (isToolingObject) {
+        const result = await this.conn.tooling.describe(objectName);
+        return result;
+      } else {
+        const result = await this.conn.describe(objectName);
+        return result;
+      }
+    } catch (err) {
+      throw messages.createError('InvalidSObjectName', [objectName, String(err)]);
+    }
   }
 }
