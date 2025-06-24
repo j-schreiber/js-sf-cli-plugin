@@ -11,13 +11,19 @@ export type FieldUsageOptions = {
 const INCLUDED_FIELD_TYPES = [
   'textarea',
   'string',
-  'double',
+  'multipicklist',
   'picklist',
   'id',
   'reference',
   'date',
   'datetime',
   'boolean',
+  'phone',
+  'email',
+  'url',
+  'int',
+  'double',
+  'currency',
 ];
 
 export default class SObjectAnalyser extends EventEmitter {

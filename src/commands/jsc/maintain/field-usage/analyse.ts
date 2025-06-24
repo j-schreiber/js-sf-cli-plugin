@@ -3,7 +3,7 @@ import { MultiStageOutput } from '@oclif/multi-stage-output';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import SObjectAnalyser from '../../../../field-usage/sobjectAnalyser.js';
-import { FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
+import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
@@ -56,13 +56,13 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
             get: (data) => data?.totalRecords,
             stage: DESCRIBE_STAGE,
             type: 'dynamic-key-value',
-            label: 'Records retrieved',
+            label: 'Total records',
           },
           {
             get: (data) => data?.fieldCount,
             stage: FIELD_STAGE,
             type: 'dynamic-key-value',
-            label: 'Total fields to analyse',
+            label: 'Fields to analyse',
           },
           {
             get: (data) => data?.fieldInAnalysis,
@@ -89,24 +89,29 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       });
       ms.goto(OUTPUT_STAGE);
       fieldUsageTables.push(sobjectUsageResult);
-      ms.stop();
+      const formattedOutput = formatOutput(sobjectUsageResult.fields);
       analyser.removeAllListeners();
+      ms.stop();
       this.table({
-        data: sobjectUsageResult.fields.map((field) => {
-          const result = {
-            ...field,
-            percentFormatted: field.percentagePopulated.toLocaleString('de', {
-              style: 'percent',
-              minimumFractionDigits: 2,
-            }),
-          };
-          return result;
-        }),
+        data: formattedOutput,
         columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
       });
     }
     return { usageReports: fieldUsageTables };
   }
+}
+
+function formatOutput(data: FieldUsageStats[]): Array<FieldUsageStats & { percentFormatted: string }> {
+  return data.map((field) => {
+    const result = {
+      ...field,
+      percentFormatted: field.percentagePopulated.toLocaleString(undefined, {
+        style: 'percent',
+        minimumFractionDigits: 2,
+      }),
+    };
+    return result;
+  });
 }
 
 type MultiStageData = {
