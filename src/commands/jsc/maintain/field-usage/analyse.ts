@@ -93,7 +93,16 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       ms.stop();
       analyser.removeAllListeners();
       this.table({
-        data: sobjectUsageResult.fields,
+        data: sobjectUsageResult.fields.map((field) => {
+          const result = {
+            ...field,
+            percentFormatted: field.percentagePopulated.toLocaleString('de', {
+              style: 'percent',
+              minimumFractionDigits: 2,
+            }),
+          };
+          return result;
+        }),
         columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
       });
     }

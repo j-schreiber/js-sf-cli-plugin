@@ -8,7 +8,7 @@ export type FieldUsageOptions = {
   customFieldsOnly: boolean;
 };
 
-const WHITELISTED_FIELD_TYPES = [
+const INCLUDED_FIELD_TYPES = [
   'textarea',
   'string',
   'double',
@@ -32,7 +32,7 @@ export default class SObjectAnalyser extends EventEmitter {
     const sobjectDescribe = await this.describeCache.describeSObject(sobjectName);
     const fieldsToAnalyse = filterFields(sobjectDescribe.fields, options);
     this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length });
-    const totalCount = await getTotalCount(sobjectDescribe.name, this.targetOrgConnection);
+    const totalCount = await this.getTotalCount(sobjectDescribe.name);
     this.emit('totalRecordsRetrieve', { totalCount });
     const usageTable: FieldUsageTable = { name: sobjectDescribe.name, totalRecords: totalCount, fields: [] };
     if (!totalCount || totalCount === 0) {
@@ -44,19 +44,27 @@ export default class SObjectAnalyser extends EventEmitter {
         fieldCounter: `${fieldsToAnalyse.indexOf(field) + 1} of ${fieldsToAnalyse.length}`,
       });
       // eslint-disable-next-line no-await-in-loop
-      const fieldsPopulatedCount = await getPopulatedFieldCount(sobjectDescribe.name, field, this.targetOrgConnection);
+      const fieldsPopulatedCount = await this.getPopulatedFieldCount(sobjectDescribe.name, field);
       usageTable.fields.push({
         name: field.name,
         type: field.type,
         absolutePopulated: fieldsPopulatedCount,
         percentagePopulated: fieldsPopulatedCount / totalCount,
-        percentFormatted: (fieldsPopulatedCount / totalCount).toLocaleString('de', {
-          style: 'percent',
-          minimumFractionDigits: 2,
-        }),
       });
     }
     return formatTable(usageTable);
+  }
+
+  private async getTotalCount(sobjectName: string): Promise<number> {
+    const queryString = `SELECT COUNT(Id) FROM ${sobjectName}`;
+    const result = await this.targetOrgConnection.query(queryString);
+    return result.records[0]['expr0'] as number;
+  }
+
+  private async getPopulatedFieldCount(sobjectName: string, field: Field): Promise<number> {
+    const queryString = `SELECT COUNT(Id) FROM ${sobjectName} WHERE ${field.name} != NULL`;
+    const result = await this.targetOrgConnection.query(queryString);
+    return result.records[0]['expr0'] as number;
   }
 }
 
@@ -68,20 +76,10 @@ function formatTable(table: FieldUsageTable): FieldUsageTable {
 function filterFields(fields: Field[], options?: FieldUsageOptions): Field[] {
   return fields.filter(
     (field) =>
-      ((field.custom && options?.customFieldsOnly) ?? !options?.customFieldsOnly) &&
-      WHITELISTED_FIELD_TYPES.includes(field.type) &&
+      // nullish-coalescing actually changes behavior - check tests
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      ((field.custom && options?.customFieldsOnly) || !options?.customFieldsOnly) &&
+      INCLUDED_FIELD_TYPES.includes(field.type) &&
       field.filterable
   );
-}
-
-async function getTotalCount(sobjectName: string, conn: Connection): Promise<number> {
-  const queryString = `SELECT COUNT(Id) FROM ${sobjectName}`;
-  const result = await conn.query(queryString);
-  return result.records[0]['expr0'] as number;
-}
-
-async function getPopulatedFieldCount(sobjectName: string, field: Field, conn: Connection): Promise<number> {
-  const queryString = `SELECT COUNT(Id) FROM ${sobjectName} WHERE ${field.name} != NULL`;
-  const result = await conn.query(queryString);
-  return result.records[0]['expr0'] as number;
 }

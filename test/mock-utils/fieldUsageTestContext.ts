@@ -1,15 +1,37 @@
 /* eslint-disable class-methods-use-this */
+import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import { AnyJson, isObject, isString } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
-import { MockAnyObjectResult } from '../data/describes/mockDescribeResults.js';
+
+const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
+  custom: false,
+  createable: true,
+  name: 'Account',
+  fields: [
+    { name: 'Id', type: 'id', filterable: true, custom: false } as Field,
+    { name: 'Name', type: 'string', filterable: true, custom: false } as Field,
+    { name: 'AccountNumber', type: 'string', filterable: true, custom: false } as Field,
+    { name: 'CreatedDate', type: 'datetime', filterable: true, custom: false } as Field,
+    { name: 'BillingStreet', type: 'textarea', filterable: true, custom: false } as Field,
+    { name: 'LargeTextField__c', type: 'textarea', filterable: false, custom: true } as Field,
+    { name: 'MyCustomField__c', type: 'string', filterable: true, custom: true } as Field,
+  ],
+  urls: {
+    sobject: '/services/data/v60.0/sobjects/Account',
+  },
+};
 
 export default class FieldUsageTestContext {
   public coreContext: TestContext;
   public testTargetOrg: MockTestOrgData;
+  public sobjectDescribe: Partial<DescribeSObjectResult>;
+  public totalRecords: number;
 
   public constructor() {
     this.coreContext = new TestContext();
     this.testTargetOrg = new MockTestOrgData();
+    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
+    this.totalRecords = 100;
   }
 
   public async init() {
@@ -18,17 +40,19 @@ export default class FieldUsageTestContext {
 
   public restore() {
     this.coreContext.restore();
+    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
+    this.totalRecords = 100;
   }
 
   private readonly mockQueryResults = (request: AnyJson): Promise<AnyJson> => {
     if (isString(request) && request.endsWith('/describe')) {
       const requestUrl = request.split('/');
       const sobjectName = requestUrl[requestUrl.length - 2];
-      const describe = { ...MockAnyObjectResult, name: sobjectName };
+      const describe = { ...this.sobjectDescribe, name: sobjectName };
       return Promise.resolve(describe as AnyJson);
     }
     if (isObject<{ method: string; url: string }>(request) && request.url.includes('COUNT(Id)')) {
-      return Promise.resolve({ records: [{ expr0: 0 }], done: true });
+      return Promise.resolve({ records: [{ expr0: this.totalRecords }], done: true });
     }
     return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
   };

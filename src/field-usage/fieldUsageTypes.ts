@@ -9,5 +9,4 @@ export type FieldUsageStats = {
   type: string;
   absolutePopulated: number;
   percentagePopulated: number;
-  percentFormatted: string;
 };
