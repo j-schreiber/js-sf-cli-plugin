@@ -65,6 +65,7 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 - [`sf jsc apex schedule start`](#sf-jsc-apex-schedule-start)
 - [`sf jsc apex schedule stop`](#sf-jsc-apex-schedule-stop)
 - [`sf jsc data export`](#sf-jsc-data-export)
+- [`sf jsc maintain field-usage analyse`](#sf-jsc-maintain-field-usage-analyse)
 - [`sf jsc maintain garbage collect`](#sf-jsc-maintain-garbage-collect)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 - [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
@@ -108,7 +109,7 @@ EXAMPLES
     $ sf jsc apex schedule export -j "Auto" -d tmp/dev
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/export.ts)_
 
 ## `sf jsc apex schedule manage`
 
@@ -155,7 +156,7 @@ FLAG DESCRIPTIONS
     the command may still fail, when run without this flag.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/apex/schedule/manage.ts)_
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -219,7 +220,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -284,7 +285,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -318,7 +319,55 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/data/export.ts)_
+
+## `sf jsc maintain field-usage analyse`
+
+Analyse the utilisation of fields for one or more sobjects.
+
+```
+USAGE
+  $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only] [--api-version
+    <value>]
+
+FLAGS
+  -o, --target-org=<value>   (required) Username or alias of the target org, where analysis is run.
+  -s, --sobject=<value>...   (required) The name of an sobject to analyse.
+      --api-version=<value>  Override the api version used for api requests made by this command
+      --custom-fields-only   Specify this flag to only analyse custom fields.
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Analyse the utilisation of fields for one or more sobjects.
+
+  Retrieves the total number of records for an sobject, then each filterable field is analysed
+  for how many records have a "non nullish" value. Not all fields can be analysed: You can find
+  more information of analysable data types in the type column of output table.
+
+EXAMPLES
+  Analyse all fields for Account and MyCustomObject\_\_c object
+
+    $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Account -s MyCustomObject\_\_c
+
+  Analyse only custom fields for Account object
+
+    $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Account --custom-fields-only
+
+FLAG DESCRIPTIONS
+  -s, --sobject=<value>...  The name of an sobject to analyse.
+
+    Specify this flag multiple times to analyse multiple sobjects with a single command execution. Use the full API name
+    of the object.
+
+  --custom-fields-only  Specify this flag to only analyse custom fields.
+
+    If omitted, the command analyses both standard fields and custom fields of each object.
+```
+
+_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -393,7 +442,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -427,7 +476,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -459,6 +508,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.14.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->

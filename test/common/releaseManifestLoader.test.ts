@@ -231,8 +231,6 @@ describe('org manifest', () => {
 
   describe('resolve package install jobs', () => {
     const $$ = new ManifestTestContext();
-    // let DEFAULT_INSTALLED_PACKAGE_RESULT: Partial<QueryResult<InstalledSubscriberPackage>>;
-    // let DEFAULT_PACKAGE_VERSION: Partial<QueryResult<Package2Version>>;
     const testPackageId = '0Ho0X0000000001AAA';
     const testNewVersionId = '04t0X0000000001AAA';
 
