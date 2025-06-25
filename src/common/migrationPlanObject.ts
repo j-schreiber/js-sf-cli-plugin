@@ -2,16 +2,13 @@
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
-import { Connection, Messages, SfError } from '@salesforce/core';
+import { Connection, SfError } from '@salesforce/core';
 import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '../types/migrationPlanObjectData.js';
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
 import { ProcessingStatus, CommandStatusEvent } from './comms/processingEvents.js';
 import PlanCache from './planCache.js';
-
-Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'exportplan');
 
 export default class MigrationPlanObject {
   private describeResult?: DescribeSObjectResult;
@@ -196,11 +193,7 @@ export default class MigrationPlanObject {
   private async describeObject(): Promise<DescribeSObjectResult> {
     if (!this.describeResult) {
       const descApi: DescribeApi = new DescribeApi(this.conn);
-      try {
-        this.describeResult = await descApi.describeSObject(this.data.objectName, this.data.isToolingObject);
-      } catch (err) {
-        throw messages.createError('InvalidSObjectName', [this.getObjectName(), String(err)]);
-      }
+      this.describeResult = await descApi.describeSObject(this.data.objectName, this.data.isToolingObject);
     }
     return this.describeResult;
   }
