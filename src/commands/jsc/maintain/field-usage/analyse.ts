@@ -1,9 +1,13 @@
 /* eslint-disable no-await-in-loop */
-import { MultiStageOutput } from '@oclif/multi-stage-output';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import SObjectAnalyser from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
+import FieldUsageMultiStageOutput, {
+  DESCRIBE_STAGE,
+  FIELD_STAGE,
+  OUTPUT_STAGE,
+} from '../../../../field-usage/fieldUsageMultiStage.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
@@ -11,10 +15,6 @@ const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.f
 export type JscMaintainFieldUsageAnalyseResult = {
   sobjects: Record<string, FieldUsageTable>;
 };
-
-const DESCRIBE_STAGE = 'Analyse SObject';
-const FIELD_STAGE = 'Analyse Fields';
-const OUTPUT_STAGE = 'Format Output';
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
   public static readonly summary = messages.getMessage('summary');
@@ -48,36 +48,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
 
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
-      const ms = new MultiStageOutput<MultiStageData>({
-        jsonEnabled: flags.json ?? false,
-        stages: [DESCRIBE_STAGE, FIELD_STAGE, OUTPUT_STAGE],
-        stageSpecificBlock: [
-          {
-            get: (data) => data?.describeStatus,
-            stage: DESCRIBE_STAGE,
-            type: 'dynamic-key-value',
-            label: 'Describe sobject',
-          },
-          {
-            get: (data) => data?.totalRecords,
-            stage: DESCRIBE_STAGE,
-            type: 'dynamic-key-value',
-            label: 'Total records',
-          },
-          {
-            get: (data) => data?.fieldCount,
-            stage: FIELD_STAGE,
-            type: 'dynamic-key-value',
-            label: 'Fields to analyse',
-          },
-          {
-            get: (data) => data?.fieldInAnalysis,
-            stage: FIELD_STAGE,
-            type: 'message',
-          },
-        ],
-        title: `Analyse ${sobj}`,
-      });
+      const ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
 
       analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
         ms.updateData({ describeStatus: 'Success' });
@@ -98,8 +69,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
         const formattedOutput = formatOutput(sobjectUsageResult.fields);
-        analyser.removeAllListeners();
-        ms.stop();
+        ms.stop('completed');
         this.table({
           data: formattedOutput,
           columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
@@ -107,6 +77,8 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       } catch (err) {
         ms.error();
         this.error(String(err));
+      } finally {
+        analyser.removeAllListeners();
       }
     }
     return { sobjects: fieldUsageTables };
@@ -125,10 +97,3 @@ function formatOutput(data: FieldUsageStats[]): Array<FieldUsageStats & { percen
     return result;
   });
 }
-
-type MultiStageData = {
-  fieldCount: string;
-  totalRecords: string;
-  fieldInAnalysis: string;
-  describeStatus: string;
-};
