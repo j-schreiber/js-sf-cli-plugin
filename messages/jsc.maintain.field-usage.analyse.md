@@ -1,33 +1,32 @@
 # summary
 
-Analyse the utilisation of custom and standard fields for one or more sobjects.
+Analyse the utilisation of fields for one or more sobjects.
 
 # description
 
-The analysis retrieves the total number of records for an sobject, then each filterable
-field is compared for how many records have a "non nullish" value. Not all fields can be
-analysed. You can find more information of analysable data types in the type column
-of output table.
+Retrieves the total number of records for an sobject, then each filterable field is analysed
+for how many records have a "non nullish" value. Not all fields can be analysed: You can find
+more information of analysable data types in the type column of output table.
 
 # flags.sobject.summary
 
-Provide one more sobjects to analyse.
+The name of an sobject to analyse.
 
 # flags.sobject.description
 
-Specify this flag multiple times to analyse multiple sobjects at the same time. Use the full API name of the object.
+Specify this flag multiple times to analyse multiple sobjects with a single command execution. Use the full API name of the object.
 
 # flags.target-org.summary
 
-Username or alias of the target org to analyse.
+Username or alias of the target org, where analysis is run.
 
 # flags.custom-fields-only.summary
 
-Only to only analyse custom fields.
+Specify this flag to only analyse custom fields.
 
 # flags.custom-fields-only.description
 
-If omitted, the engine analyses both standard fields and custom fields of each object.
+If omitted, the command analyses both standard fields and custom fields of each object.
 
 # examples
 
