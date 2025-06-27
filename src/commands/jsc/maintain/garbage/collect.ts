@@ -1,12 +1,12 @@
-import fs from 'node:fs';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Connection, Messages, Org, SfError, SfProject } from '@salesforce/core';
 import { Package } from '@salesforce/packaging';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
-import { manifestOutputDirFlag, outputFormatFlag } from '../../../../common/jscSfCommandFlags.js';
+import { manifestOutputDirFlag, outputFormatFlag, OutputFormats } from '../../../../common/jscSfCommandFlags.js';
 import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
+import PackageManifestDirectory from '../../../../common/packageManifestDirectory.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
@@ -84,22 +84,18 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     }
   }
 
-  private writePackageXml(collectedGarbage: PackageGarbageResult, outputPath?: string, outputFormat?: string): void {
+  private writePackageXml(
+    collectedGarbage: PackageGarbageResult,
+    outputPath?: string,
+    outputFormat?: OutputFormats
+  ): void {
     if (outputPath === undefined) {
       return;
     }
     this.info(`Writing output to: ${outputPath}`);
-    fs.mkdirSync(outputPath, { recursive: true });
-    const packageXml = new PackageManifestBuilder();
-    if (outputFormat === 'DestructiveChangesXML') {
-      const destructiveChangesXml = new PackageManifestBuilder();
-      addGarbageToManifest(destructiveChangesXml, collectedGarbage);
-      destructiveChangesXml.writeToXmlFile(`${outputPath}/destructiveChanges.xml`);
-    } else {
-      fs.rmSync(`${outputPath}/destructiveChanges.xml`, { force: true });
-      addGarbageToManifest(packageXml, collectedGarbage);
-    }
-    packageXml.writeToXmlFile(`${outputPath}/package.xml`);
+    const outputDir = new PackageManifestDirectory(outputPath, outputFormat);
+    addGarbageToManifest(outputDir.getBuilder(), collectedGarbage);
+    outputDir.write();
   }
 
   private async resolvePackageIds(connection: Connection, idsOrAliase?: string[]): Promise<string[] | undefined> {
