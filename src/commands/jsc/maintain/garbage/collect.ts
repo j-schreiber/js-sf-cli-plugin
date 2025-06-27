@@ -6,23 +6,11 @@ import GarbageCollector from '../../../../garbage-collection/garbageCollector.js
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
 import PackageXmlBuilder from '../../../../garbage-collection/packageXmlBuilder.js';
+import { manifestOutputDirFlag, outputFormatFlag } from '../../../../common/jscSfCommandFlags.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
 const genericMessages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
-
-enum OutputFormats {
-  PackageXML = 'PackageXML',
-  DestructiveChangesXML = 'DestructiveChangesXML',
-}
-
-export const outputFormatFlag = Flags.custom<OutputFormats>({
-  char: 'f',
-  summary: messages.getMessage('flags.output-format.summary'),
-  description: messages.getMessage('flags.output-format.description'),
-  options: Object.values(OutputFormats),
-  dependsOn: ['output-dir'],
-});
 
 export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageResult> {
   public static readonly summary = messages.getMessage('summary');
@@ -42,12 +30,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       char: 'v',
       required: false,
     }),
-    'output-dir': Flags.file({
-      exists: false,
-      summary: messages.getMessage('flags.output-dir.summary'),
-      description: messages.getMessage('flags.output-dir.description'),
-      char: 'd',
-    }),
+    'output-dir': manifestOutputDirFlag,
     'metadata-type': Flags.string({
       multiple: true,
       char: 'm',
