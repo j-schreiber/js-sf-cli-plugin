@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { XMLBuilder } from 'fast-xml-parser';
 
 // copied from https://github.com/forcedotcom/source-deploy-retrieve/blob/main/src/common/constants.ts
@@ -35,7 +36,7 @@ export default class PackageManifestBuilder {
   }
 
   /**
-   * Formats the current package manifest instance to XML string
+   * Formats the current package manifest instance to XML string.
    *
    * @returns
    */
@@ -52,5 +53,14 @@ export default class PackageManifestBuilder {
         [XML_NS_KEY]: XML_NS_URL,
       },
     });
+  }
+
+  /**
+   * Writes the contents as XML to the destination path.
+   *
+   * @param path
+   */
+  public writeToXmlFile(path: string): void {
+    fs.writeFileSync(path, this.toXML());
   }
 }

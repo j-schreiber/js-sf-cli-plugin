@@ -5,8 +5,8 @@ import { Package } from '@salesforce/packaging';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
-import PackageXmlBuilder from '../../../../garbage-collection/packageXmlBuilder.js';
 import { manifestOutputDirFlag, outputFormatFlag } from '../../../../common/jscSfCommandFlags.js';
+import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
@@ -90,20 +90,16 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     }
     this.info(`Writing output to: ${outputPath}`);
     fs.mkdirSync(outputPath, { recursive: true });
-    let packageXml;
+    const packageXml = new PackageManifestBuilder();
     if (outputFormat === 'DestructiveChangesXML') {
-      packageXml = PackageXmlBuilder.parseGarbageResultToXml({
-        deprecatedMembers: {},
-        unsupported: [],
-        totalDeprecatedComponentCount: 0,
-      });
-      const destructiveChangesXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
-      fs.writeFileSync(`${outputPath}/destructiveChanges.xml`, destructiveChangesXml);
+      const destructiveChangesXml = new PackageManifestBuilder();
+      addGarbageToManifest(destructiveChangesXml, collectedGarbage);
+      destructiveChangesXml.writeToXmlFile(`${outputPath}/destructiveChanges.xml`);
     } else {
       fs.rmSync(`${outputPath}/destructiveChanges.xml`, { force: true });
-      packageXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
+      addGarbageToManifest(packageXml, collectedGarbage);
     }
-    fs.writeFileSync(`${outputPath}/package.xml`, packageXml);
+    packageXml.writeToXmlFile(`${outputPath}/package.xml`);
   }
 
   private async resolvePackageIds(connection: Connection, idsOrAliase?: string[]): Promise<string[] | undefined> {
@@ -142,6 +138,14 @@ function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Co
     return targetOrg.getConnection(apiVersion);
   }
   return devhubOrg?.getConnection(apiVersion);
+}
+
+function addGarbageToManifest(builder: PackageManifestBuilder, garbage: PackageGarbageResult): void {
+  Object.keys(garbage.deprecatedMembers).forEach((key) => {
+    garbage.deprecatedMembers[key].components.forEach((cmp) => {
+      builder.addMember(garbage.deprecatedMembers[key].metadataType, cmp.fullyQualifiedName);
+    });
+  });
 }
 
 type TableOutputRow = {
