@@ -60,10 +60,15 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         const analyser = await SObjectAnalyser.init(targetOrg, sobj);
         analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
           this.ms?.updateData({ describeStatus: 'Success' });
-          this.ms?.goto(FIELD_STAGE, { fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
+          this.ms?.updateData({ fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
         });
         analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
           this.ms?.updateData({ totalRecords: `${data.totalCount}` });
+          if (data.totalCount > 0) {
+            this.ms?.goto(FIELD_STAGE);
+          } else {
+            this.ms?.skipTo(OUTPUT_STAGE);
+          }
         });
         this.ms.goto(DESCRIBE_STAGE);
         const sobjectUsageResult = await analyser.analyseFieldUsage({
@@ -72,12 +77,8 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         });
         this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
-        const formattedOutput = formatOutput(sobjectUsageResult.fields);
         this.ms.stop('completed');
-        this.table({
-          data: formattedOutput,
-          columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
-        });
+        this.printResults(sobjectUsageResult.fields);
       } catch (err) {
         this.ms.error();
         this.error(String(err));
@@ -85,9 +86,23 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     }
     return { sobjects: fieldUsageTables };
   }
+
+  private printResults(data: FieldUsageStats[]): void {
+    const formattedOutput = formatOutput(data);
+    if (data.length > 0) {
+      this.table({
+        data: formattedOutput,
+        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
+      });
+    }
+  }
 }
 
-function formatOutput(data: FieldUsageStats[]): Array<FieldUsageStats & { percentFormatted: string }> {
+type FormattedUsageStats = FieldUsageStats & {
+  percentFormatted: string;
+};
+
+function formatOutput(data: FieldUsageStats[]): FormattedUsageStats[] {
   return data.map((field) => {
     const result = {
       ...field,

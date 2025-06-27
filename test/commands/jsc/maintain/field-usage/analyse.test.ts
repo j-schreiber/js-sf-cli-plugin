@@ -35,11 +35,24 @@ describe('jsc maintain field-usage analyse', () => {
 
     // Assert
     expect(sfCommandStubs.table.callCount).to.equal(2);
-    // 2 per object: records and describe
-    expect(multiStageStub.updateData.callCount).to.equal(4);
+    // 3 per object: records and describe
+    expect(multiStageStub.updateData.callCount).to.equal(6);
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
+  });
+
+  it('prints no table and completes early, if no records are found', async () => {
+    // Arrange
+    $$.totalRecords = 0;
+
+    // Act
+    await JscMaintainFieldUsageAnalyse.run(['--target-org', $$.testTargetOrg.username, '--sobject', 'Account']);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(0);
+    expect(multiStageStub.stop.callCount).to.equal(1);
+    expect(multiStageStub.error.callCount).to.equal(0);
   });
 
   it('analyses fields for sobject and returns json result with both sobjects', async () => {
