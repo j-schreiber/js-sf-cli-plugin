@@ -19,7 +19,7 @@ describe('sobject analyser', () => {
     const fieldUsageResult = await anal.analyseFieldUsage('Account');
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(6);
+    expect(fieldUsageResult.fields.length).to.equal(7);
     expect(fieldUsageResult.fields).to.have.deep.members([
       {
         name: 'Id',
@@ -57,6 +57,12 @@ describe('sobject analyser', () => {
         absolutePopulated: 100,
         percentagePopulated: 1,
       },
+      {
+        name: 'Formula__c',
+        type: 'formula (string)',
+        absolutePopulated: 100,
+        percentagePopulated: 1,
+      },
     ]);
   });
 
@@ -66,10 +72,58 @@ describe('sobject analyser', () => {
     const fieldUsageResult = await anal.analyseFieldUsage('Account', { customFieldsOnly: true });
 
     // Assert
+    expect(fieldUsageResult.fields.length).to.equal(2);
+    expect(fieldUsageResult.fields[0]).to.include({
+      name: 'MyCustomField__c',
+      type: 'string',
+      absolutePopulated: 100,
+      percentagePopulated: 1,
+    });
+    expect(fieldUsageResult.fields[1]).to.include({
+      name: 'Formula__c',
+      type: 'formula (string)',
+      absolutePopulated: 100,
+      percentagePopulated: 1,
+    });
+  });
+
+  it('excludes formula fields when flag is set', async () => {
+    // Act
+    const anal = new SObjectAnalyser(await $$.testTargetOrg.getConnection());
+    const fieldUsageResult = await anal.analyseFieldUsage('Account', {
+      excludeFormulaFields: true,
+      customFieldsOnly: true,
+    });
+
+    // Assert
     expect(fieldUsageResult.fields.length).to.equal(1);
     expect(fieldUsageResult.fields[0]).to.include({
       name: 'MyCustomField__c',
       type: 'string',
+      absolutePopulated: 100,
+      percentagePopulated: 1,
+    });
+  });
+
+  it('includes formula fields when exclude flag is explicitly set as false', async () => {
+    // Act
+    const anal = new SObjectAnalyser(await $$.testTargetOrg.getConnection());
+    const fieldUsageResult = await anal.analyseFieldUsage('Account', {
+      excludeFormulaFields: false,
+      customFieldsOnly: true,
+    });
+
+    // Assert
+    expect(fieldUsageResult.fields.length).to.equal(2);
+    expect(fieldUsageResult.fields[0]).to.include({
+      name: 'MyCustomField__c',
+      type: 'string',
+      absolutePopulated: 100,
+      percentagePopulated: 1,
+    });
+    expect(fieldUsageResult.fields[1]).to.include({
+      name: 'Formula__c',
+      type: 'formula (string)',
       absolutePopulated: 100,
       percentagePopulated: 1,
     });

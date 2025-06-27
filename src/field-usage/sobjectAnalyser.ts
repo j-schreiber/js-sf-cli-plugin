@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
 import { Connection } from '@salesforce/core';
 import { Field } from '@jsforce/jsforce-node';
@@ -5,7 +6,8 @@ import DescribeApi from '../common/metadata/describeApi.js';
 import { FieldUsageTable } from './fieldUsageTypes.js';
 
 export type FieldUsageOptions = {
-  customFieldsOnly: boolean;
+  customFieldsOnly?: boolean;
+  excludeFormulaFields?: boolean;
 };
 
 const INCLUDED_FIELD_TYPES = [
@@ -53,7 +55,7 @@ export default class SObjectAnalyser extends EventEmitter {
       const fieldsPopulatedCount = await this.getPopulatedFieldCount(sobjectDescribe.name, field);
       usageTable.fields.push({
         name: field.name,
-        type: field.type,
+        type: field.calculated ? `formula (${field.type})` : field.type,
         absolutePopulated: fieldsPopulatedCount,
         percentagePopulated: fieldsPopulatedCount / totalCount,
       });
@@ -83,8 +85,8 @@ function filterFields(fields: Field[], options?: FieldUsageOptions): Field[] {
   return fields.filter(
     (field) =>
       // nullish-coalescing actually changes behavior - check tests
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ((field.custom && options?.customFieldsOnly) || !options?.customFieldsOnly) &&
+      ((!field.calculated && options?.excludeFormulaFields) || !options?.excludeFormulaFields) &&
       INCLUDED_FIELD_TYPES.includes(field.type) &&
       field.filterable
   );
