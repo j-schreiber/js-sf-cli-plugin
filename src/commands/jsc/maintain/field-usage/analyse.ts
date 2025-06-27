@@ -2,7 +2,7 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
-import SObjectAnalyser from '../../../../field-usage/sobjectAnalyser.js';
+import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
   DESCRIBE_STAGE,
@@ -20,7 +20,7 @@ export type JscMaintainFieldUsageAnalyseResult = {
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
   public static readonly summary = messages.getMessage('summary');
-  public static readonly description = messages.getMessage('description');
+  public static readonly description = messages.getMessage('description', [INCLUDED_FIELD_TYPES.join(', ')]);
   public static readonly examples = messages.getMessages('examples');
 
   public static readonly flags = {
@@ -53,24 +53,20 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
 
-    const analyser = new SObjectAnalyser(targetOrg);
-    analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
-      this.ms?.updateData({ describeStatus: 'Success' });
-      this.ms?.goto(FIELD_STAGE, { fieldCount: `${data.fieldCount}` });
-    });
-    analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
-      this.ms?.updateData({ totalRecords: `${data.totalCount}` });
-    });
-    analyser.on('fieldAnalysis', (data: { fieldName: string; fieldCounter: string }) => {
-      this.ms?.goto(FIELD_STAGE, { fieldInAnalysis: `Analysing ${data.fieldCounter}: ${data.fieldName}` });
-    });
-
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
       this.ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
-      this.ms.goto(DESCRIBE_STAGE);
       try {
-        const sobjectUsageResult = await analyser.analyseFieldUsage(sobj, {
+        const analyser = await SObjectAnalyser.init(targetOrg, sobj);
+        analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
+          this.ms?.updateData({ describeStatus: 'Success' });
+          this.ms?.goto(FIELD_STAGE, { fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
+        });
+        analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
+          this.ms?.updateData({ totalRecords: `${data.totalCount}` });
+        });
+        this.ms.goto(DESCRIBE_STAGE);
+        const sobjectUsageResult = await analyser.analyseFieldUsage({
           customFieldsOnly: flags['custom-fields-only'],
           excludeFormulaFields: flags['exclude-formulas'],
         });

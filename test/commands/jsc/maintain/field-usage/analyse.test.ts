@@ -38,8 +38,8 @@ describe('jsc maintain field-usage analyse', () => {
     // 2 per object: records and describe
     expect(multiStageStub.updateData.callCount).to.equal(4);
     expect(multiStageStub.error.callCount).to.equal(0);
-    // 9 per object (6 per field + 3 defaults)
-    expect(multiStageStub.goto.callCount).to.equal(18);
+    // 3 updates per object
+    expect(multiStageStub.goto.callCount).to.equal(6);
   });
 
   it('analyses fields for sobject and returns json result with both sobjects', async () => {
@@ -55,7 +55,7 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    const expectedAnalysableFieldsFromDescribeMock = 6;
+    const expectedAnalysableFieldsFromDescribeMock = 7;
     expect(Object.keys(result.sobjects)).to.deep.equal(['Account', 'Order']);
     expect(result.sobjects.Account.name).to.equal('Account');
     expect(result.sobjects.Account.fields.length).to.equal(expectedAnalysableFieldsFromDescribeMock);

@@ -5,8 +5,8 @@ Analyse the utilisation of fields for one or more sobjects.
 # description
 
 Retrieves the total number of records for an sobject, then each filterable field is analysed
-for how many records have a "non nullish" value. Not all fields can be analysed: You can find
-more information of analysable data types in the type column of output table.
+for how many records have a "non nullish" value. The following field types are supported:
+%s.
 
 # flags.sobject.summary
 
