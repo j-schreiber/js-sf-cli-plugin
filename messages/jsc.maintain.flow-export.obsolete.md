@@ -1,10 +1,10 @@
 # summary
 
-Exports obsolete flows from a target org.
+Exports unpackaged obsolete flows from a target org.
 
 # description
 
-Finds and exports inactive (Obsolete or Draft) flow versions of unpackaged flows. The command analyses both "flow" and "process builder" versions. This is a complimentary command to the garbage collector, which analyses only packaged flows.
+Finds and exports inactive (Obsolete or Draft) versions of unpackaged flows. The active version is never included. This is a complimentary command to the garbage collector, which exclusively analyses packaged flows.
 
 # flags.target-org.summary
 

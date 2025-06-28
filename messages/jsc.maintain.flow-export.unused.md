@@ -1,10 +1,10 @@
 # summary
 
-Exports unused flows from a target org.
+Exports unpackaged unused flows from a target org.
 
 # description
 
-Finds flows that have no active version and that are not part of a package. This includes all existing versions in status "Inactive" (Obsolete) or Draft. The command analyses both "flow" and "process builder" versions. This is a complimentary command to the garbage collector, which analyses only packaged flows.
+Finds versions from completely inactive flows that are not part of a package. The export contains all versions of the inactive flow. This is a complimentary command to the garbage collector, which exclusively analyses packaged flows.
 
 # flags.target-org.summary
 
