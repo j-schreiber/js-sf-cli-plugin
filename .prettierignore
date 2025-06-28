@@ -1,2 +1,3 @@
 # examples in these messages use wild-cards, that prettier escapes
 messages/jsc.apex.schedule.start.md
+messages/jsc.maintain.field-usage.analyse.md

@@ -66,6 +66,8 @@ Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.co
 - [`sf jsc apex schedule stop`](#sf-jsc-apex-schedule-stop)
 - [`sf jsc data export`](#sf-jsc-data-export)
 - [`sf jsc maintain field-usage analyse`](#sf-jsc-maintain-field-usage-analyse)
+- [`sf jsc maintain flow-export obsolete`](#sf-jsc-maintain-flow-export-obsolete)
+- [`sf jsc maintain flow-export unused`](#sf-jsc-maintain-flow-export-unused)
 - [`sf jsc maintain garbage collect`](#sf-jsc-maintain-garbage-collect)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 - [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
@@ -327,14 +329,15 @@ Analyse the utilisation of fields for one or more sobjects.
 
 ```
 USAGE
-  $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only] [--api-version
-    <value>]
+  $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only]
+    [--exclude-formulas] [--api-version <value>]
 
 FLAGS
   -o, --target-org=<value>   (required) Username or alias of the target org, where analysis is run.
   -s, --sobject=<value>...   (required) The name of an sobject to analyse.
       --api-version=<value>  Override the api version used for api requests made by this command
-      --custom-fields-only   Specify this flag to only analyse custom fields.
+      --custom-fields-only   Only analyse custom fields.
+      --exclude-formulas     Only analyse non-formula fields.
 
 GLOBAL FLAGS
   --flags-dir=<value>  Import flag values from a directory.
@@ -344,30 +347,141 @@ DESCRIPTION
   Analyse the utilisation of fields for one or more sobjects.
 
   Retrieves the total number of records for an sobject, then each filterable field is analysed
-  for how many records have a "non nullish" value. Not all fields can be analysed: You can find
-  more information of analysable data types in the type column of output table.
+  for how many records have a "non nullish" value. The following field types are supported:
+  textarea, string, multipicklist, picklist, id, reference, date, datetime, boolean, phone, email, url, int, double,
+  currency.
 
 EXAMPLES
-  Analyse all fields for Account and MyCustomObject\_\_c object
+  Analyse all fields for Account and MyCustomObject__c object
 
-    $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Account -s MyCustomObject\_\_c
+    $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Account -s MyCustomObject__c
 
   Analyse only custom fields for Account object
 
     $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Account --custom-fields-only
 
+  Analyse all fields, but exclude formulas for Order object
+
+    $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Order --exclude-formulas
+
 FLAG DESCRIPTIONS
   -s, --sobject=<value>...  The name of an sobject to analyse.
 
-    Specify this flag multiple times to analyse multiple sobjects with a single command execution. Use the full API name
-    of the object.
+    Specify this flag multiple times to analyse multiple sobjects with a single command execution.
+    Use the full API name of the object.
 
-  --custom-fields-only  Specify this flag to only analyse custom fields.
+  --custom-fields-only  Only analyse custom fields.
 
-    If omitted, the command analyses both standard fields and custom fields of each object.
+    If omitted, the command analyses standard fields and custom fields of an object.
+
+  --exclude-formulas  Only analyse non-formula fields.
+
+    If omitted, the command analyses all field types, regardless if it is a calculated fields or not.
+    If a field is calculated (a formula field), the type shows "formula (return value)".
 ```
 
 _See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
+
+## `sf jsc maintain flow-export obsolete`
+
+Exports unpackaged obsolete flows from a target org.
+
+```
+USAGE
+  $ sf jsc maintain flow-export obsolete -o <value> [--json] [--flags-dir <value>] [-f PackageXML|DestructiveChangesXML -d <value>]
+    [--api-version <value>]
+
+FLAGS
+  -d, --output-dir=<value>      Path where package manifests will be created.
+  -f, --output-format=<option>  Specify in which manifest file the content is written.
+                                <options: PackageXML|DestructiveChangesXML>
+  -o, --target-org=<value>      (required) Target org to analyse.
+      --api-version=<value>     Override the api version used for api requests made by this command
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Exports unpackaged obsolete flows from a target org.
+
+  Finds and exports inactive (Obsolete or Draft) versions of unpackaged flows. The active version is never included.
+  This is a complimentary command to the garbage collector, which exclusively analyses packaged flows.
+
+EXAMPLES
+  Analyse MyTargetOrg and export all obsolete flow versions to destructiveChanges.xml in directory tmp/dev-obsolete.
+
+    $ sf jsc maintain flow-export obsolete -o MyTargetOrg --output-dir tmp/dev-obsolete --output-format \
+      DestructiveChangesXML
+
+  Analyse MyTargetOrg and print a table with all obsolete flow versions
+
+    $ sf jsc maintain flow-export obsolete -o MyTargetOrg
+
+FLAG DESCRIPTIONS
+  -d, --output-dir=<value>  Path where package manifests will be created.
+
+    When provided, creates manifest file (package.xml) at the target location with all exported content. Use the
+    --output-format flag to write contents to destructiveChanges.xml.
+
+  -f, --output-format=PackageXML|DestructiveChangesXML  Specify in which manifest file the content is written.
+
+    The default option prepares a package.xml with all exported components. If you specify DestructiveChangesXML, the
+    command creates an empty package.xml and writes all components into destructiveChanges.xml. This flag only has an
+    effect, if the output directory is set. No source is retrieved or deployed.
+```
+
+_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
+
+## `sf jsc maintain flow-export unused`
+
+Exports unpackaged unused flows from a target org.
+
+```
+USAGE
+  $ sf jsc maintain flow-export unused -o <value> [--json] [--flags-dir <value>] [-f PackageXML|DestructiveChangesXML -d <value>]
+    [--api-version <value>]
+
+FLAGS
+  -d, --output-dir=<value>      Path where package manifests will be created.
+  -f, --output-format=<option>  Specify in which manifest file the content is written.
+                                <options: PackageXML|DestructiveChangesXML>
+  -o, --target-org=<value>      (required) Target org to analyse.
+      --api-version=<value>     Override the api version used for api requests made by this command
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Exports unpackaged unused flows from a target org.
+
+  Finds versions from completely inactive flows that are not part of a package. The export contains all versions of the
+  inactive flow. This is a complimentary command to the garbage collector, which exclusively analyses packaged flows.
+
+EXAMPLES
+  Analyse MyTargetOrg and export all unused flow versions to destructiveChanges.xml in tmp.
+
+    $ sf jsc maintain flow-export unused -o MyTargetOrg --output-dir tmp --output-format DestructiveChangesXML
+
+  Analyse MyTargetOrg and print a table with all unused flow versions
+
+    $ sf jsc maintain flow-export unused -o MyTargetOrg
+
+FLAG DESCRIPTIONS
+  -d, --output-dir=<value>  Path where package manifests will be created.
+
+    When provided, creates manifest file (package.xml) at the target location with all exported content. Use the
+    --output-format flag to write contents to destructiveChanges.xml.
+
+  -f, --output-format=PackageXML|DestructiveChangesXML  Specify in which manifest file the content is written.
+
+    The default option prepares a package.xml with all exported components. If you specify DestructiveChangesXML, the
+    command creates an empty package.xml and writes all components into destructiveChanges.xml. This flag only has an
+    effect, if the output directory is set. No source is retrieved or deployed.
+```
+
+_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/flow-export/unused.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -379,8 +493,8 @@ USAGE
     PackageXML|DestructiveChangesXML -d <value>] [--api-version <value>]
 
 FLAGS
-  -d, --output-dir=<value>        Provide the path of the manifest to create.
-  -f, --output-format=<option>    Specify the type of manifest to create.
+  -d, --output-dir=<value>        Path where package manifests will be created.
+  -f, --output-format=<option>    Specify in which manifest file the content is written.
                                   <options: PackageXML|DestructiveChangesXML>
   -m, --metadata-type=<value>...  Only include specific metadata types in the result.
   -o, --target-org=<value>        (required) Target org to analyse.
@@ -410,14 +524,15 @@ EXAMPLES
   $ sf jsc maintain garbage collect -o Production -m ExternalString -p SalesCRM -d tmp/test-run
 
 FLAG DESCRIPTIONS
-  -d, --output-dir=<value>  Provide the path of the manifest to create.
+  -d, --output-dir=<value>  Path where package manifests will be created.
 
-    When provided, the command creates a manifest file (package.xml) at the target location.
+    When provided, creates manifest file (package.xml) at the target location with all exported content. Use the
+    --output-format flag to write contents to destructiveChanges.xml.
 
-  -f, --output-format=PackageXML|DestructiveChangesXML  Specify the type of manifest to create.
+  -f, --output-format=PackageXML|DestructiveChangesXML  Specify in which manifest file the content is written.
 
-    The default option prepares a package.xml with all deprecated components. If you specify DestructiveChangesXML, the
-    command creates an empty package.xml and writes all components into destructiveChanges. This flag only has an
+    The default option prepares a package.xml with all exported components. If you specify DestructiveChangesXML, the
+    command creates an empty package.xml and writes all components into destructiveChanges.xml. This flag only has an
     effect, if the output directory is set. No source is retrieved or deployed.
 
   -m, --metadata-type=<value>...  Only include specific metadata types in the result.

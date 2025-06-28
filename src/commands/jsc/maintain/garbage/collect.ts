@@ -1,28 +1,16 @@
-import fs from 'node:fs';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Connection, Messages, Org, SfError, SfProject } from '@salesforce/core';
 import { Package } from '@salesforce/packaging';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
-import PackageXmlBuilder from '../../../../garbage-collection/packageXmlBuilder.js';
+import { manifestOutputDirFlag, outputFormatFlag, OutputFormats } from '../../../../common/jscSfCommandFlags.js';
+import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
+import PackageManifestDirectory from '../../../../common/packageManifestDirectory.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
 const genericMessages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
-
-enum OutputFormats {
-  PackageXML = 'PackageXML',
-  DestructiveChangesXML = 'DestructiveChangesXML',
-}
-
-export const outputFormatFlag = Flags.custom<OutputFormats>({
-  char: 'f',
-  summary: messages.getMessage('flags.output-format.summary'),
-  description: messages.getMessage('flags.output-format.description'),
-  options: Object.values(OutputFormats),
-  dependsOn: ['output-dir'],
-});
 
 export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageResult> {
   public static readonly summary = messages.getMessage('summary');
@@ -42,12 +30,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       char: 'v',
       required: false,
     }),
-    'output-dir': Flags.file({
-      exists: false,
-      summary: messages.getMessage('flags.output-dir.summary'),
-      description: messages.getMessage('flags.output-dir.description'),
-      char: 'd',
-    }),
+    'output-dir': manifestOutputDirFlag,
     'metadata-type': Flags.string({
       multiple: true,
       char: 'm',
@@ -101,26 +84,18 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     }
   }
 
-  private writePackageXml(collectedGarbage: PackageGarbageResult, outputPath?: string, outputFormat?: string): void {
+  private writePackageXml(
+    collectedGarbage: PackageGarbageResult,
+    outputPath?: string,
+    outputFormat?: OutputFormats
+  ): void {
     if (outputPath === undefined) {
       return;
     }
     this.info(`Writing output to: ${outputPath}`);
-    fs.mkdirSync(outputPath, { recursive: true });
-    let packageXml;
-    if (outputFormat === 'DestructiveChangesXML') {
-      packageXml = PackageXmlBuilder.parseGarbageResultToXml({
-        deprecatedMembers: {},
-        unsupported: [],
-        totalDeprecatedComponentCount: 0,
-      });
-      const destructiveChangesXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
-      fs.writeFileSync(`${outputPath}/destructiveChanges.xml`, destructiveChangesXml);
-    } else {
-      fs.rmSync(`${outputPath}/destructiveChanges.xml`, { force: true });
-      packageXml = PackageXmlBuilder.parseGarbageResultToXml(collectedGarbage);
-    }
-    fs.writeFileSync(`${outputPath}/package.xml`, packageXml);
+    const outputDir = new PackageManifestDirectory(outputPath, outputFormat);
+    addGarbageToManifest(outputDir.getBuilder(), collectedGarbage);
+    outputDir.write();
   }
 
   private async resolvePackageIds(connection: Connection, idsOrAliase?: string[]): Promise<string[] | undefined> {
@@ -159,6 +134,14 @@ function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Co
     return targetOrg.getConnection(apiVersion);
   }
   return devhubOrg?.getConnection(apiVersion);
+}
+
+function addGarbageToManifest(builder: PackageManifestBuilder, garbage: PackageGarbageResult): void {
+  Object.keys(garbage.deprecatedMembers).forEach((key) => {
+    garbage.deprecatedMembers[key].components.forEach((cmp) => {
+      builder.addMember(garbage.deprecatedMembers[key].metadataType, cmp.fullyQualifiedName);
+    });
+  });
 }
 
 type TableOutputRow = {

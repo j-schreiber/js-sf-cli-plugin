@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
 import { Connection } from '@salesforce/core';
-import { Field } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import DescribeApi from '../common/metadata/describeApi.js';
-import { FieldUsageTable } from './fieldUsageTypes.js';
+import { FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
 
 export type FieldUsageOptions = {
-  customFieldsOnly: boolean;
+  customFieldsOnly?: boolean;
+  excludeFormulaFields?: boolean;
 };
 
-const INCLUDED_FIELD_TYPES = [
+export const INCLUDED_FIELD_TYPES = [
   'textarea',
   'string',
   'multipicklist',
@@ -28,49 +30,56 @@ const INCLUDED_FIELD_TYPES = [
 
 export default class SObjectAnalyser extends EventEmitter {
   private readonly describeCache: DescribeApi;
+  private describeResult!: DescribeSObjectResult;
 
-  public constructor(private readonly targetOrgConnection: Connection) {
+  private constructor(private readonly targetOrgConnection: Connection) {
     super();
     this.describeCache = new DescribeApi(this.targetOrgConnection);
   }
 
-  public async analyseFieldUsage(sobjectName: string, options?: FieldUsageOptions): Promise<FieldUsageTable> {
-    const sobjectDescribe = await this.describeCache.describeSObject(sobjectName);
-    const fieldsToAnalyse = filterFields(sobjectDescribe.fields, options);
+  public static async init(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
+    const newObj = new SObjectAnalyser(targetOrgConnection);
+    newObj.describeResult = await newObj.describeCache.describeSObject(sobjectName);
+    return newObj;
+  }
+
+  public async analyseFieldUsage(options?: FieldUsageOptions): Promise<FieldUsageTable> {
+    const fieldsToAnalyse = filterFields(this.describeResult.fields, options);
     this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length });
-    const totalCount = await this.getTotalCount(sobjectDescribe.name);
+    const totalCount = await this.getTotalCount();
     this.emit('totalRecordsRetrieve', { totalCount });
-    const usageTable: FieldUsageTable = { name: sobjectDescribe.name, totalRecords: totalCount, fields: [] };
+    const usageTable: FieldUsageTable = { name: this.describeResult.name, totalRecords: totalCount, fields: [] };
     if (!totalCount || totalCount === 0) {
       return usageTable;
     }
+    const fieldStats: Array<Promise<FieldUsageStats>> = [];
     for (const field of fieldsToAnalyse) {
-      this.emit('fieldAnalysis', {
-        fieldName: field.name,
-        fieldCounter: `${fieldsToAnalyse.indexOf(field) + 1} of ${fieldsToAnalyse.length}`,
-      });
-      // eslint-disable-next-line no-await-in-loop
-      const fieldsPopulatedCount = await this.getPopulatedFieldCount(sobjectDescribe.name, field);
-      usageTable.fields.push({
-        name: field.name,
-        type: field.type,
-        absolutePopulated: fieldsPopulatedCount,
-        percentagePopulated: fieldsPopulatedCount / totalCount,
-      });
+      fieldStats.push(this.getFieldUsageStats(totalCount, field));
     }
+    usageTable.fields = await Promise.all(fieldStats);
     return formatTable(usageTable);
   }
 
-  private async getTotalCount(sobjectName: string): Promise<number> {
-    const queryString = `SELECT COUNT(Id) FROM ${sobjectName}`;
+  private async getTotalCount(): Promise<number> {
+    const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name}`;
     const result = await this.targetOrgConnection.query(queryString);
     return result.records[0]['expr0'] as number;
   }
 
-  private async getPopulatedFieldCount(sobjectName: string, field: Field): Promise<number> {
-    const queryString = `SELECT COUNT(Id) FROM ${sobjectName} WHERE ${field.name} != NULL`;
+  private async getPopulatedFieldCount(field: Field): Promise<number> {
+    const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
     const result = await this.targetOrgConnection.query(queryString);
     return result.records[0]['expr0'] as number;
+  }
+
+  private async getFieldUsageStats(totalCount: number, field: Field): Promise<FieldUsageStats> {
+    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field);
+    return {
+      name: field.name,
+      type: field.calculated ? `formula (${field.type})` : field.type,
+      absolutePopulated: fieldsPopulatedCount,
+      percentagePopulated: fieldsPopulatedCount / totalCount,
+    };
   }
 }
 
@@ -83,8 +92,8 @@ function filterFields(fields: Field[], options?: FieldUsageOptions): Field[] {
   return fields.filter(
     (field) =>
       // nullish-coalescing actually changes behavior - check tests
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ((field.custom && options?.customFieldsOnly) || !options?.customFieldsOnly) &&
+      ((!field.calculated && options?.excludeFormulaFields) || !options?.excludeFormulaFields) &&
       INCLUDED_FIELD_TYPES.includes(field.type) &&
       field.filterable
   );

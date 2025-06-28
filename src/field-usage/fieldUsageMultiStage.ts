@@ -36,13 +36,7 @@ export default class FieldUsageMultiStageOutput {
           label: 'Total records',
         },
         {
-          get: (data) => data?.fieldCount,
-          stage: FIELD_STAGE,
-          type: 'dynamic-key-value',
-          label: 'Fields to analyse',
-        },
-        {
-          get: (data) => data?.fieldInAnalysis,
+          get: (data) => data?.fieldsUnderAnalysis,
           stage: FIELD_STAGE,
           type: 'message',
         },
@@ -55,6 +49,6 @@ export default class FieldUsageMultiStageOutput {
 export type MultiStageData = {
   fieldCount: string;
   totalRecords: string;
-  fieldInAnalysis: string;
+  fieldsUnderAnalysis: string;
   describeStatus: string;
 };

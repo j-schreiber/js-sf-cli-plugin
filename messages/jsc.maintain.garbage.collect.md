@@ -22,22 +22,6 @@ Used to resolve package ids when garbage must be filtered by package (--package)
 
 Package filters are set with the "0Ho"-Id of the Package2 container. The DevHub is needed to resolve these ids to the canonical "033" Ids. If your target org is a devhub, it will automatically be used. This parameter is only needed, if you specify at least one package flag.
 
-# flags.output-dir.summary
-
-Provide the path of the manifest to create.
-
-# flags.output-dir.description
-
-When provided, the command creates a manifest file (package.xml) at the target location.
-
-# flags.output-format.summary
-
-Specify the type of manifest to create.
-
-# flags.output-format.description
-
-The default option prepares a package.xml with all deprecated components. If you specify DestructiveChangesXML, the command creates an empty package.xml and writes all components into destructiveChanges. This flag only has an effect, if the output directory is set. No source is retrieved or deployed.
-
 # flags.metadata-type.summary
 
 Only include specific metadata types in the result.

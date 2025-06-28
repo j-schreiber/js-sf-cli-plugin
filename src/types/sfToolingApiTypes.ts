@@ -98,11 +98,12 @@ export type SobjectTypeDevNamedEntity = DeveloperNamedRecord & {
   SobjectType: string;
 };
 
-export type FlowVersionDefinition = {
+export type FlowVersionDefinition = Record & {
   Id: string;
   Status: string;
   VersionNumber: number;
   DefinitionId: string;
+  ProcessType: string;
   Definition: DeveloperNamedRecord;
 };
 

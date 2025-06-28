@@ -1,11 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import SObjectAnalyser from '../../../../field-usage/sobjectAnalyser.js';
+import { MultiStageOutput } from '@oclif/multi-stage-output';
+import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
   DESCRIBE_STAGE,
   FIELD_STAGE,
+  MultiStageData,
   OUTPUT_STAGE,
 } from '../../../../field-usage/fieldUsageMultiStage.js';
 
@@ -18,7 +20,7 @@ export type JscMaintainFieldUsageAnalyseResult = {
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
   public static readonly summary = messages.getMessage('summary');
-  public static readonly description = messages.getMessage('description');
+  public static readonly description = messages.getMessage('description', [INCLUDED_FIELD_TYPES.join(', ')]);
   public static readonly examples = messages.getMessages('examples');
 
   public static readonly flags = {
@@ -38,54 +40,69 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.custom-fields-only.summary'),
       description: messages.getMessage('flags.custom-fields-only.description'),
     }),
+    'exclude-formulas': Flags.boolean({
+      summary: messages.getMessage('flags.exclude-formulas.summary'),
+      description: messages.getMessage('flags.exclude-formulas.description'),
+    }),
     'api-version': Flags.orgApiVersion(),
   };
+
+  private ms?: MultiStageOutput<MultiStageData>;
 
   public async run(): Promise<JscMaintainFieldUsageAnalyseResult> {
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
-    const analyser = new SObjectAnalyser(targetOrg);
 
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
-      const ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
-
-      analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
-        ms.updateData({ describeStatus: 'Success' });
-        ms.goto(FIELD_STAGE, { fieldCount: `${data.fieldCount}` });
-      });
-      analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
-        ms.updateData({ totalRecords: `${data.totalCount}` });
-      });
-      analyser.on('fieldAnalysis', (data: { fieldName: string; fieldCounter: string }) => {
-        ms.goto(FIELD_STAGE, { fieldInAnalysis: `Analysing ${data.fieldCounter}: ${data.fieldName}` });
-      });
-
-      ms.goto(DESCRIBE_STAGE);
+      this.ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
       try {
-        const sobjectUsageResult = await analyser.analyseFieldUsage(sobj, {
+        const analyser = await SObjectAnalyser.init(targetOrg, sobj);
+        analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
+          this.ms?.updateData({ describeStatus: 'Success' });
+          this.ms?.updateData({ fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
+        });
+        analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
+          this.ms?.updateData({ totalRecords: `${data.totalCount}` });
+          if (data.totalCount > 0) {
+            this.ms?.goto(FIELD_STAGE);
+          } else {
+            this.ms?.skipTo(OUTPUT_STAGE);
+          }
+        });
+        this.ms.goto(DESCRIBE_STAGE);
+        const sobjectUsageResult = await analyser.analyseFieldUsage({
           customFieldsOnly: flags['custom-fields-only'],
+          excludeFormulaFields: flags['exclude-formulas'],
         });
-        ms.goto(OUTPUT_STAGE);
+        this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
-        const formattedOutput = formatOutput(sobjectUsageResult.fields);
-        ms.stop('completed');
-        this.table({
-          data: formattedOutput,
-          columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
-        });
+        this.ms.stop('completed');
+        this.printResults(sobjectUsageResult.fields);
       } catch (err) {
-        ms.error();
+        this.ms.error();
         this.error(String(err));
-      } finally {
-        analyser.removeAllListeners();
       }
     }
     return { sobjects: fieldUsageTables };
   }
+
+  private printResults(data: FieldUsageStats[]): void {
+    const formattedOutput = formatOutput(data);
+    if (data.length > 0) {
+      this.table({
+        data: formattedOutput,
+        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
+      });
+    }
+  }
 }
 
-function formatOutput(data: FieldUsageStats[]): Array<FieldUsageStats & { percentFormatted: string }> {
+type FormattedUsageStats = FieldUsageStats & {
+  percentFormatted: string;
+};
+
+function formatOutput(data: FieldUsageStats[]): FormattedUsageStats[] {
   return data.map((field) => {
     const result = {
       ...field,
