@@ -19,3 +19,7 @@ Target org to analyse.
 - Analyse MyTargetOrg and print a table with all obsolete flow versions
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg
+
+# success.no-obsolete-versions-found
+
+No obsolete flow versions found. You're all set.

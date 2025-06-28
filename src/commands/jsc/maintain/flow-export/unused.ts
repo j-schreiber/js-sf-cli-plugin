@@ -34,6 +34,9 @@ export default class JscMaintainExportUnusedFlows extends SfCommand<JscMaintainE
       this.info(`Writing output to: ${flags['output-dir']}`);
       writeFlowsToXml(results, flags['output-dir'], flags['output-format']);
     }
+    if (results.length === 0) {
+      this.logSuccess(messages.getMessage('success.no-unused-flows-found'));
+    }
     return { unusedVersions: results };
   }
 }

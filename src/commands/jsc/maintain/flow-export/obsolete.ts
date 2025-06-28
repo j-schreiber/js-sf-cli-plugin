@@ -35,6 +35,9 @@ export default class JscMaintainExportObsoleteFlowVersions extends SfCommand<Jsc
       this.info(`Writing output to: ${flags['output-dir']}`);
       writeFlowsToXml(results, flags['output-dir'], flags['output-format']);
     }
+    if (results.length === 0) {
+      this.logSuccess(messages.getMessage('success.no-obsolete-versions-found'));
+    }
     return { obsoleteVersions: results };
   }
 }

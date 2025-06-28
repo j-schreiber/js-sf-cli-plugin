@@ -19,3 +19,7 @@ Target org to analyse.
 - Analyse MyTargetOrg and print a table with all unused flow versions
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg
+
+# success.no-unused-flows-found
+
+No unused flows found. You're all set.
