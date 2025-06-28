@@ -11,7 +11,7 @@ const OBSOLETE_FLOW_VERSIONS = `SELECT Id,DefinitionId,Definition.DeveloperName,
 FROM Flow
 WHERE
   DefinitionId NOT IN (SELECT Id FROM FlowDefinition WHERE ActiveVersionId = NULL)
-  AND Status IN ('Obsolete','Draft')
+  AND Status IN ('Obsolete','Draft','InvalidDraft')
   AND ManageableState IN ('unmanaged')
 ORDER BY Definition.DeveloperName,VersionNumber`;
 
