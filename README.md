@@ -111,7 +111,7 @@ EXAMPLES
     $ sf jsc apex schedule export -j "Auto" -d tmp/dev
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/export.ts)_
 
 ## `sf jsc apex schedule manage`
 
@@ -158,7 +158,7 @@ FLAG DESCRIPTIONS
     the command may still fail, when run without this flag.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/manage.ts)_
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -222,7 +222,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -287,7 +287,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -321,7 +321,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain field-usage analyse`
 
@@ -380,7 +380,7 @@ FLAG DESCRIPTIONS
     If a field is calculated (a formula field), the type shows "formula (return value)".
 ```
 
-_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
+_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
 
 ## `sf jsc maintain flow-export obsolete`
 
@@ -389,7 +389,7 @@ Exports unpackaged obsolete flows from a target org.
 ```
 USAGE
   $ sf jsc maintain flow-export obsolete -o <value> [--json] [--flags-dir <value>] [-f PackageXML|DestructiveChangesXML -d <value>]
-    [--api-version <value>]
+    [--concise] [--api-version <value>]
 
 FLAGS
   -d, --output-dir=<value>      Path where package manifests will be created.
@@ -397,6 +397,7 @@ FLAGS
                                 <options: PackageXML|DestructiveChangesXML>
   -o, --target-org=<value>      (required) Target org to analyse.
       --api-version=<value>     Override the api version used for api requests made by this command
+      --concise                 Summarize flow output table.
 
 GLOBAL FLAGS
   --flags-dir=<value>  Import flag values from a directory.
@@ -429,9 +430,14 @@ FLAG DESCRIPTIONS
     The default option prepares a package.xml with all exported components. If you specify DestructiveChangesXML, the
     command creates an empty package.xml and writes all components into destructiveChanges.xml. This flag only has an
     effect, if the output directory is set. No source is retrieved or deployed.
+
+  --concise  Summarize flow output table.
+
+    Instead of showing individual exported flow versions, show aggregated information with the flow name and the total
+    number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
 
 ## `sf jsc maintain flow-export unused`
 
@@ -440,7 +446,7 @@ Exports unpackaged unused flows from a target org.
 ```
 USAGE
   $ sf jsc maintain flow-export unused -o <value> [--json] [--flags-dir <value>] [-f PackageXML|DestructiveChangesXML -d <value>]
-    [--api-version <value>]
+    [--concise] [--api-version <value>]
 
 FLAGS
   -d, --output-dir=<value>      Path where package manifests will be created.
@@ -448,6 +454,7 @@ FLAGS
                                 <options: PackageXML|DestructiveChangesXML>
   -o, --target-org=<value>      (required) Target org to analyse.
       --api-version=<value>     Override the api version used for api requests made by this command
+      --concise                 Summarize flow output table.
 
 GLOBAL FLAGS
   --flags-dir=<value>  Import flag values from a directory.
@@ -479,9 +486,14 @@ FLAG DESCRIPTIONS
     The default option prepares a package.xml with all exported components. If you specify DestructiveChangesXML, the
     command creates an empty package.xml and writes all components into destructiveChanges.xml. This flag only has an
     effect, if the output directory is set. No source is retrieved or deployed.
+
+  --concise  Summarize flow output table.
+
+    Instead of showing individual exported flow versions, show aggregated information with the flow name and the total
+    number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/flow-export/unused.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/flow-export/unused.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -557,7 +569,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -591,7 +603,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -623,6 +635,6 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.15.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->
