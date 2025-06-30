@@ -11,6 +11,13 @@ export type PackageTypeMembers = {
   members: string[];
 };
 
+export type PackageManifest = {
+  Package: {
+    types: Record<string, PackageTypeMembers>;
+    version: string;
+  };
+};
+
 export default class PackageManifestBuilder {
   private types: Record<string, PackageTypeMembers>;
 

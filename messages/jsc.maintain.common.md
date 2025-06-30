@@ -13,3 +13,11 @@ Path where package manifests will be created.
 # flags.output-dir.description
 
 When provided, creates manifest file (package.xml) at the target location with all exported content. Use the --output-format flag to write contents to destructiveChanges.xml.
+
+# flags.concise.summary
+
+Summarize flow output table.
+
+# flags.concise.description
+
+Instead of showing individual exported flow versions, show aggregated information with the flow name and the total number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.

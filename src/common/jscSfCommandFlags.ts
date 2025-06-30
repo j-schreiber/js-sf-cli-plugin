@@ -23,3 +23,8 @@ export const manifestOutputDirFlag = Flags.file({
   description: messages.getMessage('flags.output-dir.description'),
   char: 'd',
 });
+
+export const conciseFlowExportTable = Flags.boolean({
+  summary: messages.getMessage('flags.concise.summary'),
+  description: messages.getMessage('flags.concise.description'),
+});

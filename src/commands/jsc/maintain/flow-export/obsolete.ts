@@ -1,7 +1,11 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import { manifestOutputDirFlag, outputFormatFlag } from '../../../../common/jscSfCommandFlags.js';
-import FlowExporter, { FlowClutter, writeFlowsToXml } from '../../../../common/flowExporter.js';
+import {
+  conciseFlowExportTable,
+  manifestOutputDirFlag,
+  outputFormatFlag,
+} from '../../../../common/jscSfCommandFlags.js';
+import FlowExporter, { FlowClutter, summarize, writeFlowsToXml } from '../../../../common/flowExporter.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.flow-export.obsolete');
@@ -23,6 +27,7 @@ export default class JscMaintainExportObsoleteFlowVersions extends SfCommand<Jsc
     }),
     'output-dir': manifestOutputDirFlag,
     'output-format': outputFormatFlag(),
+    concise: conciseFlowExportTable,
     'api-version': Flags.orgApiVersion(),
   };
 
@@ -30,14 +35,23 @@ export default class JscMaintainExportObsoleteFlowVersions extends SfCommand<Jsc
     const { flags } = await this.parse(JscMaintainExportObsoleteFlowVersions);
     const exporter = new FlowExporter(flags['target-org'].getConnection(flags['api-version']));
     const results = await exporter.exportObsoleteFlows();
-    this.table({ data: results });
+    if (results.length === 0) {
+      this.logSuccess(messages.getMessage('success.no-obsolete-versions-found'));
+    } else {
+      this.printResults(results, flags.concise);
+    }
     if (flags['output-dir']) {
       this.info(`Writing output to: ${flags['output-dir']}`);
       writeFlowsToXml(results, flags['output-dir'], flags['output-format']);
     }
-    if (results.length === 0) {
-      this.logSuccess(messages.getMessage('success.no-obsolete-versions-found'));
-    }
     return { obsoleteVersions: results };
+  }
+
+  public printResults(clutter: FlowClutter[], concise?: boolean): void {
+    if (concise) {
+      this.table({ data: summarize(clutter) });
+    } else {
+      this.table({ data: clutter });
+    }
   }
 }
