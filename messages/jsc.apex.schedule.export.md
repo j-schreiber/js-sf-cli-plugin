@@ -43,3 +43,7 @@ Minimize columns displayed in output table.
 # info.wrote-output-to-file
 
 Successfully wrote export to config file: %s
+
+# info.no-scheduled-jobs-found
+
+No scheduled jobs found on org. Nothing to show.
