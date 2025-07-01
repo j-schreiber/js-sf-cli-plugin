@@ -330,12 +330,13 @@ Analyse the utilisation of fields for one or more sobjects.
 ```
 USAGE
   $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only]
-    [--exclude-formulas] [--api-version <value>]
+    [--exclude-formulas] [--check-defaults] [--api-version <value>]
 
 FLAGS
   -o, --target-org=<value>   (required) Username or alias of the target org, where analysis is run.
   -s, --sobject=<value>...   (required) The name of an sobject to analyse.
       --api-version=<value>  Override the api version used for api requests made by this command
+      --check-defaults       Checks if values differ from defaults.
       --custom-fields-only   Only analyse custom fields.
       --exclude-formulas     Only analyse non-formula fields.
 
@@ -369,6 +370,16 @@ FLAG DESCRIPTIONS
 
     Specify this flag multiple times to analyse multiple sobjects with a single command execution.
     Use the full API name of the object.
+
+  --check-defaults  Checks if values differ from defaults.
+
+    Performs an additional check for all fields that have a default value configured. If the field has a default value
+    configered,
+    the analysis only counts a field as populated, if the value is different from the default. The analysis algorithm
+    for fields
+    without a default value does not change.
+
+    The default values of record types are not analysed.
 
   --custom-fields-only  Only analyse custom fields.
 

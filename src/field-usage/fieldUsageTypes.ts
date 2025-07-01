@@ -1,3 +1,5 @@
+import { Optional } from '@jsforce/jsforce-node';
+
 export type FieldUsageTable = {
   name: string;
   totalRecords: number;
@@ -9,4 +11,5 @@ export type FieldUsageStats = {
   type: string;
   absolutePopulated: number;
   percentagePopulated: number;
+  defaultValue?: Optional<string>;
 };

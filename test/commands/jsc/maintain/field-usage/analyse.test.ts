@@ -40,6 +40,35 @@ describe('jsc maintain field-usage analyse', () => {
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
+    sfCommandStubs.table.args.flat().forEach((tableArgs) => {
+      expect(tableArgs.columns).to.deep.equal([
+        'name',
+        'type',
+        'absolutePopulated',
+        { key: 'percentFormatted', name: 'Percent' },
+      ]);
+    });
+  });
+
+  it('prints additional default values statistics in field usage when flag is set', async () => {
+    // Act
+    await JscMaintainFieldUsageAnalyse.run([
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--sobject',
+      'Account',
+      '--check-defaults',
+    ]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(1);
+    expect(sfCommandStubs.table.args.flat()[0].columns).to.deep.equal([
+      'name',
+      'type',
+      'absolutePopulated',
+      { key: 'percentFormatted', name: 'Percent' },
+      'defaultValue',
+    ]);
   });
 
   it('prints no table and completes early, if no records are found', async () => {
@@ -68,12 +97,11 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    const expectedAnalysableFieldsFromDescribeMock = 7;
     expect(Object.keys(result.sobjects)).to.deep.equal(['Account', 'Order']);
     expect(result.sobjects.Account.name).to.equal('Account');
-    expect(result.sobjects.Account.fields.length).to.equal(expectedAnalysableFieldsFromDescribeMock);
+    expect(result.sobjects.Account.fields.length).to.equal($$.getFilterableFields());
     expect(result.sobjects.Order.name).to.equal('Order');
-    expect(result.sobjects.Order.fields.length).to.equal(expectedAnalysableFieldsFromDescribeMock);
+    expect(result.sobjects.Order.fields.length).to.equal($$.getFilterableFields());
   });
 
   it('throws an error when invalid sobject name is provided', async () => {

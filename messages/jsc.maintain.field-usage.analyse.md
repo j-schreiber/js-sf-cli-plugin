@@ -38,6 +38,18 @@ Only analyse non-formula fields.
 If omitted, the command analyses all field types, regardless if it is a calculated fields or not.
 If a field is calculated (a formula field), the type shows "formula (return value)".
 
+# flags.check-defaults.summary
+
+Checks if values differ from defaults.
+
+# flags.check-defaults.description
+
+Performs an additional check for all fields that have a default value configured. If the field has a default value configered,
+the analysis only counts a field as populated, if the value is different from the default. The analysis algorithm for fields 
+without a default value does not change.
+
+The default values of record types are not analysed.
+
 # examples
 
 - Analyse all fields for Account and MyCustomObject__c object
@@ -51,3 +63,7 @@ If a field is calculated (a formula field), the type shows "formula (return valu
 - Analyse all fields, but exclude formulas for Order object
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg -s Order --exclude-formulas
+
+# infos.check-defaults-enabled
+
+Analysing default values. Fields are only considered populated, if the value is different from configured default.

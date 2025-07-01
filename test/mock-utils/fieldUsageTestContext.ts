@@ -15,8 +15,9 @@ const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
     { name: 'CreatedDate', type: 'datetime', filterable: true, custom: false },
     { name: 'BillingStreet', type: 'textarea', filterable: true, custom: false },
     { name: 'LargeTextField__c', type: 'textarea', filterable: false, custom: true },
-    { name: 'MyCustomField__c', type: 'string', filterable: true, custom: true },
+    { name: 'MyCustomField__c', type: 'string', filterable: true, custom: true, defaultValue: 'Test' },
     { name: 'Formula__c', type: 'string', filterable: true, custom: true, calculated: true },
+    { name: 'MyCheckbox__c', type: 'boolean', filterable: true, custom: true, defaultValue: true },
   ] as Field[],
   urls: {
     sobject: '/services/data/v60.0/sobjects/Account',
@@ -28,6 +29,8 @@ export default class FieldUsageTestContext {
   public testTargetOrg: MockTestOrgData;
   public sobjectDescribe: Partial<DescribeSObjectResult>;
   public totalRecords: number;
+  /** A map of explicit query strings and their expr0 result */
+  public queryResults: Record<string, number> = {};
 
   public constructor() {
     this.coreContext = new TestContext();
@@ -44,7 +47,19 @@ export default class FieldUsageTestContext {
     this.coreContext.restore();
     this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
     this.totalRecords = 100;
-    clearPluginCache();
+    // plugin cache that stores describe results
+    fs.rmSync('.jsc', { recursive: true, force: true });
+  }
+
+  public getFilterableFields(): number {
+    let count = 0;
+    // one field in our default describe result is non-filterable
+    this.sobjectDescribe.fields?.forEach((field) => {
+      if (field.filterable) {
+        count++;
+      }
+    });
+    return count;
   }
 
   public readonly mockDescribeFailure = (request: AnyJson): Promise<AnyJson> => {
@@ -62,12 +77,17 @@ export default class FieldUsageTestContext {
       return Promise.resolve(describe as AnyJson);
     }
     if (isObject<{ method: string; url: string }>(request) && request.url.includes('COUNT(Id)')) {
+      const queryParam = extractQueryParameter(request.url);
+      if (queryParam && this.queryResults[queryParam] !== undefined) {
+        return Promise.resolve({ records: [{ expr0: this.queryResults[queryParam] }], done: true });
+      }
       return Promise.resolve({ records: [{ expr0: this.totalRecords }], done: true });
     }
     return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
   };
 }
 
-function clearPluginCache() {
-  fs.rmSync('.jsc', { recursive: true, force: true });
+function extractQueryParameter(fullRequestUrl: string): string | undefined {
+  const rawQuery = fullRequestUrl.split('?q=')[1];
+  return rawQuery ? decodeURIComponent(rawQuery) : undefined;
 }

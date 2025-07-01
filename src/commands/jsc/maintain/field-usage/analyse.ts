@@ -44,6 +44,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.exclude-formulas.summary'),
       description: messages.getMessage('flags.exclude-formulas.description'),
     }),
+    'check-defaults': Flags.boolean({
+      summary: messages.getMessage('flags.check-defaults.summary'),
+      description: messages.getMessage('flags.check-defaults.description'),
+    }),
     'api-version': Flags.orgApiVersion(),
   };
 
@@ -52,12 +56,14 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
   public async run(): Promise<JscMaintainFieldUsageAnalyseResult> {
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
-
+    if (flags['check-defaults']) {
+      this.info(messages.getMessage('infos.check-defaults-enabled'));
+    }
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
       this.ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
       try {
-        const analyser = await SObjectAnalyser.init(targetOrg, sobj);
+        const analyser = await SObjectAnalyser.create(targetOrg, sobj);
         analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
           this.ms?.updateData({ describeStatus: 'Success' });
           this.ms?.updateData({ fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
@@ -74,11 +80,14 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         const sobjectUsageResult = await analyser.analyseFieldUsage({
           customFieldsOnly: flags['custom-fields-only'],
           excludeFormulaFields: flags['exclude-formulas'],
+          checkDefaultValues: flags['check-defaults'],
         });
         this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
         this.ms.stop('completed');
-        this.printResults(sobjectUsageResult.fields);
+        if (sobjectUsageResult.fields.length > 0) {
+          this.printResults(sobjectUsageResult.fields, flags['check-defaults']);
+        }
       } catch (err) {
         this.ms.error();
         this.error(String(err));
@@ -87,30 +96,29 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     return { sobjects: fieldUsageTables };
   }
 
-  private printResults(data: FieldUsageStats[]): void {
-    const formattedOutput = formatOutput(data);
-    if (data.length > 0) {
+  private printResults(data: FieldUsageStats[], checkDefaults?: boolean): void {
+    const dataFormatted = data.map((field) => {
+      const result = {
+        ...field,
+        percentFormatted: field.percentagePopulated.toLocaleString(undefined, {
+          style: 'percent',
+          minimumFractionDigits: 2,
+        }),
+      };
+      return result;
+    });
+    // have not found a way to do this in one line by expanding the array
+    // need to revisit later
+    if (checkDefaults) {
       this.table({
-        data: formattedOutput,
+        data: dataFormatted,
+        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }, 'defaultValue'],
+      });
+    } else {
+      this.table({
+        data: dataFormatted,
         columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
       });
     }
   }
-}
-
-type FormattedUsageStats = FieldUsageStats & {
-  percentFormatted: string;
-};
-
-function formatOutput(data: FieldUsageStats[]): FormattedUsageStats[] {
-  return data.map((field) => {
-    const result = {
-      ...field,
-      percentFormatted: field.percentagePopulated.toLocaleString(undefined, {
-        style: 'percent',
-        minimumFractionDigits: 2,
-      }),
-    };
-    return result;
-  });
 }

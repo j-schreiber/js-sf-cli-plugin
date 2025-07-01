@@ -63,6 +63,21 @@ describe('jsc maintain NUTs*', () => {
       assert.isDefined(result.sobjects['Lead']);
       expect(result.sobjects['Lead'].totalRecords).to.equal(0);
     });
+
+    it('successfully analyses valid sobject with check-defaults flag', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --check-defaults --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.sobjects['Account']);
+      result.sobjects['Account'].fields.forEach((fieldUsageStat) => {
+        assert.isDefined(fieldUsageStat.defaultValue);
+      });
+    });
   });
 
   describe('export obsolete flows', () => {

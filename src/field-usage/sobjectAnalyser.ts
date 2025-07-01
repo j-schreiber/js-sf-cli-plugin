@@ -8,6 +8,7 @@ import { FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
 export type FieldUsageOptions = {
   customFieldsOnly?: boolean;
   excludeFormulaFields?: boolean;
+  checkDefaultValues?: boolean;
 };
 
 export const INCLUDED_FIELD_TYPES = [
@@ -37,7 +38,7 @@ export default class SObjectAnalyser extends EventEmitter {
     this.describeCache = new DescribeApi(this.targetOrgConnection);
   }
 
-  public static async init(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
+  public static async create(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
     const newObj = new SObjectAnalyser(targetOrgConnection);
     newObj.describeResult = await newObj.describeCache.describeSObject(sobjectName);
     return newObj;
@@ -54,7 +55,7 @@ export default class SObjectAnalyser extends EventEmitter {
     }
     const fieldStats: Array<Promise<FieldUsageStats>> = [];
     for (const field of fieldsToAnalyse) {
-      fieldStats.push(this.getFieldUsageStats(totalCount, field));
+      fieldStats.push(this.getFieldUsageStats(totalCount, field, options));
     }
     usageTable.fields = await Promise.all(fieldStats);
     return formatTable(usageTable);
@@ -66,19 +67,30 @@ export default class SObjectAnalyser extends EventEmitter {
     return result.records[0]['expr0'] as number;
   }
 
-  private async getPopulatedFieldCount(field: Field): Promise<number> {
-    const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
+  private async getPopulatedFieldCount(field: Field, checkDefaults?: boolean): Promise<number> {
+    let queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
+    if (checkDefaults && field.defaultValue != null) {
+      queryString +=
+        field.type === 'boolean'
+          ? ` AND ${field.name} != ${field.defaultValue}`
+          : ` AND ${field.name} != '${field.defaultValue}'`;
+    }
     const result = await this.targetOrgConnection.query(queryString);
     return result.records[0]['expr0'] as number;
   }
 
-  private async getFieldUsageStats(totalCount: number, field: Field): Promise<FieldUsageStats> {
-    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field);
+  private async getFieldUsageStats(
+    totalCount: number,
+    field: Field,
+    options?: FieldUsageOptions
+  ): Promise<FieldUsageStats> {
+    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field, options?.checkDefaultValues);
     return {
       name: field.name,
       type: field.calculated ? `formula (${field.type})` : field.type,
       absolutePopulated: fieldsPopulatedCount,
       percentagePopulated: fieldsPopulatedCount / totalCount,
+      ...(options?.checkDefaultValues && { defaultValue: field.defaultValue }),
     };
   }
 }
