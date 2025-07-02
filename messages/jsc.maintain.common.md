@@ -21,3 +21,11 @@ Summarize flow output table.
 # flags.concise.description
 
 Instead of showing individual exported flow versions, show aggregated information with the flow name and the total number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
+
+# flags.result-format.summary
+
+Change the display formatting of output tables.
+
+# flags.result-format.description
+
+Changes output format of table results that are printed to stdout. Use a format that is easier to copy-paste or export into other programs that support the format. For example, use markdown to copy-paste table outputs to Obsidian or Confluence.

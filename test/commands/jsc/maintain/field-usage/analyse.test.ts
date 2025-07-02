@@ -71,6 +71,26 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
   });
 
+  it('prints results table in markdown if results-format markdown is specified', async () => {
+    // Act
+    await JscMaintainFieldUsageAnalyse.run([
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--sobject',
+      'Account',
+      '--result-format',
+      'markdown',
+    ]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(0);
+    expect(sfCommandStubs.log.callCount).to.equal(1);
+    // need to extract markdown output to dedicated formatter
+    // for easier stubbing and testing. For now, just assert basic
+    // markdown formatting in output -> first table column header
+    expect(sfCommandStubs.log.args.flat()[0]).to.contain('| Name');
+  });
+
   it('prints no table and completes early, if no records are found', async () => {
     // Arrange
     $$.totalRecords = 0;

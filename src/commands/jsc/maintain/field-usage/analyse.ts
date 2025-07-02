@@ -2,6 +2,7 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
+import { markdownTable } from 'markdown-table';
 import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
@@ -10,6 +11,7 @@ import FieldUsageMultiStageOutput, {
   MultiStageData,
   OUTPUT_STAGE,
 } from '../../../../field-usage/fieldUsageMultiStage.js';
+import { resultFormatFlag, ResultFormats } from '../../../../common/jscSfCommandFlags.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
@@ -49,6 +51,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       description: messages.getMessage('flags.check-defaults.description'),
     }),
     'api-version': Flags.orgApiVersion(),
+    'result-format': resultFormatFlag(),
   };
 
   private ms?: MultiStageOutput<MultiStageData>;
@@ -86,7 +89,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         fieldUsageTables[sobj] = sobjectUsageResult;
         this.ms.stop('completed');
         if (sobjectUsageResult.fields.length > 0) {
-          this.printResults(sobjectUsageResult.fields, flags['check-defaults']);
+          this.printResults(sobjectUsageResult.fields, flags['result-format'], flags['check-defaults']);
         }
       } catch (err) {
         this.ms.error();
@@ -96,7 +99,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     return { sobjects: fieldUsageTables };
   }
 
-  private printResults(data: FieldUsageStats[], checkDefaults?: boolean): void {
+  private printResults(data: FieldUsageStats[], resultFormat: ResultFormats, checkDefaults?: boolean): void {
     const dataFormatted = data.map((field) => {
       const result = {
         ...field,
@@ -107,18 +110,32 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       };
       return result;
     });
-    // have not found a way to do this in one line by expanding the array
-    // need to revisit later
-    if (checkDefaults) {
-      this.table({
-        data: dataFormatted,
-        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }, 'defaultValue'],
-      });
-    } else {
-      this.table({
-        data: dataFormatted,
-        columns: ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
-      });
+    // TODO: refactor into solid strategy pattern
+    switch (resultFormat) {
+      case ResultFormats.human:
+        this.table({
+          data: dataFormatted,
+          columns: checkDefaults
+            ? ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }, 'defaultValue']
+            : ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
+        });
+        break;
+      case ResultFormats.markdown: {
+        const markdownOutput: string[][] = [];
+        markdownOutput.push(['Name', 'Type', 'Absolute Populated', 'Percent']);
+        dataFormatted.forEach((row) => {
+          markdownOutput.push([
+            `\`${row.name}\``,
+            row.type,
+            row.absolutePopulated.toLocaleString(),
+            row.percentFormatted,
+          ]);
+        });
+        this.log(markdownTable(markdownOutput));
+        break;
+      }
+      case ResultFormats.csv:
+        break;
     }
   }
 }
