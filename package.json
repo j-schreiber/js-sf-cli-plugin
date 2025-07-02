@@ -19,6 +19,7 @@
     "ansis": "4",
     "fast-xml-parser": "5",
     "js-yaml": "^4.1.0",
+    "json-2-csv": "^5.5.9",
     "markdown-table": "^3.0.4",
     "zod": "^3.23.8"
   },

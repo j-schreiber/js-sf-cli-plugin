@@ -3,6 +3,7 @@ import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
 import { markdownTable } from 'markdown-table';
+import { json2csv } from 'json-2-csv';
 import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
@@ -110,7 +111,8 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       };
       return result;
     });
-    // TODO: refactor into solid strategy pattern
+    // TODO: refactor into strategy pattern for reusability and testability
+    // TODO: generalize header creation with checkDefaults
     switch (resultFormat) {
       case ResultFormats.human:
         this.table({
@@ -122,20 +124,26 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         break;
       case ResultFormats.markdown: {
         const markdownOutput: string[][] = [];
-        markdownOutput.push(['Name', 'Type', 'Absolute Populated', 'Percent']);
+        markdownOutput.push(
+          checkDefaults
+            ? ['Name', 'Type', 'Absolute Populated', 'Percent', 'Default Value']
+            : ['Name', 'Type', 'Absolute Populated', 'Percent']
+        );
         dataFormatted.forEach((row) => {
-          markdownOutput.push([
-            `\`${row.name}\``,
-            row.type,
-            row.absolutePopulated.toLocaleString(),
-            row.percentFormatted,
-          ]);
+          const rowData = [`\`${row.name}\``, row.type, row.absolutePopulated.toLocaleString(), row.percentFormatted];
+          if (checkDefaults) {
+            rowData.push(row.defaultValue!);
+          }
+          markdownOutput.push(rowData);
         });
         this.log(markdownTable(markdownOutput));
         break;
       }
-      case ResultFormats.csv:
+      case ResultFormats.csv: {
+        const csvOutput = json2csv(dataFormatted);
+        this.log(csvOutput);
         break;
+      }
     }
   }
 }

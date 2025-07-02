@@ -91,6 +91,26 @@ describe('jsc maintain field-usage analyse', () => {
     expect(sfCommandStubs.log.args.flat()[0]).to.contain('| Name');
   });
 
+  it('prints results table in csv if results-format csv is specified', async () => {
+    // Act
+    await JscMaintainFieldUsageAnalyse.run([
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--sobject',
+      'Account',
+      '--result-format',
+      'csv',
+    ]);
+
+    // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(0);
+    expect(sfCommandStubs.log.callCount).to.equal(1);
+    // need to extract markdown output to dedicated formatter
+    // for easier stubbing and testing. For now, just assert basic
+    // markdown formatting in output -> first table column header
+    expect(sfCommandStubs.log.args.flat()[0]).to.contain('name,type,absolutePopulated');
+  });
+
   it('prints no table and completes early, if no records are found', async () => {
     // Arrange
     $$.totalRecords = 0;
