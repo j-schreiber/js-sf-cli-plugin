@@ -118,16 +118,27 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         this.table({
           data: dataFormatted,
           columns: checkDefaults
-            ? ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }, 'defaultValue']
-            : ['name', 'type', 'absolutePopulated', { key: 'percentFormatted', name: 'Percent' }],
+            ? [
+                'name',
+                'type',
+                { key: 'absolutePopulated', name: 'Populated' },
+                { key: 'percentFormatted', name: 'Percent' },
+                'defaultValue',
+              ]
+            : [
+                'name',
+                'type',
+                { key: 'absolutePopulated', name: 'Populated' },
+                { key: 'percentFormatted', name: 'Percent' },
+              ],
         });
         break;
       case ResultFormats.markdown: {
         const markdownOutput: string[][] = [];
         markdownOutput.push(
           checkDefaults
-            ? ['Name', 'Type', 'Absolute Populated', 'Percent', 'Default Value']
-            : ['Name', 'Type', 'Absolute Populated', 'Percent']
+            ? ['Name', 'Type', 'Populated', 'Percent', 'Default Value']
+            : ['Name', 'Type', 'Populated', 'Percent']
         );
         dataFormatted.forEach((row) => {
           const rowData = [`\`${row.name}\``, row.type, row.absolutePopulated.toLocaleString(), row.percentFormatted];
