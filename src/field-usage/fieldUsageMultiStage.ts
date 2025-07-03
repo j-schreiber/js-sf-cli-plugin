@@ -18,7 +18,7 @@ export default class FieldUsageMultiStageOutput {
    * @param jsonEnabled
    * @returns
    */
-  public static newInstance(objectName: string, jsonEnabled?: boolean): MultiStageOutput<MultiStageData> {
+  public static create(objectName: string, jsonEnabled?: boolean): MultiStageOutput<MultiStageData> {
     return new MultiStageOutput<MultiStageData>({
       jsonEnabled: jsonEnabled ?? false,
       stages: [DESCRIBE_STAGE, FIELD_STAGE, OUTPUT_STAGE],
@@ -40,6 +40,11 @@ export default class FieldUsageMultiStageOutput {
           stage: FIELD_STAGE,
           type: 'message',
         },
+        {
+          get: (data) => data?.skippedFields,
+          stage: FIELD_STAGE,
+          type: 'message',
+        },
       ],
       title: `Analyse ${objectName}`,
     });
@@ -50,5 +55,6 @@ export type MultiStageData = {
   fieldCount: string;
   totalRecords: string;
   fieldsUnderAnalysis: string;
+  skippedFields: string;
   describeStatus: string;
 };

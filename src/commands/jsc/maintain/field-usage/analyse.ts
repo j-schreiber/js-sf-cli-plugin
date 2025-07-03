@@ -2,7 +2,6 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
-import { markdownTable } from 'markdown-table';
 import { json2csv } from 'json-2-csv';
 import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
 import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
@@ -13,6 +12,9 @@ import FieldUsageMultiStageOutput, {
   OUTPUT_STAGE,
 } from '../../../../field-usage/fieldUsageMultiStage.js';
 import { resultFormatFlag, ResultFormats } from '../../../../common/jscSfCommandFlags.js';
+import HumanResultsReporter from '../../../../common/reporters/humanResultsReporter.js';
+import ResultsReporter from '../../../../common/reporters/resultsReporter.js';
+import MarkdownResultsReporter from '../../../../common/reporters/markdownResultsReporter.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
@@ -65,13 +67,19 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     }
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
-      this.ms = FieldUsageMultiStageOutput.newInstance(sobj, flags.json);
+      this.ms = FieldUsageMultiStageOutput.create(sobj, flags.json);
       try {
         const analyser = await SObjectAnalyser.create(targetOrg, sobj);
-        analyser.on('describeSuccess', (data: { fieldCount: number; resolvedName: string }) => {
-          this.ms?.updateData({ describeStatus: 'Success' });
-          this.ms?.updateData({ fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields` });
-        });
+        analyser.on(
+          'describeSuccess',
+          (data: { fieldCount: number; resolvedName: string; skippedFieldsCount: number }) => {
+            this.ms?.updateData({ describeStatus: 'Success' });
+            this.ms?.updateData({
+              fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields`,
+              skippedFields: `Ignoring ${data.skippedFieldsCount} fields for analysis`,
+            });
+          }
+        );
         analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
           this.ms?.updateData({ totalRecords: `${data.totalCount}` });
           if (data.totalCount > 0) {
@@ -89,8 +97,8 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
         this.ms.stop('completed');
-        if (sobjectUsageResult.fields.length > 0) {
-          this.printResults(sobjectUsageResult.fields, flags['result-format'], flags['check-defaults']);
+        if (sobjectUsageResult.analysedFields.length > 0) {
+          this.printResults(sobjectUsageResult.analysedFields, flags['result-format']);
         }
       } catch (err) {
         this.ms.error();
@@ -100,7 +108,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     return { sobjects: fieldUsageTables };
   }
 
-  private printResults(data: FieldUsageStats[], resultFormat: ResultFormats, checkDefaults?: boolean): void {
+  private printResults(data: FieldUsageStats[], resultFormat: ResultFormats): void {
     const dataFormatted = data.map((field) => {
       const result = {
         ...field,
@@ -111,43 +119,22 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       };
       return result;
     });
-    // TODO: refactor into strategy pattern for reusability and testability
-    // TODO: generalize header creation with checkDefaults
+    let reporter: ResultsReporter<FieldUsageStats>;
     switch (resultFormat) {
       case ResultFormats.human:
-        this.table({
-          data: dataFormatted,
-          columns: checkDefaults
-            ? [
-                'name',
-                'type',
-                { key: 'absolutePopulated', name: 'Populated' },
-                { key: 'percentFormatted', name: 'Percent' },
-                'defaultValue',
-              ]
-            : [
-                'name',
-                'type',
-                { key: 'absolutePopulated', name: 'Populated' },
-                { key: 'percentFormatted', name: 'Percent' },
-              ],
+        reporter = new HumanResultsReporter<FieldUsageStats>(dataFormatted, {
+          excludeColumns: ['percentagePopulated'],
         });
+        reporter.print();
         break;
       case ResultFormats.markdown: {
-        const markdownOutput: string[][] = [];
-        markdownOutput.push(
-          checkDefaults
-            ? ['Name', 'Type', 'Populated', 'Percent', 'Default Value']
-            : ['Name', 'Type', 'Populated', 'Percent']
-        );
-        dataFormatted.forEach((row) => {
-          const rowData = [`\`${row.name}\``, row.type, row.absolutePopulated.toLocaleString(), row.percentFormatted];
-          if (checkDefaults) {
-            rowData.push(row.defaultValue!);
-          }
-          markdownOutput.push(rowData);
+        reporter = new MarkdownResultsReporter<FieldUsageStats>(dataFormatted, {
+          formattings: { name: { style: 'code' } },
+          capitalizeHeaders: true,
+          title: 'Analysed Fields',
+          excludeColumns: ['percentagePopulated'],
         });
-        this.log(markdownTable(markdownOutput));
+        reporter.print();
         break;
       }
       case ResultFormats.csv: {

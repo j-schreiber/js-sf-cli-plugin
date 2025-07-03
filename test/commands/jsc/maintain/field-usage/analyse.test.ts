@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { SfError } from '@salesforce/core';
 import { SinonSandbox } from 'sinon';
-import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
+import { stubSfCommandUx, stubUx } from '@salesforce/sf-plugins-core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
 import JscMaintainFieldUsageAnalyse from '../../../../../src/commands/jsc/maintain/field-usage/analyse.js';
 import FieldUsageTestContext from '../../../../mock-utils/fieldUsageTestContext.js';
@@ -10,12 +10,14 @@ import FieldUsageMultiStageOutput, { MultiStageData } from '../../../../../src/f
 describe('jsc maintain field-usage analyse', () => {
   const $$ = new FieldUsageTestContext();
   let sfCommandStubs: ReturnType<typeof stubSfCommandUx>;
+  let uxStub: ReturnType<typeof stubUx>;
   let multiStageStub: ReturnType<typeof stubMultiStageUx>;
 
   beforeEach(async () => {
     await $$.init();
     sfCommandStubs = stubSfCommandUx($$.coreContext.SANDBOX);
     multiStageStub = stubMultiStageUx($$.coreContext.SANDBOX);
+    uxStub = stubUx($$.coreContext.SANDBOX);
   });
 
   afterEach(() => {
@@ -34,19 +36,14 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(sfCommandStubs.table.callCount).to.equal(2);
+    expect(uxStub.table.callCount).to.equal(2);
     // 3 per object: records and describe
     expect(multiStageStub.updateData.callCount).to.equal(6);
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
-    sfCommandStubs.table.args.flat().forEach((tableArgs) => {
-      expect(tableArgs.columns).to.deep.equal([
-        'name',
-        'type',
-        'absolutePopulated',
-        { key: 'percentFormatted', name: 'Percent' },
-      ]);
+    uxStub.table.args.flat().forEach((tableArgs) => {
+      expect(tableArgs.columns).to.deep.equal(['name', 'type', 'absolutePopulated', 'percentFormatted']);
     });
   });
 
@@ -61,13 +58,13 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(sfCommandStubs.table.callCount).to.equal(1);
-    expect(sfCommandStubs.table.args.flat()[0].columns).to.deep.equal([
+    expect(uxStub.table.callCount).to.equal(1);
+    expect(uxStub.table.args.flat()[0].columns).to.deep.equal([
       'name',
       'type',
       'absolutePopulated',
-      { key: 'percentFormatted', name: 'Percent' },
       'defaultValue',
+      'percentFormatted',
     ]);
   });
 
@@ -83,12 +80,15 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(sfCommandStubs.table.callCount).to.equal(0);
-    expect(sfCommandStubs.log.callCount).to.equal(1);
+    expect(uxStub.table.callCount).to.equal(0);
+    // 2 calls for title, 1 call for table
+    expect(uxStub.log.callCount).to.equal(3);
     // need to extract markdown output to dedicated formatter
     // for easier stubbing and testing. For now, just assert basic
     // markdown formatting in output -> first table column header
-    expect(sfCommandStubs.log.args.flat()[0]).to.contain('| Name');
+    expect(uxStub.log.args.flat()[0]).to.contain('Analysed Fields');
+    expect(uxStub.log.args.flat()[1]).to.contain('===============');
+    expect(uxStub.log.args.flat()[2]).to.contain('| Name');
   });
 
   it('prints results table in csv if results-format csv is specified', async () => {
@@ -139,9 +139,9 @@ describe('jsc maintain field-usage analyse', () => {
     // Assert
     expect(Object.keys(result.sobjects)).to.deep.equal(['Account', 'Order']);
     expect(result.sobjects.Account.name).to.equal('Account');
-    expect(result.sobjects.Account.fields.length).to.equal($$.getFilterableFields());
+    expect(result.sobjects.Account.analysedFields.length).to.equal($$.getFilterableFields());
     expect(result.sobjects.Order.name).to.equal('Order');
-    expect(result.sobjects.Order.fields.length).to.equal($$.getFilterableFields());
+    expect(result.sobjects.Order.analysedFields.length).to.equal($$.getFilterableFields());
   });
 
   it('throws an error when invalid sobject name is provided', async () => {
@@ -169,6 +169,6 @@ describe('jsc maintain field-usage analyse', () => {
 
 export function stubMultiStageUx(sandbox: SinonSandbox): sinon.SinonStubbedInstance<MultiStageOutput<MultiStageData>> {
   const multiStageStub = sandbox.createStubInstance(MultiStageOutput);
-  sandbox.stub(FieldUsageMultiStageOutput, 'newInstance').returns(multiStageStub);
+  sandbox.stub(FieldUsageMultiStageOutput, 'create').returns(multiStageStub);
   return multiStageStub;
 }

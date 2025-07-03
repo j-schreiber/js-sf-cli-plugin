@@ -46,10 +46,15 @@ export default class SObjectAnalyser extends EventEmitter {
 
   public async analyseFieldUsage(options?: FieldUsageOptions): Promise<FieldUsageTable> {
     const fieldsToAnalyse = filterFields(this.describeResult.fields, options);
-    this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length });
+    this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length, skippedFieldsCount: 10 });
     const totalCount = await this.getTotalCount();
     this.emit('totalRecordsRetrieve', { totalCount });
-    const usageTable: FieldUsageTable = { name: this.describeResult.name, totalRecords: totalCount, fields: [] };
+    const usageTable: FieldUsageTable = {
+      name: this.describeResult.name,
+      totalRecords: totalCount,
+      analysedFields: [],
+      skippedFields: [],
+    };
     if (!totalCount || totalCount === 0) {
       return usageTable;
     }
@@ -57,7 +62,7 @@ export default class SObjectAnalyser extends EventEmitter {
     for (const field of fieldsToAnalyse) {
       fieldStats.push(this.getFieldUsageStats(totalCount, field, options));
     }
-    usageTable.fields = await Promise.all(fieldStats);
+    usageTable.analysedFields = await Promise.all(fieldStats);
     return formatTable(usageTable);
   }
 
@@ -96,7 +101,7 @@ export default class SObjectAnalyser extends EventEmitter {
 }
 
 function formatTable(table: FieldUsageTable): FieldUsageTable {
-  table.fields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
+  table.analysedFields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
   return table;
 }
 

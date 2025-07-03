@@ -38,8 +38,8 @@ describe('sobject analyser', () => {
     const fieldUsageResult = await anal.analyseFieldUsage();
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(8);
-    expect(fieldUsageResult.fields).to.have.deep.members([
+    expect(fieldUsageResult.analysedFields.length).to.equal(8);
+    expect(fieldUsageResult.analysedFields).to.have.deep.members([
       {
         name: 'Id',
         type: 'id',
@@ -82,10 +82,10 @@ describe('sobject analyser', () => {
     const fieldUsageResult = await anal.analyseFieldUsage({ customFieldsOnly: true });
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(3);
-    expect(fieldUsageResult.fields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
-    expect(fieldUsageResult.fields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
-    expect(fieldUsageResult.fields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
   });
 
   it('excludes formula fields when flag is set', async () => {
@@ -97,9 +97,9 @@ describe('sobject analyser', () => {
     });
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(2);
-    expect(fieldUsageResult.fields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
-    expect(fieldUsageResult.fields[1]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
   });
 
   it('includes formula fields when exclude flag is explicitly set as false', async () => {
@@ -111,10 +111,10 @@ describe('sobject analyser', () => {
     });
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(3);
-    expect(fieldUsageResult.fields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
-    expect(fieldUsageResult.fields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
-    expect(fieldUsageResult.fields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
+    expect(fieldUsageResult.analysedFields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
   });
 
   it('runs defaults check when option is true for fields with defaults', async () => {
@@ -131,15 +131,15 @@ describe('sobject analyser', () => {
     });
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(2);
-    expect(fieldUsageResult.fields[0]).to.include({
+    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    expect(fieldUsageResult.analysedFields[0]).to.include({
       name: 'MyCustomField__c',
       type: 'string',
       absolutePopulated: 0,
       percentagePopulated: 0,
       defaultValue: 'Test',
     });
-    expect(fieldUsageResult.fields[1]).to.include({
+    expect(fieldUsageResult.analysedFields[1]).to.include({
       name: 'MyCheckbox__c',
       type: 'boolean',
       absolutePopulated: 20,
@@ -161,16 +161,16 @@ describe('sobject analyser', () => {
     });
 
     // Assert
-    expect(fieldUsageResult.fields.length).to.equal(3);
-    expect(fieldUsageResult.fields[0]).to.include({
+    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    expect(fieldUsageResult.analysedFields[0]).to.include({
       name: 'MyCustomField__c',
       absolutePopulated: 10,
     });
-    expect(fieldUsageResult.fields[1]).to.include({
+    expect(fieldUsageResult.analysedFields[1]).to.include({
       name: 'Formula__c',
       absolutePopulated: 20,
     });
-    expect(fieldUsageResult.fields[2]).to.include({
+    expect(fieldUsageResult.analysedFields[2]).to.include({
       name: 'MyCheckbox__c',
       absolutePopulated: 30,
     });
