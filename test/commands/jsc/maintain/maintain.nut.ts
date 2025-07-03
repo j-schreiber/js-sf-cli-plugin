@@ -74,7 +74,7 @@ describe('jsc maintain NUTs*', () => {
       // Assert
       assert.isDefined(result);
       assert.isDefined(result.sobjects['Account']);
-      result.sobjects['Account'].fields.forEach((fieldUsageStat) => {
+      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
         assert.isDefined(fieldUsageStat.defaultValue);
       });
     });

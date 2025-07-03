@@ -4,7 +4,7 @@ import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
 import { json2csv } from 'json-2-csv';
 import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
-import { FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
+import { FieldSkippedInfo, FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
   DESCRIBE_STAGE,
   FIELD_STAGE,
@@ -53,6 +53,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.check-defaults.summary'),
       description: messages.getMessage('flags.check-defaults.description'),
     }),
+    verbose: Flags.boolean({
+      summary: messages.getMessage('flags.verbose.summary'),
+      description: messages.getMessage('flags.verbose.description'),
+    }),
     'api-version': Flags.orgApiVersion(),
     'result-format': resultFormatFlag(),
   };
@@ -100,6 +104,9 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         if (sobjectUsageResult.analysedFields.length > 0) {
           this.printResults(sobjectUsageResult.analysedFields, flags['result-format']);
         }
+        if (flags.verbose && sobjectUsageResult.skippedFields.length > 0) {
+          this.printIgnoredFields(sobjectUsageResult.skippedFields, flags['result-format']);
+        }
       } catch (err) {
         this.ms.error();
         this.error(String(err));
@@ -139,6 +146,30 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       }
       case ResultFormats.csv: {
         const csvOutput = json2csv(dataFormatted);
+        this.log(csvOutput);
+        break;
+      }
+    }
+  }
+
+  private printIgnoredFields(data: FieldSkippedInfo[], resultFormat: ResultFormats): void {
+    let reporter: ResultsReporter<FieldSkippedInfo>;
+    switch (resultFormat) {
+      case ResultFormats.human:
+        reporter = new HumanResultsReporter<FieldSkippedInfo>(data);
+        reporter.print();
+        break;
+      case ResultFormats.markdown: {
+        reporter = new MarkdownResultsReporter<FieldSkippedInfo>(data, {
+          formattings: { name: { style: 'code' } },
+          capitalizeHeaders: true,
+          title: '\nSkipped Fields',
+        });
+        reporter.print();
+        break;
+      }
+      case ResultFormats.csv: {
+        const csvOutput = json2csv(data);
         this.log(csvOutput);
         break;
       }

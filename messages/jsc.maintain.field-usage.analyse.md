@@ -38,6 +38,15 @@ Only analyse non-formula fields.
 If omitted, the command analyses all field types, regardless if it is a calculated fields or not.
 If a field is calculated (a formula field), the type shows "formula (return value)".
 
+# flags.verbose.summary
+
+Display a table of fields that were ignored during analysis.
+
+# flags.verbose.description
+
+Depending on the flags that were used (--custom-fields-only, --exclude-formulas) and the existing fields on the sobject,
+some fields are ignored during analysis. For more information on those fields, use this flag.
+
 # flags.check-defaults.summary
 
 Checks if values differ from defaults.
