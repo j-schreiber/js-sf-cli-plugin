@@ -330,15 +330,18 @@ Analyse the utilisation of fields for one or more sobjects.
 ```
 USAGE
   $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only]
-    [--exclude-formulas] [--check-defaults] [--api-version <value>]
+    [--exclude-formulas] [--check-defaults] [--verbose] [--api-version <value>] [-r human|csv|markdown]
 
 FLAGS
-  -o, --target-org=<value>   (required) Username or alias of the target org, where analysis is run.
-  -s, --sobject=<value>...   (required) The name of an sobject to analyse.
-      --api-version=<value>  Override the api version used for api requests made by this command
-      --check-defaults       Checks if values differ from defaults.
-      --custom-fields-only   Only analyse custom fields.
-      --exclude-formulas     Only analyse non-formula fields.
+  -o, --target-org=<value>      (required) Username or alias of the target org, where analysis is run.
+  -r, --result-format=<option>  [default: human] Change the display formatting of output tables.
+                                <options: human|csv|markdown>
+  -s, --sobject=<value>...      (required) The name of an sobject to analyse.
+      --api-version=<value>     Override the api version used for api requests made by this command
+      --check-defaults          Checks if values differ from defaults.
+      --custom-fields-only      Only analyse custom fields.
+      --exclude-formulas        Only analyse non-formula fields.
+      --verbose                 Display a table of fields that were ignored during analysis.
 
 GLOBAL FLAGS
   --flags-dir=<value>  Import flag values from a directory.
@@ -350,7 +353,7 @@ DESCRIPTION
   Retrieves the total number of records for an sobject, then each filterable field is analysed
   for how many records have a "non nullish" value. The following field types are supported:
   textarea, string, multipicklist, picklist, id, reference, date, datetime, boolean, phone, email, url, int, double,
-  currency.
+  currency, percent.
 
 EXAMPLES
   Analyse all fields for Account and MyCustomObject__c object
@@ -366,6 +369,12 @@ EXAMPLES
     $ sf jsc maintain field-usage analyse -o MyTargetOrg -s Order --exclude-formulas
 
 FLAG DESCRIPTIONS
+  -r, --result-format=human|csv|markdown  Change the display formatting of output tables.
+
+    Changes output format of table results that are printed to stdout. Use a format that is easier to copy-paste or
+    export into other programs that support the format. For example, use markdown to copy-paste table outputs to
+    Obsidian or Confluence.
+
   -s, --sobject=<value>...  The name of an sobject to analyse.
 
     Specify this flag multiple times to analyse multiple sobjects with a single command execution.
@@ -389,6 +398,12 @@ FLAG DESCRIPTIONS
 
     If omitted, the command analyses all field types, regardless if it is a calculated fields or not.
     If a field is calculated (a formula field), the type shows "formula (return value)".
+
+  --verbose  Display a table of fields that were ignored during analysis.
+
+    Depending on the flags that were used (--custom-fields-only, --exclude-formulas) and the existing fields on the
+    sobject,
+    some fields are ignored during analysis. For more information on those fields, use this flag.
 ```
 
 _See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/field-usage/analyse.ts)_

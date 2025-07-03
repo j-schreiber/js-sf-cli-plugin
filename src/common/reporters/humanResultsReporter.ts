@@ -22,6 +22,11 @@ export default class HumanResultsReporter<T extends Record<string, unknown>> ext
 
   public print(): void {
     const ux = new Ux();
-    ux.table({ data: this.data, columns: this.columns });
+    ux.table({
+      data: this.data,
+      columns: this.columns,
+      title: this.options?.title,
+      titleOptions: { bold: true, underline: true },
+    });
   }
 }

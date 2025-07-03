@@ -1,10 +1,10 @@
 # info.not-a-custom-field
 
-Not a custom field (--custom-fields-only was specified)
+--custom-fields-only specified
 
 # info.is-calculated
 
-Field is calculated (--exclude-formulas was specified)
+--exclude-formulas specified
 
 # info.type-not-supported
 

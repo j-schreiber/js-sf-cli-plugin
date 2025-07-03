@@ -42,6 +42,7 @@ export default class MarkdownResultsReporter<T extends Record<string, unknown>> 
   public print(): void {
     const ux = new Ux();
     if (this.options?.title) {
+      ux.log('\n');
       ux.log(this.options.title);
       ux.log(`${'='.repeat(this.options.title.length)}\n`);
     }

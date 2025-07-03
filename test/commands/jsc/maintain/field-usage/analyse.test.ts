@@ -81,14 +81,15 @@ describe('jsc maintain field-usage analyse', () => {
 
     // Assert
     expect(uxStub.table.callCount).to.equal(0);
-    // 2 calls for title, 1 call for table
-    expect(uxStub.log.callCount).to.equal(3);
+    // 3 calls for title, 1 call for table
+    expect(uxStub.log.callCount).to.equal(4);
     // need to extract markdown output to dedicated formatter
     // for easier stubbing and testing. For now, just assert basic
     // markdown formatting in output -> first table column header
-    expect(uxStub.log.args.flat()[0]).to.contain('Analysed Fields');
-    expect(uxStub.log.args.flat()[1]).to.contain('===============');
-    expect(uxStub.log.args.flat()[2]).to.contain('| Name');
+    expect(uxStub.log.args.flat()[0]).to.contain('\n');
+    expect(uxStub.log.args.flat()[1]).to.contain('Analysed Fields');
+    expect(uxStub.log.args.flat()[2]).to.contain('===============');
+    expect(uxStub.log.args.flat()[3]).to.contain('| Name');
   });
 
   it('prints results table in csv if results-format csv is specified', async () => {
