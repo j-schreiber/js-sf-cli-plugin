@@ -1,7 +1,6 @@
-import { Ux } from '@salesforce/sf-plugins-core';
-import ResultsReporter from './resultsReporter.js';
+import ResultsReporter, { FormattingOptions } from './resultsReporter.js';
 
-export type HumanFormattingOptions = {
+export type HumanFormattingOptions = FormattingOptions & {
   /**
    * Render a title for the table
    */
@@ -21,8 +20,7 @@ export default class HumanResultsReporter<T extends Record<string, unknown>> ext
   }
 
   public print(): void {
-    const ux = new Ux();
-    ux.table({
+    this.ux.table({
       data: this.data,
       columns: this.columns,
       title: this.options?.title,

@@ -1,4 +1,3 @@
-import { Ux } from '@salesforce/sf-plugins-core';
 import { markdownTable } from 'markdown-table';
 import { capitalCase } from 'change-case';
 import ResultsReporter, { FormattingOptions } from './resultsReporter.js';
@@ -40,17 +39,16 @@ export default class MarkdownResultsReporter<T extends Record<string, unknown>> 
   }
 
   public print(): void {
-    const ux = new Ux();
     if (this.options?.title) {
-      ux.log('\n');
-      ux.log(this.options.title);
-      ux.log(`${'='.repeat(this.options.title.length)}\n`);
+      this.ux.log('\n');
+      this.ux.log(this.options.title);
+      this.ux.log(`${'='.repeat(this.options.title.length)}\n`);
     }
     const tableData = this.prepare();
     if (tableData.length === 0) {
       return;
     }
-    ux.log(markdownTable(tableData));
+    this.ux.log(markdownTable(tableData));
   }
 
   private format(fieldName: string, value: unknown): string {

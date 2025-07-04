@@ -48,12 +48,13 @@ describe('jsc maintain NUTs*', () => {
   describe('field-usage analyse', () => {
     it('successfully analyses multiple valid sobjects with and without data', () => {
       // Act
-      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+      const execResult = execCmd<JscMaintainFieldUsageAnalyseResult>(
         `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --sobject Contact --sobject Lead --json`,
         { ensureExitCode: 0 }
-      ).jsonOutput?.result;
+      );
 
       // Assert
+      const result = execResult.jsonOutput?.result;
       assert.isDefined(result);
       assert.isDefined(result.sobjects['Account']);
       // the default scratch org is created with 1 account (data imports 3). Lets see how stable this is

@@ -1515,6 +1515,14 @@
     strip-ansi "^7.1.0"
     wrap-ansi "^9.0.0"
 
+"@oclif/test@^4.1.13":
+  version "4.1.13"
+  resolved "https://registry.yarnpkg.com/@oclif/test/-/test-4.1.13.tgz#b39b541f2edf45828aafb8d7df635516e0356b83"
+  integrity sha512-pulrTiJRhoAKizFf6y5WeHvM2JyoRiZKV0H8qqYEoE0UHDKqInNmfGJyp8Ip6lTVQeMv1U8YCAXOS/HiWPVWeg==
+  dependencies:
+    ansis "^3.17.0"
+    debug "^4.4.1"
+
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
   resolved "https://registry.yarnpkg.com/@pkgjs/parseargs/-/parseargs-0.11.0.tgz#a77ea742fab25775145434eb1d2328cf5013ac33"

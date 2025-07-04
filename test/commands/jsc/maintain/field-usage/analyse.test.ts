@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { SfError } from '@salesforce/core';
 import { SinonSandbox } from 'sinon';
+import { captureOutput } from '@oclif/test';
 import { stubSfCommandUx, stubUx } from '@salesforce/sf-plugins-core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
 import JscMaintainFieldUsageAnalyse from '../../../../../src/commands/jsc/maintain/field-usage/analyse.js';
@@ -143,6 +144,31 @@ describe('jsc maintain field-usage analyse', () => {
     expect(result.sobjects.Account.analysedFields.length).to.equal($$.getFilterableFields());
     expect(result.sobjects.Order.name).to.equal('Order');
     expect(result.sobjects.Order.analysedFields.length).to.equal($$.getFilterableFields());
+  });
+
+  ['markdown', 'human', 'csv'].forEach((reporter) => {
+    it(`does not show any UX output when --json flag is used on ${reporter} reporter`, async () => {
+      // Arrange
+      // remove stubs on UX for this test to ensure, that only JSON output is generated
+      $$.coreContext.SANDBOX.restore();
+
+      // Act
+      const { stdout } = await captureOutput(async () =>
+        JscMaintainFieldUsageAnalyse.run([
+          '--target-org',
+          $$.testTargetOrg.username,
+          '--sobject',
+          'Account',
+          '--json',
+          '--result-format',
+          reporter,
+        ])
+      );
+
+      // Assert
+      const jsonResult = JSON.parse(stdout) as Record<string, unknown>;
+      expect(jsonResult.result).is.not.undefined;
+    });
   });
 
   it('throws an error when invalid sobject name is provided', async () => {

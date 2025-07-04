@@ -132,6 +132,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         reporter = new HumanResultsReporter<FieldUsageStats>(dataFormatted, {
           excludeColumns: ['percentagePopulated'],
           title: 'Analysed Fields',
+          jsonEnabled: this.jsonEnabled(),
         });
         reporter.print();
         break;
@@ -141,6 +142,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           capitalizeHeaders: true,
           title: 'Analysed Fields',
           excludeColumns: ['percentagePopulated'],
+          jsonEnabled: this.jsonEnabled(),
         });
         reporter.print();
         break;
@@ -157,7 +159,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     let reporter: ResultsReporter<FieldSkippedInfo>;
     switch (resultFormat) {
       case ResultFormats.human:
-        reporter = new HumanResultsReporter<FieldSkippedInfo>(data, { title: 'Skipped Fields' });
+        reporter = new HumanResultsReporter<FieldSkippedInfo>(data, {
+          title: 'Skipped Fields',
+          jsonEnabled: this.jsonEnabled(),
+        });
         reporter.print();
         break;
       case ResultFormats.markdown: {
@@ -165,6 +170,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           formattings: { name: { style: 'code' } },
           capitalizeHeaders: true,
           title: 'Skipped Fields',
+          jsonEnabled: this.jsonEnabled(),
         });
         reporter.print();
         break;

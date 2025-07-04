@@ -1,3 +1,5 @@
+import { Ux } from '@salesforce/sf-plugins-core';
+
 export type FormattingOptions = {
   /**
    * Run "capitalCase" transformer on columns ("myValue" is converted to "My Value")
@@ -19,13 +21,21 @@ export type FormattingOptions = {
    * are determined automatically.
    */
   excludeColumns?: string[];
+  /**
+   * Passes the --json flag to all reporters to surpress output when command
+   * is executed with --json. The default behavior is JSON "disabled",
+   * meaning "output enabled".
+   */
+  jsonEnabled?: boolean;
 };
 
 export default abstract class ResultsReporter<T extends Record<string, unknown>> {
   public columns: string[];
+  public ux: Ux;
 
   public constructor(public data: T[], public options?: FormattingOptions) {
     this.columns = retrieveColumns(data, options);
+    this.ux = new Ux({ jsonEnabled: this.options?.jsonEnabled ?? false });
   }
 
   /**

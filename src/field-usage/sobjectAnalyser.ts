@@ -23,6 +23,7 @@ export const INCLUDED_FIELD_TYPES = [
   'reference',
   'date',
   'datetime',
+  'time',
   'boolean',
   'phone',
   'email',
