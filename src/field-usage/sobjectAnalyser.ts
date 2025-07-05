@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
 import { Connection, Messages } from '@salesforce/core';
-import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult, Field, Optional } from '@jsforce/jsforce-node';
 import DescribeApi from '../common/metadata/describeApi.js';
 import { FieldSkippedInfo, FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
 
@@ -12,6 +12,7 @@ export type FieldUsageOptions = {
   customFieldsOnly?: boolean;
   excludeFormulaFields?: boolean;
   checkDefaultValues?: boolean;
+  checkHistory?: boolean;
 };
 
 export const INCLUDED_FIELD_TYPES = [
@@ -35,17 +36,22 @@ export const INCLUDED_FIELD_TYPES = [
 ];
 
 export default class SObjectAnalyser extends EventEmitter {
-  private readonly describeCache: DescribeApi;
-  private describeResult!: DescribeSObjectResult;
+  private historyRelationship?: ChildRelationship;
+  private historyEnabled: boolean;
 
-  private constructor(private readonly targetOrgConnection: Connection) {
+  private constructor(
+    private readonly targetOrgConnection: Connection,
+    private readonly describeResult: DescribeSObjectResult
+  ) {
     super();
-    this.describeCache = new DescribeApi(this.targetOrgConnection);
+    this.historyRelationship = getHistoryRelationship(this.describeResult);
+    this.historyEnabled = this.historyRelationship !== undefined;
   }
 
   public static async create(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
-    const newObj = new SObjectAnalyser(targetOrgConnection);
-    newObj.describeResult = await newObj.describeCache.describeSObject(sobjectName);
+    const describeApi = new DescribeApi(targetOrgConnection);
+    const describeResult = await describeApi.describeSObject(sobjectName);
+    const newObj = new SObjectAnalyser(targetOrgConnection, describeResult);
     return newObj;
   }
 
@@ -96,15 +102,42 @@ export default class SObjectAnalyser extends EventEmitter {
     options?: FieldUsageOptions
   ): Promise<FieldUsageStats> {
     const fieldsPopulatedCount = await this.getPopulatedFieldCount(field, options?.checkDefaultValues);
-    return {
+    const baseStats = {
       name: field.name,
       type: formatFieldType(field),
       absolutePopulated: fieldsPopulatedCount,
       percentagePopulated: fieldsPopulatedCount / totalCount,
       ...(options?.checkDefaultValues && { defaultValue: field.defaultValue }),
     };
+    if (options?.checkHistory && this.historyEnabled) {
+      const fieldHistoryStats = await this.getFieldHistoryStats(field);
+      return {
+        ...baseStats,
+        ...fieldHistoryStats,
+      };
+    }
+    return baseStats;
+  }
+
+  private async getFieldHistoryStats(field: Field): Promise<{ histories?: number; lastUpdated?: string }> {
+    const queryString = `SELECT COUNT(Id),MAX(CreatedDate) FROM ${
+      this.historyRelationship!.childSObject
+    } WHERE Field = '${field.name}'`;
+    const result = await this.targetOrgConnection.query(queryString);
+    return { histories: result.records[0]['expr0'] as number, lastUpdated: result.records[0]['expr1'] as string };
   }
 }
+
+type ChildRelationship = {
+  cascadeDelete: boolean;
+  childSObject: string;
+  deprecatedAndHidden: boolean;
+  field: string;
+  junctionIdListNames: string[];
+  junctionReferenceTo: string[];
+  relationshipName: Optional<string>;
+  restrictedDelete: boolean;
+};
 
 function formatTable(table: FieldUsageTable): FieldUsageTable {
   table.analysedFields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
@@ -157,4 +190,15 @@ function filterFields(
 
 function formatFieldType(field: Field): string {
   return field.calculated ? `formula (${field.type})` : field.type;
+}
+
+function getHistoryRelationship(describeResult: DescribeSObjectResult): ChildRelationship | undefined {
+  if (describeResult.childRelationships?.length > 0) {
+    for (const cr of describeResult.childRelationships) {
+      if (cr.relationshipName === 'Histories') {
+        return cr;
+      }
+    }
+  }
+  return undefined;
 }

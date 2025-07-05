@@ -59,6 +59,15 @@ without a default value does not change.
 
 The default values of record types are not analysed.
 
+# flags.check-history.summary
+
+Run additional checks with field history (if enabled)
+
+# flags.check-history.description
+
+Analyses history tracking for this field and checks total number of changes and the date time of the last change. If history
+tracking is not enabled for the SObject, this flag has no effect.
+
 # examples
 
 - Analyse all fields for Account and MyCustomObject__c object
@@ -75,4 +84,8 @@ The default values of record types are not analysed.
 
 # infos.check-defaults-enabled
 
-Analysing default values. Fields are only considered populated, if the value is different from configured default.
+Fields are only considered populated, if the value is different from configured default.
+
+# infos.check-history-enabled
+
+Retrieving additional infos about total number of field changes and last update timestamp.

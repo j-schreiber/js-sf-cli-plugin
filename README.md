@@ -330,7 +330,8 @@ Analyse the utilisation of fields for one or more sobjects.
 ```
 USAGE
   $ sf jsc maintain field-usage analyse -s <value>... -o <value> [--json] [--flags-dir <value>] [--custom-fields-only]
-    [--exclude-formulas] [--check-defaults] [--verbose] [--api-version <value>] [-r human|csv|markdown]
+    [--exclude-formulas] [--check-defaults] [--check-history] [--verbose] [--api-version <value>] [-r
+    human|csv|markdown]
 
 FLAGS
   -o, --target-org=<value>      (required) Username or alias of the target org, where analysis is run.
@@ -339,6 +340,7 @@ FLAGS
   -s, --sobject=<value>...      (required) The name of an sobject to analyse.
       --api-version=<value>     Override the api version used for api requests made by this command
       --check-defaults          Checks if values differ from defaults.
+      --check-history           Run additional checks with field history (if enabled)
       --custom-fields-only      Only analyse custom fields.
       --exclude-formulas        Only analyse non-formula fields.
       --verbose                 Display a table of fields that were ignored during analysis.
@@ -352,8 +354,8 @@ DESCRIPTION
 
   Retrieves the total number of records for an sobject, then each filterable field is analysed
   for how many records have a "non nullish" value. The following field types are supported:
-  textarea, string, multipicklist, picklist, id, reference, date, datetime, boolean, phone, email, url, int, double,
-  currency, percent.
+  textarea, string, multipicklist, picklist, id, reference, date, datetime, time, boolean, phone, email, url, int,
+  double, currency, percent.
 
 EXAMPLES
   Analyse all fields for Account and MyCustomObject__c object
@@ -389,6 +391,12 @@ FLAG DESCRIPTIONS
     without a default value does not change.
 
     The default values of record types are not analysed.
+
+  --check-history  Run additional checks with field history (if enabled)
+
+    Analyses history tracking for this field and checks total number of changes and the date time of the last change. If
+    history
+    tracking is not enabled for the SObject, this flag has no effect.
 
   --custom-fields-only  Only analyse custom fields.
 

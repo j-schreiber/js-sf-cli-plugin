@@ -1,8 +1,12 @@
 import { MultiStageOutput } from '@oclif/multi-stage-output';
+import { Messages } from '@salesforce/core';
 
 export const DESCRIBE_STAGE = 'Analyse SObject';
 export const FIELD_STAGE = 'Analyse Fields';
 export const OUTPUT_STAGE = 'Format Output';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
 
 export default class FieldUsageMultiStageOutput {
   /**
@@ -47,6 +51,23 @@ export default class FieldUsageMultiStageOutput {
         },
       ],
       title: `Analyse ${objectName}`,
+      postStagesBlock: [
+        {
+          label: 'Analysing default values',
+          type: 'static-key-value',
+          get: (data) => (data?.analyseDefaults ? messages.getMessage('infos.check-defaults-enabled') : undefined),
+        },
+        {
+          label: 'Analysing history',
+          type: 'static-key-value',
+          get: (data) => (data?.analyseHistory ? messages.getMessage('infos.check-history-enabled') : undefined),
+        },
+        {
+          label: 'Total queries executed',
+          type: 'static-key-value',
+          get: (data): string | undefined => (data?.totalQueries ? `${data.totalQueries}` : undefined),
+        },
+      ],
     });
   }
 }
@@ -57,4 +78,7 @@ export type MultiStageData = {
   fieldsUnderAnalysis: string;
   skippedFields: string;
   describeStatus: string;
+  analyseDefaults: boolean;
+  analyseHistory: boolean;
+  totalQueries: number;
 };

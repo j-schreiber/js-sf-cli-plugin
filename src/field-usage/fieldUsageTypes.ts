@@ -13,6 +13,8 @@ export type FieldUsageStats = {
   absolutePopulated: number;
   percentagePopulated: number;
   defaultValue?: Optional<string>;
+  histories?: number;
+  lastUpdated?: string;
 };
 
 export type FieldSkippedInfo = {

@@ -53,6 +53,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.check-defaults.summary'),
       description: messages.getMessage('flags.check-defaults.description'),
     }),
+    'check-history': Flags.boolean({
+      summary: messages.getMessage('flags.check-history.summary'),
+      description: messages.getMessage('flags.check-history.description'),
+    }),
     verbose: Flags.boolean({
       summary: messages.getMessage('flags.verbose.summary'),
       description: messages.getMessage('flags.verbose.description'),
@@ -66,12 +70,11 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
   public async run(): Promise<JscMaintainFieldUsageAnalyseResult> {
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
-    if (flags['check-defaults']) {
-      this.info(messages.getMessage('infos.check-defaults-enabled'));
-    }
     const fieldUsageTables: Record<string, FieldUsageTable> = {};
     for (const sobj of flags.sobject) {
       this.ms = FieldUsageMultiStageOutput.create(sobj, flags.json);
+      this.ms.updateData({ analyseDefaults: flags['check-defaults'] });
+      this.ms.updateData({ analyseHistory: flags['check-history'] });
       try {
         const analyser = await SObjectAnalyser.create(targetOrg, sobj);
         analyser.on(
@@ -97,6 +100,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           customFieldsOnly: flags['custom-fields-only'],
           excludeFormulaFields: flags['exclude-formulas'],
           checkDefaultValues: flags['check-defaults'],
+          checkHistory: flags['check-history'],
         });
         this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
@@ -119,7 +123,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
     const dataFormatted = data.map((field) => {
       const result = {
         ...field,
-        percentFormatted: field.percentagePopulated.toLocaleString(undefined, {
+        percent: field.percentagePopulated.toLocaleString(undefined, {
           style: 'percent',
           minimumFractionDigits: 2,
         }),

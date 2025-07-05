@@ -79,6 +79,22 @@ describe('jsc maintain NUTs*', () => {
         assert.isDefined(fieldUsageStat.defaultValue);
       });
     });
+
+    it('successfully analyses valid sobject with check-history flag', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --check-history --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.sobjects['Account']);
+      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
+        assert.isDefined(fieldUsageStat.histories);
+        assert.isDefined(fieldUsageStat.lastUpdated);
+      });
+    });
   });
 
   describe('export obsolete flows', () => {

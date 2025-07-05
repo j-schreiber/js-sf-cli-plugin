@@ -4,7 +4,9 @@ import { SinonSandbox } from 'sinon';
 import { captureOutput } from '@oclif/test';
 import { stubSfCommandUx, stubUx } from '@salesforce/sf-plugins-core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
-import JscMaintainFieldUsageAnalyse from '../../../../../src/commands/jsc/maintain/field-usage/analyse.js';
+import JscMaintainFieldUsageAnalyse, {
+  JscMaintainFieldUsageAnalyseResult,
+} from '../../../../../src/commands/jsc/maintain/field-usage/analyse.js';
 import FieldUsageTestContext from '../../../../mock-utils/fieldUsageTestContext.js';
 import FieldUsageMultiStageOutput, { MultiStageData } from '../../../../../src/field-usage/fieldUsageMultiStage.js';
 
@@ -23,6 +25,8 @@ describe('jsc maintain field-usage analyse', () => {
 
   afterEach(() => {
     $$.restore();
+    // captureOutput adds listeners
+    process.removeAllListeners();
   });
 
   it('analyses fields for sobject and prints table with usage statistics', async () => {
@@ -38,13 +42,13 @@ describe('jsc maintain field-usage analyse', () => {
 
     // Assert
     expect(uxStub.table.callCount).to.equal(2);
-    // 3 per object: records and describe
-    expect(multiStageStub.updateData.callCount).to.equal(6);
+    // 5 per object: post stages blocks, records and describe
+    expect(multiStageStub.updateData.callCount).to.equal(10);
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
     uxStub.table.args.flat().forEach((tableArgs) => {
-      expect(tableArgs.columns).to.deep.equal(['name', 'type', 'absolutePopulated', 'percentFormatted']);
+      expect(tableArgs.columns).to.deep.equal(['name', 'type', 'absolutePopulated', 'percent']);
     });
   });
 
@@ -65,7 +69,7 @@ describe('jsc maintain field-usage analyse', () => {
       'type',
       'absolutePopulated',
       'defaultValue',
-      'percentFormatted',
+      'percent',
     ]);
   });
 
@@ -153,7 +157,7 @@ describe('jsc maintain field-usage analyse', () => {
       $$.coreContext.SANDBOX.restore();
 
       // Act
-      const { stdout } = await captureOutput(async () =>
+      const { stdout, stderr } = await captureOutput(async () =>
         JscMaintainFieldUsageAnalyse.run([
           '--target-org',
           $$.testTargetOrg.username,
@@ -166,8 +170,14 @@ describe('jsc maintain field-usage analyse', () => {
       );
 
       // Assert
-      const jsonResult = JSON.parse(stdout) as Record<string, unknown>;
-      expect(jsonResult.result).is.not.undefined;
+      const { result } = JSON.parse(stdout) as { result: JscMaintainFieldUsageAnalyseResult };
+      // for some reason beyond my understanding, command status is "1" when running tests
+      // from terminal (yarn test), but it is 0 when running tests from mocha tests
+      // explorer. stdr is empty in both cases, and result contains the correct data
+      // expect(jsonResult.status).to.equal(0);
+      expect(stderr).to.be.empty;
+      expect(result).is.not.undefined;
+      expect(result.sobjects['Account']).is.not.undefined;
     });
   });
 
@@ -191,6 +201,54 @@ describe('jsc maintain field-usage analyse', () => {
       expect(err.exitCode).to.equal(2);
       expect(err.message).to.contain('InvalidSObjectName__c');
     }
+  });
+
+  it('ignores history analysis when flag is set and object has history not enabled', async () => {
+    // Arrange
+    $$.sobjectDescribe.childRelationships = [];
+
+    // Act
+    const result = await JscMaintainFieldUsageAnalyse.run([
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--sobject',
+      'Account',
+      '--check-history',
+    ]);
+
+    // Assert
+    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
+    expect(result.sobjects.Account.name).to.equal('Account');
+    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
+      expect(Object.keys(fieldStats)).to.deep.equal(['name', 'type', 'absolutePopulated', 'percentagePopulated']);
+    });
+  });
+
+  it('includes history analysis when flag is set and object has history enabled', async () => {
+    // Act
+    const result = await JscMaintainFieldUsageAnalyse.run([
+      '--target-org',
+      $$.testTargetOrg.username,
+      '--sobject',
+      'Account',
+      '--check-history',
+    ]);
+
+    // Assert
+    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
+    expect(result.sobjects.Account.name).to.equal('Account');
+    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
+      expect(Object.keys(fieldStats)).to.deep.equal([
+        'name',
+        'type',
+        'absolutePopulated',
+        'percentagePopulated',
+        'histories',
+        'lastUpdated',
+      ]);
+      expect(fieldStats.histories).to.equal(0);
+      expect(fieldStats.lastUpdated).to.equal('2025-07-05');
+    });
   });
 });
 

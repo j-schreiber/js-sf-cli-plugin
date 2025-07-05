@@ -8,6 +8,28 @@ const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
   custom: false,
   createable: true,
   name: 'Account',
+  childRelationships: [
+    {
+      cascadeDelete: false,
+      childSObject: 'Case',
+      deprecatedAndHidden: false,
+      field: 'AccountId',
+      junctionIdListNames: [],
+      junctionReferenceTo: [],
+      relationshipName: 'Cases',
+      restrictedDelete: false,
+    },
+    {
+      cascadeDelete: true,
+      childSObject: 'AccountHistory',
+      deprecatedAndHidden: false,
+      field: 'ParentId',
+      junctionIdListNames: [],
+      junctionReferenceTo: [],
+      relationshipName: 'Histories',
+      restrictedDelete: false,
+    },
+  ],
   fields: [
     { name: 'Id', type: 'id', filterable: true, custom: false },
     { name: 'Name', type: 'string', filterable: true, custom: false },
@@ -29,14 +51,17 @@ export default class FieldUsageTestContext {
   public testTargetOrg: MockTestOrgData;
   public sobjectDescribe: Partial<DescribeSObjectResult>;
   public totalRecords: number;
-  /** A map of explicit query strings and their expr0 result */
+  /** A map of explicit query strings and their expr0 result to mock populated fields count */
   public queryResults: Record<string, number> = {};
+  /** Map of field names and their aggregate results to mock field history analysis */
+  public fieldHistoryMocks: Record<string, { expr0: number; expr1: string }> = {};
 
   public constructor() {
     this.coreContext = new TestContext();
     this.testTargetOrg = new MockTestOrgData();
-    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
     this.totalRecords = 100;
+    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
+    this.setFieldHistoryMocksForAllFields();
   }
 
   public async init() {
@@ -47,6 +72,7 @@ export default class FieldUsageTestContext {
     this.coreContext.restore();
     this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
     this.totalRecords = 100;
+    this.setFieldHistoryMocksForAllFields();
     // plugin cache that stores describe results
     fs.rmSync('.jsc', { recursive: true, force: true });
   }
@@ -76,18 +102,48 @@ export default class FieldUsageTestContext {
       const describe = { ...this.sobjectDescribe, name: sobjectName };
       return Promise.resolve(describe as AnyJson);
     }
-    if (isObject<{ method: string; url: string }>(request) && request.url.includes('COUNT(Id)')) {
+    // mocks for explicit field history queries, mapped by field name
+    if (isObject<{ method: string; url: string }>(request)) {
       const queryParam = extractQueryParameter(request.url);
-      if (queryParam && this.queryResults[queryParam] !== undefined) {
-        return Promise.resolve({ records: [{ expr0: this.queryResults[queryParam] }], done: true });
+      if (queryParam?.includes('SELECT COUNT(Id),MAX(CreatedDate) FROM')) {
+        const fieldName = extractFieldName(request.url);
+        if (fieldName && this.fieldHistoryMocks[fieldName] !== undefined) {
+          return Promise.resolve({ records: [{ ...this.fieldHistoryMocks[fieldName] }], done: true });
+        }
+        return Promise.reject(new Error(`No mock was specified for field history query: ${queryParam}`));
       }
-      return Promise.resolve({ records: [{ expr0: this.totalRecords }], done: true });
+      if (queryParam?.includes('COUNT(Id)')) {
+        // mocking all the generic COUNT(Id) to get absolute populated of a field
+        if (this.queryResults[queryParam] !== undefined) {
+          return Promise.resolve({ records: [{ expr0: this.queryResults[queryParam] }], done: true });
+        }
+        return Promise.resolve({ records: [{ expr0: this.totalRecords }], done: true });
+      }
     }
     return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
   };
+
+  private setFieldHistoryMocksForAllFields() {
+    this.sobjectDescribe.fields?.forEach((field) => {
+      this.fieldHistoryMocks[field.name] = { expr0: 0, expr1: '2025-07-05' };
+    });
+  }
 }
 
 function extractQueryParameter(fullRequestUrl: string): string | undefined {
   const rawQuery = fullRequestUrl.split('?q=')[1];
   return rawQuery ? decodeURIComponent(rawQuery) : undefined;
+}
+
+function extractFieldName(fullRequestUrl: string): string | undefined {
+  const queryString = extractQueryParameter(fullRequestUrl);
+  if (!queryString) {
+    return;
+  }
+  const matchResult = /Field = '[\w]*'/.exec(queryString);
+  if (matchResult && matchResult.length >= 1) {
+    return matchResult[0].split(' = ')[1].replaceAll("'", '');
+  } else {
+    return;
+  }
 }
