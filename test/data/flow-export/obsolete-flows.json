@@ -1,0 +1,56 @@
+[
+  {
+    "attributes": {
+      "type": "Flow",
+      "url": "/services/data/v64.0/tooling/sobjects/Flow/3013X000000rwdpQAA"
+    },
+    "Id": "3013X000000rwdpQAA",
+    "DefinitionId": "3003X000000BMf8QAG",
+    "Definition": {
+      "attributes": {
+        "type": "FlowDefinition",
+        "url": "/services/data/v64.0/tooling/sobjects/FlowDefinition/3003X000000BMf8QAG"
+      },
+      "DeveloperName": "Test_Flow_1"
+    },
+    "Status": "Obsolete",
+    "ProcessType": "AutoLaunchedFlow",
+    "VersionNumber": 2
+  },
+  {
+    "attributes": {
+      "type": "Flow",
+      "url": "/services/data/v64.0/tooling/sobjects/Flow/301Fg00000YpIgtIAF"
+    },
+    "Id": "301Fg00000YpIgtIAF",
+    "DefinitionId": "3003X000000BMf8QAG",
+    "Definition": {
+      "attributes": {
+        "type": "FlowDefinition",
+        "url": "/services/data/v64.0/tooling/sobjects/FlowDefinition/3003X000000BMf8QAG"
+      },
+      "DeveloperName": "Test_Flow_1"
+    },
+    "Status": "Draft",
+    "ProcessType": "AutoLaunchedFlow",
+    "VersionNumber": 3
+  },
+  {
+    "attributes": {
+      "type": "Flow",
+      "url": "/services/data/v64.0/tooling/sobjects/Flow/3013X000000f03KQAQ"
+    },
+    "Id": "3013X000000f03KQAQ",
+    "DefinitionId": "3003X000000gO19QAE",
+    "Definition": {
+      "attributes": {
+        "type": "FlowDefinition",
+        "url": "/services/data/v64.0/tooling/sobjects/FlowDefinition/3003X000000gO19QAE"
+      },
+      "DeveloperName": "Test_Flow_2"
+    },
+    "Status": "Obsolete",
+    "ProcessType": "Workflow",
+    "VersionNumber": 6
+  }
+]

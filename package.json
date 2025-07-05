@@ -17,12 +17,16 @@
     "@salesforce/packaging": "^4.2.15",
     "@salesforce/sf-plugins-core": "^12.0.8",
     "ansis": "4",
+    "change-case": "^5.4.4",
     "fast-xml-parser": "5",
     "js-yaml": "^4.1.0",
+    "json-2-csv": "^5.5.9",
+    "markdown-table": "^3.0.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@oclif/plugin-command-snapshot": "^5.1.9",
+    "@oclif/test": "^4.1.13",
     "@salesforce/cli-plugins-testkit": "^5.3.10",
     "@salesforce/dev-scripts": "11",
     "@types/js-yaml": "^4.0.9",

@@ -7,7 +7,7 @@ import PackageManifestDirectory from './packageManifestDirectory.js';
  * Inactive flow versions from flows that have at least one active version. Includes
  * Draft and Obsolete.
  */
-const OBSOLETE_FLOW_VERSIONS = `SELECT Id,DefinitionId,Definition.DeveloperName,Status,ProcessType,VersionNumber
+export const OBSOLETE_FLOW_VERSIONS = `SELECT Id,DefinitionId,Definition.DeveloperName,Status,ProcessType,VersionNumber
 FROM Flow
 WHERE
   DefinitionId NOT IN (SELECT Id FROM FlowDefinition WHERE ActiveVersionId = NULL)
@@ -18,7 +18,7 @@ ORDER BY Definition.DeveloperName,VersionNumber`;
 /**
  * Flow versions from completely unused flows (e.g. no version is activated).
  */
-const UNUSED_FLOW_VERSIONS = `SELECT Id,DefinitionId,Definition.DeveloperName,Status,ProcessType,VersionNumber
+export const UNUSED_FLOW_VERSIONS = `SELECT Id,DefinitionId,Definition.DeveloperName,Status,ProcessType,VersionNumber
 FROM Flow
 WHERE
   DefinitionId IN (SELECT Id FROM FlowDefinition WHERE ActiveVersionId = NULL)
@@ -47,6 +47,22 @@ export function writeFlowsToXml(flowVersions: FlowClutter[], outputPath: string,
   outputDir.write();
 }
 
+export function summarize(flowVersions: FlowClutter[]): FlowClutterSummary[] {
+  const summary: Record<string, number> = {};
+  flowVersions.forEach((ver) => {
+    if (summary[ver.DeveloperName] === undefined) {
+      summary[ver.DeveloperName] = 0;
+    }
+    summary[ver.DeveloperName]++;
+  });
+  const result = new Array<FlowClutterSummary>();
+  Object.entries(summary).forEach(([key, value]) => {
+    result.push({ FlowDefinitionName: key, Versions: value });
+  });
+  result.sort((a, b) => b.Versions - a.Versions);
+  return result;
+}
+
 function flatten(flowVersions: FlowVersionDefinition[]): FlowClutter[] {
   // eslint-disable-next-line arrow-body-style
   return flowVersions.map((version) => {
@@ -65,4 +81,9 @@ export type FlowClutter = {
   VersionNumber: number;
   Status: string;
   Id: string;
+};
+
+export type FlowClutterSummary = {
+  FlowDefinitionName: string;
+  Versions: number;
 };

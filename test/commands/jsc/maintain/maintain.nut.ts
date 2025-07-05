@@ -48,12 +48,13 @@ describe('jsc maintain NUTs*', () => {
   describe('field-usage analyse', () => {
     it('successfully analyses multiple valid sobjects with and without data', () => {
       // Act
-      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+      const execResult = execCmd<JscMaintainFieldUsageAnalyseResult>(
         `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --sobject Contact --sobject Lead --json`,
         { ensureExitCode: 0 }
-      ).jsonOutput?.result;
+      );
 
       // Assert
+      const result = execResult.jsonOutput?.result;
       assert.isDefined(result);
       assert.isDefined(result.sobjects['Account']);
       // the default scratch org is created with 1 account (data imports 3). Lets see how stable this is
@@ -62,6 +63,37 @@ describe('jsc maintain NUTs*', () => {
       expect(result.sobjects['Contact'].totalRecords).to.equal(2);
       assert.isDefined(result.sobjects['Lead']);
       expect(result.sobjects['Lead'].totalRecords).to.equal(0);
+    });
+
+    it('successfully analyses valid sobject with check-defaults flag', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --check-defaults --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.sobjects['Account']);
+      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
+        assert.isDefined(fieldUsageStat.defaultValue);
+      });
+    });
+
+    it('successfully analyses valid sobject with check-history flag', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account --check-history --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.sobjects['Account']);
+      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
+        assert.isDefined(fieldUsageStat.histories);
+        assert.isDefined(fieldUsageStat.lastUpdated);
+      });
     });
   });
 

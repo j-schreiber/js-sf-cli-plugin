@@ -38,6 +38,36 @@ Only analyse non-formula fields.
 If omitted, the command analyses all field types, regardless if it is a calculated fields or not.
 If a field is calculated (a formula field), the type shows "formula (return value)".
 
+# flags.verbose.summary
+
+Display a table of fields that were ignored during analysis.
+
+# flags.verbose.description
+
+Depending on the flags that were used (--custom-fields-only, --exclude-formulas) and the existing fields on the sobject,
+some fields are ignored during analysis. For more information on those fields, use this flag.
+
+# flags.check-defaults.summary
+
+Checks if values differ from defaults.
+
+# flags.check-defaults.description
+
+Performs an additional check for all fields that have a default value configured. If the field has a default value configered,
+the analysis only counts a field as populated, if the value is different from the default. The analysis algorithm for fields 
+without a default value does not change.
+
+The default values of record types are not analysed.
+
+# flags.check-history.summary
+
+Run additional checks with field history (if enabled)
+
+# flags.check-history.description
+
+Analyses history tracking for this field and checks total number of changes and the date time of the last change. If history
+tracking is not enabled for the SObject, this flag has no effect.
+
 # examples
 
 - Analyse all fields for Account and MyCustomObject__c object
@@ -51,3 +81,11 @@ If a field is calculated (a formula field), the type shows "formula (return valu
 - Analyse all fields, but exclude formulas for Order object
 
   <%= config.bin %> <%= command.id %> -o MyTargetOrg -s Order --exclude-formulas
+
+# infos.check-defaults-enabled
+
+Fields are only considered populated, if the value is different from configured default.
+
+# infos.check-history-enabled
+
+Retrieving additional infos about total number of field changes and last update timestamp.

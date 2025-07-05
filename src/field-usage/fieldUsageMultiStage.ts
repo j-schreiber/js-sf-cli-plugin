@@ -1,8 +1,12 @@
 import { MultiStageOutput } from '@oclif/multi-stage-output';
+import { Messages } from '@salesforce/core';
 
 export const DESCRIBE_STAGE = 'Analyse SObject';
 export const FIELD_STAGE = 'Analyse Fields';
 export const OUTPUT_STAGE = 'Format Output';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
 
 export default class FieldUsageMultiStageOutput {
   /**
@@ -18,7 +22,7 @@ export default class FieldUsageMultiStageOutput {
    * @param jsonEnabled
    * @returns
    */
-  public static newInstance(objectName: string, jsonEnabled?: boolean): MultiStageOutput<MultiStageData> {
+  public static create(objectName: string, jsonEnabled?: boolean): MultiStageOutput<MultiStageData> {
     return new MultiStageOutput<MultiStageData>({
       jsonEnabled: jsonEnabled ?? false,
       stages: [DESCRIBE_STAGE, FIELD_STAGE, OUTPUT_STAGE],
@@ -40,8 +44,30 @@ export default class FieldUsageMultiStageOutput {
           stage: FIELD_STAGE,
           type: 'message',
         },
+        {
+          get: (data) => data?.skippedFields,
+          stage: FIELD_STAGE,
+          type: 'message',
+        },
       ],
       title: `Analyse ${objectName}`,
+      postStagesBlock: [
+        {
+          label: 'Analysing default values',
+          type: 'static-key-value',
+          get: (data) => (data?.analyseDefaults ? messages.getMessage('infos.check-defaults-enabled') : undefined),
+        },
+        {
+          label: 'Analysing history',
+          type: 'static-key-value',
+          get: (data) => (data?.analyseHistory ? messages.getMessage('infos.check-history-enabled') : undefined),
+        },
+        {
+          label: 'Total queries executed',
+          type: 'static-key-value',
+          get: (data): string | undefined => (data?.totalQueries ? `${data.totalQueries}` : undefined),
+        },
+      ],
     });
   }
 }
@@ -50,5 +76,9 @@ export type MultiStageData = {
   fieldCount: string;
   totalRecords: string;
   fieldsUnderAnalysis: string;
+  skippedFields: string;
   describeStatus: string;
+  analyseDefaults: boolean;
+  analyseHistory: boolean;
+  totalQueries: number;
 };
