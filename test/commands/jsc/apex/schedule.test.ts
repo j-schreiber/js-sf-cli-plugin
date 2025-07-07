@@ -214,11 +214,26 @@ describe('jsc apex schedule', () => {
     expect(executeServiceStub.callCount).to.equal(0);
   });
 
+  it('shows info message if no scheduled jobs are found', async () => {
+    // Arrange
+    schedulerMocks.ALL_JOBS.records = [];
+
+    // Act
+    const result = await JscApexScheduleExport.run(['--target-org', testOrg.username]);
+
+    // Assert
+    expect(result.length).to.equal(0);
+    expect(sfCommandStubs.table.callCount).to.equal(0);
+    expect(sfCommandStubs.info.args.flat()).to.deep.equal([exportMsgs.getMessage('info.no-scheduled-jobs-found')]);
+  });
+
   it('exports all scheduled jobs without filters', async () => {
     // Act
     const result = await JscApexScheduleExport.run(['--target-org', testOrg.username]);
 
     // Assert
+    expect(sfCommandStubs.table.callCount).to.equal(1);
+    expect(sfCommandStubs.info.callCount).to.equal(0);
     expect(result.length).to.equal(schedulerMocks.ALL_JOBS.records.length);
     expect(result[0].CronTriggerId).to.equal('08e7a00000VlWl2AAF');
     expect(result[0].CronExpression).to.equal('0 0 5 ? * * *');

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import PackageManifestBuilder from './packageManifestBuilder.js';
 import { OutputFormats } from './jscSfCommandFlags.js';
 
@@ -33,10 +34,10 @@ export default class PackageManifestDirectory {
    */
   public write(): void {
     if (this.outputFormat === OutputFormats.DestructiveChangesXML) {
-      this.destructiveChangesXml!.writeToXmlFile(`${this.directoryPath}/destructiveChanges.xml`);
+      this.destructiveChangesXml!.writeToXmlFile(path.join(this.directoryPath, 'destructiveChanges.xml'));
     } else {
-      fs.rmSync(`${this.directoryPath}/destructiveChanges.xml`, { force: true });
+      fs.rmSync(path.join(this.directoryPath, 'destructiveChanges.xml'), { force: true });
     }
-    this.packageXml.writeToXmlFile(`${this.directoryPath}/package.xml`);
+    this.packageXml.writeToXmlFile(path.join(this.directoryPath, 'package.xml'));
   }
 }

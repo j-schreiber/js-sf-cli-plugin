@@ -1,13 +1,18 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
-import { Connection } from '@salesforce/core';
-import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
+import { Connection, Messages } from '@salesforce/core';
+import { DescribeSObjectResult, Field, Optional } from '@jsforce/jsforce-node';
 import DescribeApi from '../common/metadata/describeApi.js';
-import { FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
+import { FieldSkippedInfo, FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
+
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'sobjectanalyser');
 
 export type FieldUsageOptions = {
   customFieldsOnly?: boolean;
   excludeFormulaFields?: boolean;
+  checkDefaultValues?: boolean;
+  checkHistory?: boolean;
 };
 
 export const INCLUDED_FIELD_TYPES = [
@@ -19,6 +24,7 @@ export const INCLUDED_FIELD_TYPES = [
   'reference',
   'date',
   'datetime',
+  'time',
   'boolean',
   'phone',
   'email',
@@ -26,37 +32,49 @@ export const INCLUDED_FIELD_TYPES = [
   'int',
   'double',
   'currency',
+  'percent',
 ];
 
 export default class SObjectAnalyser extends EventEmitter {
-  private readonly describeCache: DescribeApi;
-  private describeResult!: DescribeSObjectResult;
+  private historyRelationship?: ChildRelationship;
+  private historyEnabled: boolean;
 
-  private constructor(private readonly targetOrgConnection: Connection) {
+  private constructor(
+    private readonly targetOrgConnection: Connection,
+    private readonly describeResult: DescribeSObjectResult
+  ) {
     super();
-    this.describeCache = new DescribeApi(this.targetOrgConnection);
+    this.historyRelationship = getHistoryRelationship(this.describeResult);
+    this.historyEnabled = this.historyRelationship !== undefined;
   }
 
-  public static async init(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
-    const newObj = new SObjectAnalyser(targetOrgConnection);
-    newObj.describeResult = await newObj.describeCache.describeSObject(sobjectName);
+  public static async create(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
+    const describeApi = new DescribeApi(targetOrgConnection);
+    const describeResult = await describeApi.describeSObject(sobjectName);
+    const newObj = new SObjectAnalyser(targetOrgConnection, describeResult);
     return newObj;
   }
 
   public async analyseFieldUsage(options?: FieldUsageOptions): Promise<FieldUsageTable> {
-    const fieldsToAnalyse = filterFields(this.describeResult.fields, options);
-    this.emit('describeSuccess', { fieldCount: fieldsToAnalyse.length });
+    const { analysedFields, ignoredFields } = filterFields(this.describeResult.fields, options);
+    this.emit('describeSuccess', { fieldCount: analysedFields.length, skippedFieldsCount: ignoredFields.length });
     const totalCount = await this.getTotalCount();
     this.emit('totalRecordsRetrieve', { totalCount });
-    const usageTable: FieldUsageTable = { name: this.describeResult.name, totalRecords: totalCount, fields: [] };
+    const usageTable: FieldUsageTable = {
+      name: this.describeResult.name,
+      totalRecords: totalCount,
+      analysedFields: [],
+      skippedFields: [],
+    };
     if (!totalCount || totalCount === 0) {
       return usageTable;
     }
     const fieldStats: Array<Promise<FieldUsageStats>> = [];
-    for (const field of fieldsToAnalyse) {
-      fieldStats.push(this.getFieldUsageStats(totalCount, field));
+    for (const field of analysedFields) {
+      fieldStats.push(this.getFieldUsageStats(totalCount, field, options));
     }
-    usageTable.fields = await Promise.all(fieldStats);
+    usageTable.analysedFields = await Promise.all(fieldStats);
+    usageTable.skippedFields = ignoredFields;
     return formatTable(usageTable);
   }
 
@@ -66,35 +84,121 @@ export default class SObjectAnalyser extends EventEmitter {
     return result.records[0]['expr0'] as number;
   }
 
-  private async getPopulatedFieldCount(field: Field): Promise<number> {
-    const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
+  private async getPopulatedFieldCount(field: Field, checkDefaults?: boolean): Promise<number> {
+    let queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
+    if (checkDefaults && field.defaultValue != null) {
+      queryString +=
+        field.type === 'boolean'
+          ? ` AND ${field.name} != ${field.defaultValue}`
+          : ` AND ${field.name} != '${field.defaultValue}'`;
+    }
     const result = await this.targetOrgConnection.query(queryString);
     return result.records[0]['expr0'] as number;
   }
 
-  private async getFieldUsageStats(totalCount: number, field: Field): Promise<FieldUsageStats> {
-    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field);
-    return {
+  private async getFieldUsageStats(
+    totalCount: number,
+    field: Field,
+    options?: FieldUsageOptions
+  ): Promise<FieldUsageStats> {
+    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field, options?.checkDefaultValues);
+    const baseStats = {
       name: field.name,
-      type: field.calculated ? `formula (${field.type})` : field.type,
+      type: formatFieldType(field),
       absolutePopulated: fieldsPopulatedCount,
       percentagePopulated: fieldsPopulatedCount / totalCount,
+      ...(options?.checkDefaultValues && { defaultValue: field.defaultValue }),
     };
+    if (options?.checkHistory && this.historyEnabled) {
+      const fieldHistoryStats = await this.getFieldHistoryStats(field);
+      return {
+        ...baseStats,
+        ...fieldHistoryStats,
+      };
+    }
+    return baseStats;
+  }
+
+  private async getFieldHistoryStats(field: Field): Promise<{ histories?: number; lastUpdated?: string }> {
+    const queryString = `SELECT COUNT(Id),MAX(CreatedDate) FROM ${
+      this.historyRelationship!.childSObject
+    } WHERE Field = '${field.name}'`;
+    const result = await this.targetOrgConnection.query(queryString);
+    return { histories: result.records[0]['expr0'] as number, lastUpdated: result.records[0]['expr1'] as string };
   }
 }
 
+type ChildRelationship = {
+  cascadeDelete: boolean;
+  childSObject: string;
+  deprecatedAndHidden: boolean;
+  field: string;
+  junctionIdListNames: string[];
+  junctionReferenceTo: string[];
+  relationshipName: Optional<string>;
+  restrictedDelete: boolean;
+};
+
 function formatTable(table: FieldUsageTable): FieldUsageTable {
-  table.fields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
+  table.analysedFields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
   return table;
 }
 
-function filterFields(fields: Field[], options?: FieldUsageOptions): Field[] {
-  return fields.filter(
-    (field) =>
-      // nullish-coalescing actually changes behavior - check tests
-      ((field.custom && options?.customFieldsOnly) || !options?.customFieldsOnly) &&
-      ((!field.calculated && options?.excludeFormulaFields) || !options?.excludeFormulaFields) &&
-      INCLUDED_FIELD_TYPES.includes(field.type) &&
-      field.filterable
-  );
+function filterFields(
+  fields: Field[],
+  options?: FieldUsageOptions
+): { analysedFields: Field[]; ignoredFields: FieldSkippedInfo[] } {
+  const analysedFields: Field[] = [];
+  const ignoredFields: FieldSkippedInfo[] = [];
+  for (const field of fields) {
+    if (!((field.custom && options?.customFieldsOnly) || !options?.customFieldsOnly)) {
+      ignoredFields.push({
+        name: field.name,
+        type: formatFieldType(field),
+        reason: messages.getMessage('info.not-a-custom-field'),
+      });
+      continue;
+    }
+    if (!((!field.calculated && options?.excludeFormulaFields) || !options?.excludeFormulaFields)) {
+      ignoredFields.push({
+        name: field.name,
+        type: formatFieldType(field),
+        reason: messages.getMessage('info.is-calculated'),
+      });
+      continue;
+    }
+    if (!INCLUDED_FIELD_TYPES.includes(field.type)) {
+      ignoredFields.push({
+        name: field.name,
+        type: formatFieldType(field),
+        reason: messages.getMessage('info.type-not-supported'),
+      });
+      continue;
+    }
+    if (!field.filterable) {
+      ignoredFields.push({
+        name: field.name,
+        type: formatFieldType(field),
+        reason: messages.getMessage('info.not-filterable'),
+      });
+      continue;
+    }
+    analysedFields.push(field);
+  }
+  return { analysedFields, ignoredFields };
+}
+
+function formatFieldType(field: Field): string {
+  return field.calculated ? `formula (${field.type})` : field.type;
+}
+
+function getHistoryRelationship(describeResult: DescribeSObjectResult): ChildRelationship | undefined {
+  if (describeResult.childRelationships?.length > 0) {
+    for (const cr of describeResult.childRelationships) {
+      if (cr.relationshipName === 'Histories') {
+        return cr;
+      }
+    }
+  }
+  return undefined;
 }

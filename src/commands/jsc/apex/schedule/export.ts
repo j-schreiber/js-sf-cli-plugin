@@ -45,12 +45,7 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
       apexClassName: flags['apex-class-name'],
       jobName: flags['job-name'],
     });
-    this.table({
-      data: jobs,
-      columns: flags.concise
-        ? [{ key: 'CronTriggerId' }, { key: 'ApexClassName' }, { key: 'TimesTriggered' }]
-        : undefined,
-    });
+    this.printResults(jobs, flags.concise);
     this.writeResults(jobs, flags['output-dir']);
     return jobs;
   }
@@ -73,5 +68,16 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
     fs.mkdirSync(filePath, { recursive: true });
     fs.writeFileSync(outputPath, fileContent);
     this.info(messages.getMessage('info.wrote-output-to-file', [outputPath]));
+  }
+
+  private printResults(jobs: AsyncApexJobFlat[], concise?: boolean): void {
+    if (jobs.length === 0) {
+      this.info(messages.getMessage('info.no-scheduled-jobs-found'));
+    } else {
+      this.table({
+        data: jobs,
+        columns: concise ? [{ key: 'CronTriggerId' }, { key: 'ApexClassName' }, { key: 'TimesTriggered' }] : undefined,
+      });
+    }
   }
 }
