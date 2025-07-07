@@ -27,6 +27,7 @@
   "devDependencies": {
     "@oclif/plugin-command-snapshot": "^5.1.9",
     "@oclif/test": "^4.1.13",
+    "@release-it/conventional-changelog": "^10.0.1",
     "@salesforce/cli-plugins-testkit": "^5.3.10",
     "@salesforce/dev-scripts": "11",
     "@types/js-yaml": "^4.0.9",
@@ -119,11 +120,11 @@
     "test:only": "wireit",
     "readme": "wireit",
     "prepare": "husky",
-    "release": "release-it"
+    "release": "rm -rf .wireit && yarn build && release-it"
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https:///registry.yarnpkg.com"
+    "registry": "https://registry.npmjs.org"
   },
   "wireit": {
     "build": {
