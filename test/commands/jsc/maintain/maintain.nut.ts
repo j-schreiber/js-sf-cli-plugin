@@ -56,13 +56,13 @@ describe('jsc maintain NUTs*', () => {
       // Assert
       const result = execResult.jsonOutput?.result;
       assert.isDefined(result);
-      assert.isDefined(result.sobjects['Account']);
+      assert.isDefined(result.Account);
       // the default scratch org is created with 1 account (data imports 3). Lets see how stable this is
-      expect(result.sobjects['Account'].totalRecords).to.equal(4);
-      assert.isDefined(result.sobjects['Contact']);
-      expect(result.sobjects['Contact'].totalRecords).to.equal(2);
-      assert.isDefined(result.sobjects['Lead']);
-      expect(result.sobjects['Lead'].totalRecords).to.equal(0);
+      expect(result.Account.Master.totalRecords).to.equal(4);
+      assert.isDefined(result.Contact.Master);
+      expect(result.Contact.Master.totalRecords).to.equal(2);
+      assert.isDefined(result.Lead.Master);
+      expect(result.Lead.Master.totalRecords).to.equal(0);
     });
 
     it('successfully analyses valid sobject with check-defaults flag', () => {
@@ -74,8 +74,8 @@ describe('jsc maintain NUTs*', () => {
 
       // Assert
       assert.isDefined(result);
-      assert.isDefined(result.sobjects['Account']);
-      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
+      assert.isDefined(result.Account.Master);
+      result.Account.Master.analysedFields.forEach((fieldUsageStat) => {
         assert.isDefined(fieldUsageStat.defaultValue);
       });
     });
@@ -89,8 +89,8 @@ describe('jsc maintain NUTs*', () => {
 
       // Assert
       assert.isDefined(result);
-      assert.isDefined(result.sobjects['Account']);
-      result.sobjects['Account'].analysedFields.forEach((fieldUsageStat) => {
+      assert.isDefined(result.Account.Master);
+      result.Account.Master.analysedFields.forEach((fieldUsageStat) => {
         assert.isDefined(fieldUsageStat.histories);
         assert.isDefined(fieldUsageStat.lastUpdated);
       });

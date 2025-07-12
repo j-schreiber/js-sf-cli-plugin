@@ -143,11 +143,13 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account', 'Order']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    expect(result.sobjects.Account.analysedFields.length).to.equal($$.getFilterableFields());
-    expect(result.sobjects.Order.name).to.equal('Order');
-    expect(result.sobjects.Order.analysedFields.length).to.equal($$.getFilterableFields());
+    expect(Object.keys(result)).to.deep.equal(['Account', 'Order']);
+    expect(result.Account).not.to.be.undefined;
+    expect(Object.keys(result.Account)).to.deep.equal(['Master']);
+    expect(result.Account.Master.analysedFields.length).to.equal($$.getFilterableFields());
+    expect(result.Order).not.to.be.undefined;
+    expect(Object.keys(result.Order)).to.deep.equal(['Master']);
+    expect(result.Order.Master.analysedFields.length).to.equal($$.getFilterableFields());
   });
 
   ['markdown', 'human', 'csv'].forEach((reporter) => {
@@ -177,7 +179,7 @@ describe('jsc maintain field-usage analyse', () => {
       // expect(jsonResult.status).to.equal(0);
       expect(stderr).to.be.empty;
       expect(result).is.not.undefined;
-      expect(result.sobjects['Account']).is.not.undefined;
+      expect(result['Account']).is.not.undefined;
     });
   });
 
@@ -217,9 +219,8 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
+    expect(Object.keys(result)).to.deep.equal(['Account']);
+    result.Account.Master.analysedFields.forEach((fieldStats) => {
       expect(Object.keys(fieldStats)).to.deep.equal(['name', 'type', 'absolutePopulated', 'percentagePopulated']);
     });
   });
@@ -235,9 +236,8 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
+    expect(Object.keys(result)).to.deep.equal(['Account']);
+    result.Account.Master.analysedFields.forEach((fieldStats) => {
       expect(Object.keys(fieldStats)).to.deep.equal([
         'name',
         'type',

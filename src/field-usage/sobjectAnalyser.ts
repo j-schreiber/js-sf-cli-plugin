@@ -55,19 +55,20 @@ export default class SObjectAnalyser extends EventEmitter {
     return newObj;
   }
 
-  public async analyseFieldUsage(options?: FieldUsageOptions): Promise<FieldUsageTable> {
+  // PUBLIC API
+
+  public async analyseFieldUsage(options?: FieldUsageOptions): Promise<Record<string, FieldUsageTable>> {
     const { analysedFields, ignoredFields } = filterFields(this.describeResult.fields, options);
     this.emit('describeSuccess', { fieldCount: analysedFields.length, skippedFieldsCount: ignoredFields.length });
     const totalCount = await this.getTotalCount();
     this.emit('totalRecordsRetrieve', { totalCount });
     const usageTable: FieldUsageTable = {
-      name: this.describeResult.name,
       totalRecords: totalCount,
       analysedFields: [],
       skippedFields: [],
     };
     if (!totalCount || totalCount === 0) {
-      return usageTable;
+      return { Master: usageTable };
     }
     const fieldStats: Array<Promise<FieldUsageStats>> = [];
     for (const field of analysedFields) {
@@ -75,8 +76,10 @@ export default class SObjectAnalyser extends EventEmitter {
     }
     usageTable.analysedFields = await Promise.all(fieldStats);
     usageTable.skippedFields = ignoredFields;
-    return formatTable(usageTable);
+    return { Master: formatTable(usageTable) };
   }
+
+  // PRIVATE ZONE
 
   private async getTotalCount(): Promise<number> {
     const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name}`;

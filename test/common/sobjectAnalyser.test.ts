@@ -35,7 +35,8 @@ describe('sobject analyser', () => {
   it('analyses field usage without options of a valid sobject name for each filterable field', async () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage();
+    const analyseResult = await anal.analyseFieldUsage();
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(8);
@@ -79,7 +80,8 @@ describe('sobject analyser', () => {
   it('analyses field usage with custom fields only for only custom fields', async () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage({ customFieldsOnly: true });
+    const analyseResult = await anal.analyseFieldUsage({ customFieldsOnly: true });
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);
@@ -91,10 +93,11 @@ describe('sobject analyser', () => {
   it('excludes formula fields when flag is set', async () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage({
+    const analyseResult = await anal.analyseFieldUsage({
       excludeFormulaFields: true,
       customFieldsOnly: true,
     });
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(2);
@@ -105,10 +108,11 @@ describe('sobject analyser', () => {
   it('includes formula fields when exclude flag is explicitly set as false', async () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage({
+    const analyseResult = await anal.analyseFieldUsage({
       excludeFormulaFields: false,
       customFieldsOnly: true,
     });
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);
@@ -124,11 +128,12 @@ describe('sobject analyser', () => {
 
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage({
+    const analyseResult = await anal.analyseFieldUsage({
       excludeFormulaFields: true,
       customFieldsOnly: true,
       checkDefaultValues: true,
     });
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(2);
@@ -156,9 +161,10 @@ describe('sobject analyser', () => {
 
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
-    const fieldUsageResult = await anal.analyseFieldUsage({
+    const analyseResult = await anal.analyseFieldUsage({
       customFieldsOnly: true,
     });
+    const fieldUsageResult = analyseResult.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);

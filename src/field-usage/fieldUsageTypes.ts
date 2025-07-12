@@ -1,7 +1,6 @@
 import { Optional } from '@jsforce/jsforce-node';
 
 export type FieldUsageTable = {
-  name: string;
   totalRecords: number;
   analysedFields: FieldUsageStats[];
   skippedFields: FieldSkippedInfo[];

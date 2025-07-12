@@ -20,7 +20,14 @@ Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
 
 export type JscMaintainFieldUsageAnalyseResult = {
-  sobjects: Record<string, FieldUsageTable>;
+  [sobjectName: string]: Record<string, FieldUsageTable>;
+};
+
+type FlagOptions = {
+  'check-defaults': boolean;
+  verbose: boolean;
+  'result-format': ResultFormats;
+  'segment-record-types': boolean;
 };
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
@@ -57,6 +64,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.check-history.summary'),
       description: messages.getMessage('flags.check-history.description'),
     }),
+    'segment-record-types': Flags.boolean({
+      summary: messages.getMessage('flags.segment-record-types.summary'),
+      description: messages.getMessage('flags.segment-record-types.description'),
+    }),
     verbose: Flags.boolean({
       summary: messages.getMessage('flags.verbose.summary'),
       description: messages.getMessage('flags.verbose.description'),
@@ -70,7 +81,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
   public async run(): Promise<JscMaintainFieldUsageAnalyseResult> {
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
-    const fieldUsageTables: Record<string, FieldUsageTable> = {};
+    const fieldUsageTables: Record<string, Record<string, FieldUsageTable>> = {};
     for (const sobj of flags.sobject) {
       this.ms = FieldUsageMultiStageOutput.create(sobj, flags.json);
       this.ms.updateData({ analyseDefaults: flags['check-defaults'] });
@@ -105,18 +116,28 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
         this.ms.goto(OUTPUT_STAGE);
         fieldUsageTables[sobj] = sobjectUsageResult;
         this.ms.stop('completed');
-        if (sobjectUsageResult.analysedFields.length > 0) {
-          this.printResults(sobjectUsageResult.analysedFields, flags['result-format']);
-        }
-        if (flags.verbose && sobjectUsageResult.skippedFields.length > 0) {
-          this.printIgnoredFields(sobjectUsageResult.skippedFields, flags['result-format']);
-        }
+        this.print(sobjectUsageResult, flags);
       } catch (err) {
         this.ms.error();
         this.error(String(err));
       }
     }
-    return { sobjects: fieldUsageTables };
+    return fieldUsageTables;
+  }
+
+  private print(analyseResult: Record<string, FieldUsageTable>, options: FlagOptions): void {
+    for (const [recordType, result] of Object.entries(analyseResult)) {
+      // if --segment-record-types is false, we'll have all records in "Master" anyway
+      if (options['segment-record-types']) {
+        this.log(`====== ${recordType} ======\n`);
+      }
+      if (result.analysedFields.length > 0) {
+        this.printResults(result.analysedFields, options['result-format']);
+      }
+      if (options.verbose && result.skippedFields.length > 0) {
+        this.printIgnoredFields(result.skippedFields, options['result-format']);
+      }
+    }
   }
 
   private printResults(data: FieldUsageStats[], resultFormat: ResultFormats): void {
