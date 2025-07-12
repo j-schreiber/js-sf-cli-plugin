@@ -99,3 +99,7 @@ Fields are only considered populated, if the value is different from configured 
 # infos.check-history-enabled
 
 Retrieving additional infos about total number of field changes and last update timestamp.
+
+# infos.segment-record-types-enabled
+
+Results are organized by record types of the sobjects.

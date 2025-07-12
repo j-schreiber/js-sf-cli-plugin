@@ -40,6 +40,12 @@ export default class FieldUsageMultiStageOutput {
           label: 'Total records',
         },
         {
+          get: (data) => data?.totalRecordTypes,
+          stage: DESCRIBE_STAGE,
+          type: 'dynamic-key-value',
+          label: 'Record types',
+        },
+        {
           get: (data) => data?.fieldsUnderAnalysis,
           stage: FIELD_STAGE,
           type: 'message',
@@ -63,6 +69,12 @@ export default class FieldUsageMultiStageOutput {
           get: (data) => (data?.analyseHistory ? messages.getMessage('infos.check-history-enabled') : undefined),
         },
         {
+          label: 'Segmenting record types',
+          type: 'static-key-value',
+          get: (data) =>
+            data?.segmentRecordTypes ? messages.getMessage('infos.segment-record-types-enabled') : undefined,
+        },
+        {
           label: 'Total queries executed',
           type: 'static-key-value',
           get: (data): string | undefined => (data?.totalQueries ? `${data.totalQueries}` : undefined),
@@ -80,5 +92,7 @@ export type MultiStageData = {
   describeStatus: string;
   analyseDefaults: boolean;
   analyseHistory: boolean;
+  segmentRecordTypes: boolean;
   totalQueries: number;
+  totalRecordTypes: string;
 };

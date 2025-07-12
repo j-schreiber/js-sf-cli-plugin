@@ -86,15 +86,19 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       this.ms = FieldUsageMultiStageOutput.create(sobj, flags.json);
       this.ms.updateData({ analyseDefaults: flags['check-defaults'] });
       this.ms.updateData({ analyseHistory: flags['check-history'] });
+      this.ms.updateData({ segmentRecordTypes: flags['segment-record-types'] });
       try {
         const analyser = await SObjectAnalyser.create(targetOrg, sobj);
         analyser.on(
           'describeSuccess',
-          (data: { fieldCount: number; resolvedName: string; skippedFieldsCount: number }) => {
+          (data: { fieldCount: number; skippedFieldsCount: number; recordTypesCount: number }) => {
             this.ms?.updateData({ describeStatus: 'Success' });
             this.ms?.updateData({
-              fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields`,
+              fieldsUnderAnalysis: flags['segment-record-types']
+                ? `Analysing ${data.fieldCount} fields for ${data.recordTypesCount} record types each`
+                : `Analysing ${data.fieldCount} fields`,
               skippedFields: `Ignoring ${data.skippedFieldsCount} fields for analysis`,
+              totalRecordTypes: `${data.recordTypesCount}`,
             });
           }
         );

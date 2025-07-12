@@ -13,6 +13,7 @@ export type FieldUsageOptions = {
   excludeFormulaFields?: boolean;
   checkDefaultValues?: boolean;
   checkHistory?: boolean;
+  segmentRecordTypes?: boolean;
 };
 
 export const INCLUDED_FIELD_TYPES = [
@@ -59,7 +60,11 @@ export default class SObjectAnalyser extends EventEmitter {
 
   public async analyseFieldUsage(options?: FieldUsageOptions): Promise<Record<string, FieldUsageTable>> {
     const { analysedFields, ignoredFields } = filterFields(this.describeResult.fields, options);
-    this.emit('describeSuccess', { fieldCount: analysedFields.length, skippedFieldsCount: ignoredFields.length });
+    this.emit('describeSuccess', {
+      fieldCount: analysedFields.length,
+      skippedFieldsCount: ignoredFields.length,
+      recordTypesCount: this.describeResult.recordTypeInfos?.length ?? 1,
+    });
     const totalCount = await this.getTotalCount();
     this.emit('totalRecordsRetrieve', { totalCount });
     const usageTable: FieldUsageTable = {

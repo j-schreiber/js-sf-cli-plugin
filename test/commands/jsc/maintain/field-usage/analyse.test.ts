@@ -43,7 +43,7 @@ describe('jsc maintain field-usage analyse', () => {
     // Assert
     expect(uxStub.table.callCount).to.equal(2);
     // 5 per object: post stages blocks, records and describe
-    expect(multiStageStub.updateData.callCount).to.equal(10);
+    expect(multiStageStub.updateData.callCount).to.equal(12);
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
