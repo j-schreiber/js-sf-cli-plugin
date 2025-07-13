@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import FieldUsageTestContext from '../mock-utils/fieldUsageTestContext.js';
 import SObjectAnalyser from '../../src/field-usage/sobjectAnalyser.js';
+import { RecordTypeInfo } from '../../src/common/jsForceCustomTypes.js';
 
 const EXPECTED_STRING_FIELD_OUTPUT = {
   name: 'MyCustomField__c',
@@ -36,10 +37,10 @@ describe('sobject analyser', () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
     const analyseResult = await anal.analyseFieldUsage();
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(8);
+    expect(fieldUsageResult.analysedFields.length).to.equal(9);
     expect(fieldUsageResult.analysedFields).to.have.deep.members([
       {
         name: 'Id',
@@ -71,6 +72,12 @@ describe('sobject analyser', () => {
         absolutePopulated: 100,
         percentagePopulated: 1,
       },
+      {
+        name: 'RecordTypeId',
+        type: 'reference',
+        absolutePopulated: 100,
+        percentagePopulated: 1,
+      },
       EXPECTED_STRING_FIELD_OUTPUT,
       EXPECTED_FORMULA_FIELD_OUTPUT,
       EXPECTED_CHECKBOX_FIELD_OUTPUT,
@@ -81,13 +88,43 @@ describe('sobject analyser', () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
     const analyseResult = await anal.analyseFieldUsage({ customFieldsOnly: true });
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);
     expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
+  });
+
+  it('analyses usage for each record type with segment record types flag', async () => {
+    // Arrange
+    $$.queryResults[
+      "SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000001AAA' AND MyCustomField__c != NULL"
+    ] = 10;
+    $$.queryResults[
+      "SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000002AAA' AND MyCustomField__c != NULL"
+    ] = 15;
+    $$.queryResults[
+      "SELECT COUNT() FROM Account WHERE (RecordTypeId = '012000000000000AAA' OR RecordTypeId = NULL)"
+    ] = 0;
+    $$.queryResults["SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000001AAA'"] = 20;
+    $$.queryResults["SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000002AAA'"] = 30;
+    $$.describes['Account'].recordTypeInfos = [
+      { developerName: 'Master', recordTypeId: '012000000000000AAA' },
+      { developerName: 'Test_Type_1', recordTypeId: '012000000000001AAA' },
+      { developerName: 'Test_Type_2', recordTypeId: '012000000000002AAA' },
+    ] as RecordTypeInfo[];
+
+    // Act
+    const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
+    const analyseResult = await anal.analyseFieldUsage({ segmentRecordTypes: true });
+
+    // Assert
+    expect(Object.keys(analyseResult.recordTypes)).to.deep.equal(['Master', 'Test_Type_1', 'Test_Type_2']);
+    expect(analyseResult.recordTypes.Master.totalRecords).to.equal(0);
+    expect(analyseResult.recordTypes.Test_Type_1.totalRecords).to.equal(20);
+    expect(analyseResult.recordTypes.Test_Type_2.totalRecords).to.equal(30);
   });
 
   it('excludes formula fields when flag is set', async () => {
@@ -97,7 +134,7 @@ describe('sobject analyser', () => {
       excludeFormulaFields: true,
       customFieldsOnly: true,
     });
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(2);
@@ -112,7 +149,7 @@ describe('sobject analyser', () => {
       excludeFormulaFields: false,
       customFieldsOnly: true,
     });
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);
@@ -123,8 +160,8 @@ describe('sobject analyser', () => {
 
   it('runs defaults check when option is true for fields with defaults', async () => {
     // Arrange
-    $$.queryResults["SELECT COUNT(Id) FROM Account WHERE MyCustomField__c != NULL AND MyCustomField__c != 'Test'"] = 0;
-    $$.queryResults['SELECT COUNT(Id) FROM Account WHERE MyCheckbox__c != NULL AND MyCheckbox__c != true'] = 20;
+    $$.queryResults["SELECT COUNT() FROM Account WHERE MyCustomField__c != NULL AND MyCustomField__c != 'Test'"] = 0;
+    $$.queryResults['SELECT COUNT() FROM Account WHERE MyCheckbox__c != NULL AND MyCheckbox__c != true'] = 20;
 
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
@@ -133,7 +170,7 @@ describe('sobject analyser', () => {
       customFieldsOnly: true,
       checkDefaultValues: true,
     });
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(2);
@@ -153,18 +190,52 @@ describe('sobject analyser', () => {
     });
   });
 
+  it('runs history checks when option is true for fields with history tracking', async () => {
+    // Arrange
+    $$.queryResults['SELECT COUNT() FROM Account WHERE MyCustomField__c != NULL'] = 0;
+    $$.queryResults['SELECT COUNT() FROM Account WHERE MyCheckbox__c != NULL'] = 20;
+
+    // Act
+    const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
+    const analyseResult = await anal.analyseFieldUsage({
+      excludeFormulaFields: true,
+      customFieldsOnly: true,
+      checkHistory: true,
+    });
+    const fieldUsageResult = analyseResult.recordTypes.Master;
+
+    // Assert
+    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    expect(fieldUsageResult.analysedFields[0]).to.include({
+      name: 'MyCustomField__c',
+      type: 'string',
+      absolutePopulated: 0,
+      percentagePopulated: 0,
+      histories: 1,
+      lastUpdated: '2025-07-05',
+    });
+    expect(fieldUsageResult.analysedFields[1]).to.include({
+      name: 'MyCheckbox__c',
+      type: 'boolean',
+      absolutePopulated: 20,
+      percentagePopulated: 0.2,
+      histories: 1,
+      lastUpdated: '2025-07-05',
+    });
+  });
+
   it('does not run default checks when option is omitted', async () => {
     // Arrange
-    $$.queryResults['SELECT COUNT(Id) FROM Account WHERE MyCustomField__c != NULL'] = 10;
-    $$.queryResults['SELECT COUNT(Id) FROM Account WHERE Formula__c != NULL'] = 20;
-    $$.queryResults['SELECT COUNT(Id) FROM Account WHERE MyCheckbox__c != NULL'] = 30;
+    $$.queryResults['SELECT COUNT() FROM Account WHERE MyCustomField__c != NULL'] = 10;
+    $$.queryResults['SELECT COUNT() FROM Account WHERE Formula__c != NULL'] = 20;
+    $$.queryResults['SELECT COUNT() FROM Account WHERE MyCheckbox__c != NULL'] = 30;
 
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
     const analyseResult = await anal.analyseFieldUsage({
       customFieldsOnly: true,
     });
-    const fieldUsageResult = analyseResult.Master;
+    const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
     expect(fieldUsageResult.analysedFields.length).to.equal(3);

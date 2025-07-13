@@ -4,7 +4,7 @@ import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import { AnyJson, isObject, isString } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 
-const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
+const MOCK_DESCRIBE_RESULT_TEMPLATE = {
   custom: false,
   createable: true,
   name: 'Account',
@@ -23,7 +23,7 @@ const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
       cascadeDelete: true,
       childSObject: 'AccountHistory',
       deprecatedAndHidden: false,
-      field: 'ParentId',
+      field: 'AccountId',
       junctionIdListNames: [],
       junctionReferenceTo: [],
       relationshipName: 'Histories',
@@ -36,6 +36,7 @@ const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
     { name: 'AccountNumber', type: 'string', filterable: true, custom: false },
     { name: 'CreatedDate', type: 'datetime', filterable: true, custom: false },
     { name: 'BillingStreet', type: 'textarea', filterable: true, custom: false },
+    { name: 'RecordTypeId', type: 'reference', filterable: true, custom: false },
     { name: 'LargeTextField__c', type: 'textarea', filterable: false, custom: true },
     { name: 'MyCustomField__c', type: 'string', filterable: true, custom: true, defaultValue: 'Test' },
     { name: 'Formula__c', type: 'string', filterable: true, custom: true, calculated: true },
@@ -46,22 +47,37 @@ const MOCK_DESCRIBE_RESULT: Partial<DescribeSObjectResult> = {
   },
 };
 
+const HISTORY_DESCRIBE_RESULT_TEMPLATE = {
+  custom: false,
+  createable: false,
+  name: 'AccountHistory',
+  associateEntityType: 'History',
+  associateParentEntity: 'Account',
+  fields: [
+    { name: 'AccountId', type: 'reference', filterable: true, custom: false, relationshipName: 'Account' },
+    { name: 'Field', type: 'picklist', filterable: true, custom: false },
+  ] as Field[],
+};
+
 export default class FieldUsageTestContext {
   public coreContext: TestContext;
   public testTargetOrg: MockTestOrgData;
-  public sobjectDescribe: Partial<DescribeSObjectResult>;
   public totalRecords: number;
-  /** A map of explicit query strings and their expr0 result to mock populated fields count */
+  /** A map of explicit query strings and their "totalSize" result to mock populated fields count */
   public queryResults: Record<string, number> = {};
   /** Map of field names and their aggregate results to mock field history analysis */
   public fieldHistoryMocks: Record<string, { expr0: number; expr1: string }> = {};
+  /** A key/value map of mocked describe results. Use sobject developer name for keys */
+  public describes: Record<string, Partial<DescribeSObjectResult>> = {};
 
   public constructor() {
     this.coreContext = new TestContext();
     this.testTargetOrg = new MockTestOrgData();
     this.totalRecords = 100;
-    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
-    this.setFieldHistoryMocksForAllFields();
+    this.describes['Account'] = this.cloneDescribeMock('Account');
+    this.describes['Order'] = this.cloneDescribeMock('Order');
+    this.describes['AccountHistory'] = structuredClone(HISTORY_DESCRIBE_RESULT_TEMPLATE);
+    this.setFieldHistoryMocksForAllFields('Account');
   }
 
   public async init() {
@@ -70,17 +86,19 @@ export default class FieldUsageTestContext {
 
   public restore() {
     this.coreContext.restore();
-    this.sobjectDescribe = structuredClone(MOCK_DESCRIBE_RESULT);
+    this.describes['Account'] = this.cloneDescribeMock('Account');
+    this.describes['Order'] = this.cloneDescribeMock('Order');
+    this.describes['AccountHistory'] = structuredClone(HISTORY_DESCRIBE_RESULT_TEMPLATE);
     this.totalRecords = 100;
-    this.setFieldHistoryMocksForAllFields();
+    this.setFieldHistoryMocksForAllFields('Account');
     // plugin cache that stores describe results
     fs.rmSync('.jsc', { recursive: true, force: true });
   }
 
-  public getFilterableFields(): number {
+  public getFilterableFields(sobjectName: string): number {
     let count = 0;
     // one field in our default describe result is non-filterable
-    this.sobjectDescribe.fields?.forEach((field) => {
+    this.describes[sobjectName].fields?.forEach((field) => {
       if (field.filterable) {
         count++;
       }
@@ -99,8 +117,10 @@ export default class FieldUsageTestContext {
     if (isString(request) && request.endsWith('/describe')) {
       const requestUrl = request.split('/');
       const sobjectName = requestUrl[requestUrl.length - 2];
-      const describe = { ...this.sobjectDescribe, name: sobjectName };
-      return Promise.resolve(describe as AnyJson);
+      if (this.describes[sobjectName] === undefined) {
+        return Promise.reject(new Error(`No describe mock prepared for: ${sobjectName}`));
+      }
+      return Promise.resolve(this.describes[sobjectName] as AnyJson);
     }
     // mocks for explicit field history queries, mapped by field name
     if (isObject<{ method: string; url: string }>(request)) {
@@ -112,21 +132,25 @@ export default class FieldUsageTestContext {
         }
         return Promise.reject(new Error(`No mock was specified for field history query: ${queryParam}`));
       }
-      if (queryParam?.includes('COUNT(Id)')) {
-        // mocking all the generic COUNT(Id) to get absolute populated of a field
+      if (queryParam?.includes('COUNT()')) {
+        // mocking all the generic COUNT() to get absolute populated of a field
         if (this.queryResults[queryParam] !== undefined) {
-          return Promise.resolve({ records: [{ expr0: this.queryResults[queryParam] }], done: true });
+          return Promise.resolve({ totalSize: this.queryResults[queryParam], records: [], done: true });
         }
-        return Promise.resolve({ records: [{ expr0: this.totalRecords }], done: true });
+        return Promise.resolve({ totalSize: this.totalRecords, records: [], done: true });
       }
     }
     return Promise.reject(new Error(`No mock was defined for: ${JSON.stringify(request)}`));
   };
 
-  private setFieldHistoryMocksForAllFields() {
-    this.sobjectDescribe.fields?.forEach((field) => {
-      this.fieldHistoryMocks[field.name] = { expr0: 0, expr1: '2025-07-05' };
+  private setFieldHistoryMocksForAllFields(sobjectName: string) {
+    this.describes[sobjectName].fields?.forEach((field) => {
+      this.fieldHistoryMocks[field.name] = { expr0: 1, expr1: '2025-07-05' };
     });
+  }
+
+  private cloneDescribeMock(sobjectName: string): Partial<DescribeSObjectResult> {
+    return { ...structuredClone(MOCK_DESCRIBE_RESULT_TEMPLATE), name: sobjectName };
   }
 }
 
