@@ -252,4 +252,29 @@ describe('sobject analyser', () => {
       absolutePopulated: 30,
     });
   });
+
+  it('shows optional attributes in analysed fields when object has no records', async () => {
+    // Arrange
+    $$.queryResults['SELECT COUNT() FROM Account'] = 0;
+
+    // Act
+    const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
+    const analyseResult = await anal.analyseFieldUsage({
+      checkHistory: true,
+      checkDefaultValues: true,
+    });
+    const fieldUsageResult = analyseResult.recordTypes.Master;
+
+    // Assert
+    fieldUsageResult.analysedFields.forEach((field) => {
+      expect(Object.keys(field)).to.include.deep.members([
+        'name',
+        'type',
+        'absolutePopulated',
+        'defaultValue',
+        'histories',
+        'lastUpdated',
+      ]);
+    });
+  });
 });

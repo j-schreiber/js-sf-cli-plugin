@@ -223,7 +223,7 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
 function printSummary(analyseResult: SObjectAnalysisResult, resultFormat: ResultFormats, jsonEnabled: boolean): void {
   const rtSummary = new Array<RecordTypeSummary>();
   for (const [recordType, result] of Object.entries(analyseResult.recordTypes)) {
-    rtSummary.push({ developerName: recordType, totalRecords: result.totalRecords });
+    rtSummary.push({ developerName: recordType, totalRecords: result.totalRecords, isActive: result.isActive });
   }
   rtSummary.sort((a, b) => a.totalRecords - b.totalRecords);
   let reporter: ResultsReporter<RecordTypeSummary>;
@@ -256,4 +256,5 @@ function printSummary(analyseResult: SObjectAnalysisResult, resultFormat: Result
 type RecordTypeSummary = {
   developerName: string;
   totalRecords: number;
+  isActive: boolean;
 };

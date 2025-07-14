@@ -65,17 +65,13 @@ export default class FieldUsageAnalyser {
       if (totalCount > 0) {
         stats = this.calculateUsageStats(field, options);
       } else {
-        stats = Promise.resolve({
-          name: field.name,
-          type: formatFieldType(field),
-          absolutePopulated: 0,
-        });
+        stats = Promise.resolve(this.createEmptyUsageStats(field, options));
       }
       partialFieldStats.push(stats);
     }
     const fieldStats: Array<Partial<FieldUsageStats>> = await Promise.all(partialFieldStats);
     const analysedFields = finaliseFieldUsageStats(fieldStats, totalCount);
-    return { totalRecords: totalCount, analysedFields };
+    return { totalRecords: totalCount, analysedFields, isActive: this.recordType?.infos.active ?? true };
   }
 
   // PRIVATE ZONE
@@ -86,6 +82,22 @@ export default class FieldUsageAnalyser {
       : this.TOTAL_COUNT_BASE_QUERY;
     const result = await this.targetOrgConnection.query(queryString);
     return result.totalSize;
+  }
+
+  private createEmptyUsageStats(field: Field, options: FieldUsageAnalyserOptions): Partial<FieldUsageStats> {
+    let base = {
+      name: field.name,
+      type: formatFieldType(field),
+      absolutePopulated: 0,
+    };
+    if (options.checkDefaults) {
+      base = { ...base, ...{ defaultValue: this.resolveFieldDefaultValue(field) } };
+    }
+    if (options.checkHistory && this.isHistoryEnabled) {
+      const historyStats = { histories: 0, lastUpdated: undefined };
+      return { ...base, ...historyStats };
+    }
+    return base;
   }
 
   private async calculateUsageStats(

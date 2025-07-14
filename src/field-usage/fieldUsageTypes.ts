@@ -8,11 +8,13 @@ export type SObjectAnalysisResult = {
   totalRecords: number;
 };
 
+/**
+ * Usage stats for a record type. All analysed and skipped fields
+ * and additional information about the record type.
+ */
 export type FieldUsageTable = {
-  /**
-   * Number of records per record type
-   */
   totalRecords: number;
+  isActive: boolean;
   analysedFields: FieldUsageStats[];
   skippedFields: FieldSkippedInfo[];
 };

@@ -31,6 +31,10 @@ describe('jsc maintain NUTs*', () => {
       ],
     });
     sessionOutputPath = path.join(session.dir, projectName, outputDir);
+    execCmd(`project:deploy:start -d ${path.join('src', 'objects')} -o ${scratchOrgAlias} --json`, {
+      ensureExitCode: 0,
+      cli: 'sf',
+    });
     execCmd(`data:import:tree -p ${path.join('data', 'plans', 'minimal-plan.json')} -o ${scratchOrgAlias} --json`, {
       ensureExitCode: 0,
       cli: 'sf',
@@ -58,11 +62,11 @@ describe('jsc maintain NUTs*', () => {
       assert.isDefined(result);
       assert.isDefined(result.Account);
       // the default scratch org is created with 1 account (data imports 3). Lets see how stable this is
-      expect(result.Account.Master.totalRecords).to.equal(4);
-      assert.isDefined(result.Contact.Master);
-      expect(result.Contact.Master.totalRecords).to.equal(2);
-      assert.isDefined(result.Lead.Master);
-      expect(result.Lead.Master.totalRecords).to.equal(0);
+      expect(result.Account.recordTypes.Master.totalRecords).to.equal(4);
+      assert.isDefined(result.Contact.recordTypes.Master);
+      expect(result.Contact.recordTypes.Master.totalRecords).to.equal(2);
+      assert.isDefined(result.Lead.recordTypes.Master);
+      expect(result.Lead.recordTypes.Master.totalRecords).to.equal(0);
     });
 
     it('successfully analyses valid sobject with check-defaults flag', () => {
@@ -74,8 +78,8 @@ describe('jsc maintain NUTs*', () => {
 
       // Assert
       assert.isDefined(result);
-      assert.isDefined(result.Account.Master);
-      result.Account.Master.analysedFields.forEach((fieldUsageStat) => {
+      assert.isDefined(result.Account.recordTypes.Master);
+      result.Account.recordTypes.Master.analysedFields.forEach((fieldUsageStat) => {
         assert.isDefined(fieldUsageStat.defaultValue);
       });
     });
@@ -89,11 +93,45 @@ describe('jsc maintain NUTs*', () => {
 
       // Assert
       assert.isDefined(result);
-      assert.isDefined(result.Account.Master);
-      result.Account.Master.analysedFields.forEach((fieldUsageStat) => {
+      assert.isDefined(result.Account.recordTypes.Master);
+      result.Account.recordTypes.Master.analysedFields.forEach((fieldUsageStat) => {
         assert.isDefined(fieldUsageStat.histories);
         assert.isDefined(fieldUsageStat.lastUpdated);
       });
+    });
+
+    it('analyses sobject with record types with all existing flags', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Account \
+          --check-history \
+          --check-defaults \
+          --segment-record-types \
+          --exclude-formulas \
+          --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.Account.recordTypes.Master);
+      assert.isDefined(result.Account.recordTypes.Partner);
+      assert.isDefined(result.Account.recordTypes.Customer);
+    });
+
+    it('segment record types on an sobject without record types has no effect', () => {
+      // Act
+      const result = execCmd<JscMaintainFieldUsageAnalyseResult>(
+        `jsc:maintain:field-usage:analyse --target-org ${scratchOrgAlias} --sobject Lead \
+          --segment-record-types \
+          --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      assert.isDefined(result.Lead);
+      expect(Object.keys(result.Lead.recordTypes)).to.deep.equal(['Master']);
     });
   });
 
