@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import FieldUsageTestContext from '../mock-utils/fieldUsageTestContext.js';
 import SObjectAnalyser from '../../src/field-usage/sobjectAnalyser.js';
-import { FieldUsageStats } from '../../src/field-usage/fieldUsageTypes.js';
+import { FieldUsageStats, SObjectAnalysisResult } from '../../src/field-usage/fieldUsageTypes.js';
 
 const EXPECTED_STRING_FIELD_OUTPUT = {
   name: 'MyCustomField__c',
@@ -129,14 +129,12 @@ describe('sobject analyser', () => {
     const analyseResult = await anal.analyseFieldUsage({ segmentRecordTypes: true, checkDefaultValues: true });
 
     // Assert
-    const masterField1 = findField(analyseResult.recordTypes.Master.analysedFields, 'MyPicklist__c');
-    expect(masterField1?.defaultValue).to.equal('Default');
-    const masterField2 = findField(analyseResult.recordTypes.Master.analysedFields, 'MyPicklist2__c');
-    expect(masterField2?.defaultValue).to.equal('Default 2');
-    const type1Field1 = findField(analyseResult.recordTypes.Test_Type_1.analysedFields, 'MyPicklist__c');
-    expect(type1Field1?.defaultValue).to.equal('RT Default');
-    const type1Field2 = findField(analyseResult.recordTypes.Test_Type_1.analysedFields, 'MyPicklist2__c');
-    expect(type1Field2?.defaultValue).to.equal(undefined);
+    expect(findField(analyseResult, 'Master', 'MyPicklist__c')?.defaultValue).to.equal('Default');
+    expect(findField(analyseResult, 'Master', 'MyPicklist2__c')?.defaultValue).to.equal('Default 2');
+    expect(findField(analyseResult, 'Master', 'MyCheckbox__c')?.defaultValue).to.equal(true);
+    expect(findField(analyseResult, 'Test_Type_1', 'MyPicklist__c')?.defaultValue).to.equal('RT Default');
+    expect(findField(analyseResult, 'Test_Type_1', 'MyPicklist2__c')?.defaultValue).to.equal(undefined);
+    expect(findField(analyseResult, 'Test_Type_1', 'MyCheckbox__c')?.defaultValue).to.equal(true);
   });
 
   it('excludes formula fields when flag is set', async () => {
@@ -295,8 +293,11 @@ describe('sobject analyser', () => {
   });
 });
 
-function findField(analysedFields: FieldUsageStats[], fieldName: string): FieldUsageStats | undefined {
-  for (const af of analysedFields) {
+function findField(result: SObjectAnalysisResult, recordType: string, fieldName: string): FieldUsageStats | undefined {
+  if (!result.recordTypes[recordType]) {
+    return undefined;
+  }
+  for (const af of result.recordTypes[recordType].analysedFields) {
     if (af.name === fieldName) {
       return af;
     }

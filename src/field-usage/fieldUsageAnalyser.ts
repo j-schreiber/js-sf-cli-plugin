@@ -133,9 +133,12 @@ export default class FieldUsageAnalyser {
   }
 
   private resolveFieldDefaultValue(field: Field): Optional<string> {
-    if (!this.recordType || this.recordType?.infos.master) {
+    // for all non-picklist fields, or if we don't evaluate record types, return
+    // the global default
+    if (!this.recordType || this.recordType?.infos.master || field.type !== 'picklist') {
       return field.defaultValue;
     }
+    // only picklists are record type specific
     return this.recordType.getDefaultValue(field.name);
   }
 
