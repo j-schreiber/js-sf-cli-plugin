@@ -1,5 +1,6 @@
 import { Connection, DescribeSObjectResult, Field, Optional } from '@jsforce/jsforce-node';
-import { ChildRelationship, RecordTypeInfo } from '../common/jsForceCustomTypes.js';
+import { DescribeHistoryResult, RecordTypeInfo } from '../types/platformTypes.js';
+import { DescribeRecordTypeResult, RecordTypePicklist } from '../types/platformTypes.js';
 import { FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
 
 export type FieldUsageAnalyserOptions = {
@@ -12,8 +13,8 @@ export type FieldUsageAnalyserConfig = {
   fields: Field[];
   describeResult: DescribeSObjectResult;
   recordType?: RecordTypeInfo;
-  historyDescribe?: DescribeSObjectResult;
-  historyRelationship?: ChildRelationship;
+  recordTypeDescribe?: Optional<DescribeRecordTypeResult>;
+  historyDescribe?: DescribeHistoryResult;
 };
 
 /**
@@ -36,18 +37,13 @@ export default class FieldUsageAnalyser {
     this.describeResult = options.describeResult;
     this.fieldsToAnalyse = options.fields;
     this.targetOrgConnection = options.targetOrgConnection;
-    this.isHistoryEnabled = Boolean(options.historyDescribe) && Boolean(options.historyRelationship);
+    this.isHistoryEnabled = Boolean(options.historyDescribe);
     if (this.isHistoryEnabled) {
-      this.COUNT_HISTORY_BASE_QUERY = `SELECT COUNT(Id),MAX(CreatedDate) FROM ${
-        options.historyRelationship!.childSObject
-      }`;
-      const parentField = options.historyDescribe!.fields.find((f) => f.name === options.historyRelationship!.field);
-      if (parentField) {
-        this.historyRecordTypeId = `${parentField.relationshipName!}.RecordTypeId`;
-      }
+      this.COUNT_HISTORY_BASE_QUERY = buildHistoryQuery(options.historyDescribe!);
+      this.historyRecordTypeId = buildRecordTypeFilterField(options.historyDescribe!);
     }
     if (options.recordType) {
-      this.recordType = new RecordTypeExtension(options.recordType);
+      this.recordType = new RecordTypeExtension(options.recordType, options.recordTypeDescribe);
     }
     this.COUNT_FIELD_BASE_QUERY = `SELECT COUNT() FROM ${this.describeResult.name}`;
     this.TOTAL_COUNT_BASE_QUERY = `SELECT COUNT() FROM ${this.describeResult.name}`;
@@ -136,10 +132,11 @@ export default class FieldUsageAnalyser {
     return result.totalSize;
   }
 
-  // eslint-disable-next-line  class-methods-use-this
   private resolveFieldDefaultValue(field: Field): Optional<string> {
-    // if record type is set && picklist field, resolve from UI-API cache
-    return field.defaultValue;
+    if (!this.recordType || this.recordType?.infos.master) {
+      return field.defaultValue;
+    }
+    return this.recordType.getDefaultValue(field.name);
   }
 
   private async fetchHistoryStats(field: Field): Promise<{ histories: number; lastUpdated: string }> {
@@ -169,6 +166,18 @@ export default class FieldUsageAnalyser {
   }
 }
 
+function buildHistoryQuery(historyDescribe: DescribeHistoryResult): string {
+  return `SELECT COUNT(Id),MAX(CreatedDate) FROM ${historyDescribe.relationship.childSObject}`;
+}
+
+function buildRecordTypeFilterField(historyDescribe: DescribeHistoryResult): string | undefined {
+  const parentField = historyDescribe.describe.fields.find((f) => f.name === historyDescribe.relationship.field);
+  if (parentField) {
+    return `${parentField.relationshipName!}.RecordTypeId`;
+  }
+  return undefined;
+}
+
 function finaliseFieldUsageStats(stats: Array<Partial<FieldUsageStats>>, totalCount: number): FieldUsageStats[] {
   for (const stat of stats) {
     if (totalCount > 0) {
@@ -190,12 +199,33 @@ export function formatFieldType(field: Field): string {
 }
 
 class RecordTypeExtension {
-  public constructor(public readonly infos: RecordTypeInfo) {}
+  private picklistFields: Record<string, RecordTypePicklist> = {};
+  private picklistDefaultValue: Record<string, string> = {};
+
+  public constructor(
+    public readonly infos: RecordTypeInfo,
+    public readonly describe: Optional<DescribeRecordTypeResult>
+  ) {
+    if (this.describe) {
+      this.describe.picklistValues.forEach((plv) => {
+        this.picklistFields[plv.picklist] = plv;
+        plv.values.forEach((val) => {
+          if (val.default) {
+            this.picklistDefaultValue[plv.picklist] = val.valueName!;
+          }
+        });
+      });
+    }
+  }
 
   public getFilterClause(): string {
     if (this.infos.developerName.toLocaleLowerCase() === 'master') {
       return `(RecordTypeId = '${this.infos.recordTypeId}' OR RecordTypeId = NULL)`;
     }
     return `RecordTypeId = '${this.infos.recordTypeId}'`;
+  }
+
+  public getDefaultValue(fieldName: string): Optional<string> {
+    return this.picklistDefaultValue[fieldName];
   }
 }

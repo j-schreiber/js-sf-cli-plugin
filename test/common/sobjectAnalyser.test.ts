@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import FieldUsageTestContext from '../mock-utils/fieldUsageTestContext.js';
 import SObjectAnalyser from '../../src/field-usage/sobjectAnalyser.js';
-import { RecordTypeInfo } from '../../src/common/jsForceCustomTypes.js';
+import { FieldUsageStats } from '../../src/field-usage/fieldUsageTypes.js';
 
 const EXPECTED_STRING_FIELD_OUTPUT = {
   name: 'MyCustomField__c',
@@ -26,7 +26,7 @@ describe('sobject analyser', () => {
   const $$ = new FieldUsageTestContext();
 
   beforeEach(async () => {
-    await $$.init();
+    $$.init();
   });
 
   afterEach(() => {
@@ -40,8 +40,8 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(9);
-    expect(fieldUsageResult.analysedFields).to.have.deep.members([
+    expect(fieldUsageResult.analysedFields.length).to.equal(11);
+    expect(fieldUsageResult.analysedFields).to.include.deep.members([
       {
         name: 'Id',
         type: 'id',
@@ -91,7 +91,8 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    // 1 custom field is not filterable
+    expect(fieldUsageResult.analysedFields.length).to.equal($$.getFilterableCustomFieldCount('Account'));
     expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
@@ -110,11 +111,6 @@ describe('sobject analyser', () => {
     ] = 0;
     $$.queryResults["SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000001AAA'"] = 20;
     $$.queryResults["SELECT COUNT() FROM Account WHERE RecordTypeId = '012000000000002AAA'"] = 30;
-    $$.describes['Account'].recordTypeInfos = [
-      { developerName: 'Master', recordTypeId: '012000000000000AAA' },
-      { developerName: 'Test_Type_1', recordTypeId: '012000000000001AAA' },
-      { developerName: 'Test_Type_2', recordTypeId: '012000000000002AAA' },
-    ] as RecordTypeInfo[];
 
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
@@ -127,6 +123,22 @@ describe('sobject analyser', () => {
     expect(analyseResult.recordTypes.Test_Type_2.totalRecords).to.equal(30);
   });
 
+  it('analyses record type specific defaults with segmentRecordTypes and checkDefaults', async () => {
+    // Act
+    const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
+    const analyseResult = await anal.analyseFieldUsage({ segmentRecordTypes: true, checkDefaultValues: true });
+
+    // Assert
+    const masterField1 = findField(analyseResult.recordTypes.Master.analysedFields, 'MyPicklist__c');
+    expect(masterField1?.defaultValue).to.equal('Default');
+    const masterField2 = findField(analyseResult.recordTypes.Master.analysedFields, 'MyPicklist2__c');
+    expect(masterField2?.defaultValue).to.equal('Default 2');
+    const type1Field1 = findField(analyseResult.recordTypes.Test_Type_1.analysedFields, 'MyPicklist__c');
+    expect(type1Field1?.defaultValue).to.equal('RT Default');
+    const type1Field2 = findField(analyseResult.recordTypes.Test_Type_1.analysedFields, 'MyPicklist2__c');
+    expect(type1Field2?.defaultValue).to.equal(undefined);
+  });
+
   it('excludes formula fields when flag is set', async () => {
     // Act
     const anal = await SObjectAnalyser.create(await $$.testTargetOrg.getConnection(), 'Account');
@@ -137,7 +149,9 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    expect(fieldUsageResult.analysedFields.length).to.equal(
+      $$.getFilterableCustomFieldCount('Account') - $$.getFormulaFieldCount('Account')
+    );
     expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
   });
@@ -152,7 +166,7 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    expect(fieldUsageResult.analysedFields.length).to.equal($$.getFilterableCustomFieldCount('Account'));
     expect(fieldUsageResult.analysedFields[0]).to.include(EXPECTED_STRING_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[1]).to.include(EXPECTED_FORMULA_FIELD_OUTPUT);
     expect(fieldUsageResult.analysedFields[2]).to.include(EXPECTED_CHECKBOX_FIELD_OUTPUT);
@@ -173,7 +187,8 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    const expectedCount = $$.getFilterableCustomFieldCount('Account') - $$.getFormulaFieldCount('Account');
+    expect(fieldUsageResult.analysedFields.length).to.equal(expectedCount);
     expect(fieldUsageResult.analysedFields[0]).to.include({
       name: 'MyCustomField__c',
       type: 'string',
@@ -205,7 +220,8 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(2);
+    const expectedCount = $$.getFilterableCustomFieldCount('Account') - $$.getFormulaFieldCount('Account');
+    expect(fieldUsageResult.analysedFields.length).to.equal(expectedCount);
     expect(fieldUsageResult.analysedFields[0]).to.include({
       name: 'MyCustomField__c',
       type: 'string',
@@ -238,7 +254,7 @@ describe('sobject analyser', () => {
     const fieldUsageResult = analyseResult.recordTypes.Master;
 
     // Assert
-    expect(fieldUsageResult.analysedFields.length).to.equal(3);
+    expect(fieldUsageResult.analysedFields.length).to.equal($$.getFilterableCustomFieldCount('Account'));
     expect(fieldUsageResult.analysedFields[0]).to.include({
       name: 'MyCustomField__c',
       absolutePopulated: 10,
@@ -278,3 +294,12 @@ describe('sobject analyser', () => {
     });
   });
 });
+
+function findField(analysedFields: FieldUsageStats[], fieldName: string): FieldUsageStats | undefined {
+  for (const af of analysedFields) {
+    if (af.name === fieldName) {
+      return af;
+    }
+  }
+  return undefined;
+}

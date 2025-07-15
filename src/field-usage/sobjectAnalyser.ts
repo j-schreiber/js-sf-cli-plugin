@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { Connection, Messages } from '@salesforce/core';
 import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import DescribeApi from '../common/metadata/describeApi.js';
-import { ChildRelationship, RecordTypeInfo } from '../common/jsForceCustomTypes.js';
+import { DescribeRecordTypeResult, RecordTypeInfo, DescribeHistoryResult } from '../types/platformTypes.js';
 import { FieldSkippedInfo, FieldUsageTable, SObjectAnalysisResult } from './fieldUsageTypes.js';
 import FieldUsageAnalyser, { formatFieldType } from './fieldUsageAnalyser.js';
 
@@ -38,31 +38,37 @@ export const INCLUDED_FIELD_TYPES = [
   'percent',
 ];
 
+export type SObjectAnalyserOptions = {
+  targetOrgConnection: Connection;
+  describeResult: DescribeSObjectResult;
+  recordTypeDescribes: Record<string, DescribeRecordTypeResult>;
+  historyDescribeResult?: DescribeHistoryResult;
+};
+
 export default class SObjectAnalyser extends EventEmitter {
   private readonly fields: { [fieldName: string]: Field };
   private readonly hasRecordTypes: boolean;
-  private readonly historyRelationship?: ChildRelationship;
+  private readonly targetOrgConnection: Connection;
+  private readonly describeResult: DescribeSObjectResult;
+  private readonly recordTypeDescribes: Record<string, DescribeRecordTypeResult>;
+  private readonly historyDescribeResult?: DescribeHistoryResult;
 
-  private constructor(
-    private readonly targetOrgConnection: Connection,
-    private readonly describeResult: DescribeSObjectResult,
-    private readonly historyDescribeResult?: DescribeSObjectResult
-  ) {
+  private constructor(options: SObjectAnalyserOptions) {
     super();
-    this.historyRelationship = getHistoryRelationship(describeResult);
-    this.fields = mapFields(this.describeResult);
-    this.hasRecordTypes = this.describeResult.recordTypeInfos?.length > 0 && this.fields.RecordTypeId !== undefined;
+    this.targetOrgConnection = options.targetOrgConnection;
+    this.describeResult = options.describeResult;
+    this.historyDescribeResult = options.historyDescribeResult;
+    this.fields = mapFields(options.describeResult);
+    this.hasRecordTypes = options.describeResult.recordTypeInfos?.length > 0 && this.fields.RecordTypeId !== undefined;
+    this.recordTypeDescribes = options.recordTypeDescribes;
   }
 
   public static async create(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
     const describeApi = new DescribeApi(targetOrgConnection);
     const describeResult = await describeApi.describeSObject(sobjectName);
-    const historyRelationship = getHistoryRelationship(describeResult);
-    if (historyRelationship) {
-      const historyDescribe = await describeApi.describeSObject(historyRelationship.childSObject);
-      return new SObjectAnalyser(targetOrgConnection, describeResult, historyDescribe);
-    }
-    return new SObjectAnalyser(targetOrgConnection, describeResult);
+    const recordTypeDescribes = await describeApi.resolveRecordTypes(describeResult);
+    const historyDescribeResult = await describeApi.resolveHistoryRelationship(describeResult);
+    return new SObjectAnalyser({ targetOrgConnection, describeResult, historyDescribeResult, recordTypeDescribes });
   }
 
   // PUBLIC API
@@ -82,14 +88,13 @@ export default class SObjectAnalyser extends EventEmitter {
       fields: analysedFields,
       describeResult: this.describeResult,
       historyDescribe: this.historyDescribeResult,
-      historyRelationship: this.historyRelationship,
     };
     if (options?.segmentRecordTypes && this.hasRecordTypes) {
-      // run analysis per record type
       for (const recordType of this.describeResult.recordTypeInfos as RecordTypeInfo[]) {
         const fsAnalyser = new FieldUsageAnalyser({
           ...fieldAnalyserConfig,
           recordType,
+          recordTypeDescribe: this.recordTypeDescribes[recordType.recordTypeId],
         });
         // eslint-disable-next-line no-await-in-loop
         const table = await fsAnalyser.run({
@@ -168,15 +173,4 @@ function mapFields(describeResult: DescribeSObjectResult): Record<string, Field>
   const result: Record<string, Field> = {};
   describeResult.fields.forEach((f) => (result[f.name] = f));
   return result;
-}
-
-function getHistoryRelationship(describeResult: DescribeSObjectResult): ChildRelationship | undefined {
-  if (describeResult.childRelationships?.length > 0) {
-    for (const cr of describeResult.childRelationships) {
-      if (cr.relationshipName === 'Histories') {
-        return cr;
-      }
-    }
-  }
-  return undefined;
 }

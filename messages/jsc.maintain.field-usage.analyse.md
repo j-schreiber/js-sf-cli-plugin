@@ -102,4 +102,4 @@ Retrieving additional infos about total number of field changes and last update 
 
 # infos.segment-record-types-enabled
 
-Results are organized by record types of the sobjects.
+Results are organized by record types of the sobjects, defaults are evaluated per record type.

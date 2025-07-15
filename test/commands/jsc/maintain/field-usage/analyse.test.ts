@@ -17,7 +17,7 @@ describe('jsc maintain field-usage analyse', () => {
   let multiStageStub: ReturnType<typeof stubMultiStageUx>;
 
   beforeEach(async () => {
-    await $$.init();
+    $$.init();
     sfCommandStubs = stubSfCommandUx($$.coreContext.SANDBOX);
     multiStageStub = stubMultiStageUx($$.coreContext.SANDBOX);
     uxStub = stubUx($$.coreContext.SANDBOX);
@@ -182,9 +182,6 @@ describe('jsc maintain field-usage analyse', () => {
   });
 
   it('throws an error when invalid sobject name is provided', async () => {
-    // Arrange
-    $$.coreContext.fakeConnectionRequest = $$.mockDescribeFailure;
-
     // Act
     try {
       await JscMaintainFieldUsageAnalyse.run([

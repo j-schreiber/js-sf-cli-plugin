@@ -13,3 +13,7 @@ No query defined for: %s
 # InvalidSObjectName
 
 Failed to fetch describe for %s: %s
+
+# InvalidRecordTypeId
+
+Failed to fetch metadata for record type id: %s. Does not exist.
