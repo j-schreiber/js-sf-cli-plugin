@@ -2,9 +2,7 @@
 
 [![NPM](https://img.shields.io/npm/v/@j-schreiber/sf-plugin.svg?label=@j-schreiber/sf-plugin)](https://www.npmjs.com/package/@j-schreiber/sf-plugin) [![Downloads/week](https://img.shields.io/npm/dw/@j-schreiber/sf-plugin.svg)](https://npmjs.org/package/@j-schreiber/sf-plugin) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://raw.githubusercontent.com/salesforcecli/@j-schreiber/sf-plugin/main/LICENSE.txt)
 
-> This plugin is in early beta. Be careful when integrating this into your pipeline, as command signatures may change. It still lacks some functionality (but the commands are stable and bug free :wink: ).
-
-Looking for documentation? It's still a work in progress, visit [GitHub Wiki](https://github.com/j-schreiber/js-sf-cli-plugin/wiki).
+> This plugin is still in beta and under active development. Command signatures may be subject to change.
 
 ## Installation
 
@@ -14,49 +12,13 @@ The plugin is not digitally signed, so in order to avoid the prompt on installat
 sf plugins install @j-schreiber/sf-plugin
 ```
 
-## Build
-
-To build the plugin locally, make sure to have yarn installed and run the following commands:
-
-```bash
-# Clone the repository
-git clone git@github.com/j-schreiber/js-sf-cli-plugin
-
-# Install the dependencies and compile
-yarn && yarn build
-```
-
-To use your plugin, run using the local `./bin/dev` or `./bin/dev.cmd` file.
-
-```bash
-# Run using local run file.
-./bin/dev.js hello world
-```
-
-There should be no differences when running via the Salesforce CLI or using the local run file. However, it can be useful to link the plugin to do some additional testing or run your commands from anywhere on your machine.
-
-```bash
-# Link your plugin to the sf cli
-sf plugins link .
-# To verify
-sf plugins
-```
-
-## Development
-
-SF CLI Development uses `yarn` as its package manager. Make sure, yarn is intalled on your system, then run
-
-```bash
-yarn
-```
-
-... to install all dependencies.
-
 ## Contribute
 
 Contributers are welcome! Please reach out on [Linkedin](https://www.linkedin.com/in/jannis-schreiber/) or via [Email](mailto:info@lietzau-consulting.de).
 
-## Commands
+## Documentation
+
+Check out the [GitHub Wiki](https://github.com/j-schreiber/js-sf-cli-plugin/wiki) for in-depth documentation of concepts and technical limitations. Here's the exhaustive command reference.
 
 <!-- commands -->
 
@@ -111,7 +73,7 @@ EXAMPLES
     $ sf jsc apex schedule export -j "Auto" -d tmp/dev
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/apex/schedule/export.ts)_
 
 ## `sf jsc apex schedule manage`
 
@@ -158,7 +120,7 @@ FLAG DESCRIPTIONS
     the command may still fail, when run without this flag.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/manage.ts)_
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -222,7 +184,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -287,7 +249,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -321,7 +283,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain field-usage analyse`
 
@@ -414,7 +376,7 @@ FLAG DESCRIPTIONS
     some fields are ignored during analysis. For more information on those fields, use this flag.
 ```
 
-_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
+_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
 
 ## `sf jsc maintain flow-export obsolete`
 
@@ -471,7 +433,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
 
 ## `sf jsc maintain flow-export unused`
 
@@ -527,7 +489,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/flow-export/unused.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/maintain/flow-export/unused.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -603,7 +565,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -637,7 +599,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -669,6 +631,34 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.16.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.17.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->
+
+## Development and Build
+
+To build the plugin locally, make sure to have yarn installed and run the following commands:
+
+```bash
+# Clone the repository
+git clone git@github.com/j-schreiber/js-sf-cli-plugin
+
+# Install the dependencies and compile
+yarn && yarn build
+```
+
+To use the local build, run using the local `./bin/dev` or `./bin/dev.cmd` file.
+
+```bash
+# Run using local run file.
+./bin/dev.js hello world
+```
+
+There should be no differences when running via the Salesforce CLI or using the local run file. However, it can be useful to link the plugin to do some additional testing or run your commands from anywhere on your machine.
+
+```bash
+# Link your plugin to the sf cli
+sf plugins link .
+# To verify
+sf plugins
+```

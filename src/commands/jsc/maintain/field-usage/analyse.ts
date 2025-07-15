@@ -2,9 +2,8 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
-import { json2csv } from 'json-2-csv';
 import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
-import { FieldSkippedInfo, FieldUsageStats, FieldUsageTable } from '../../../../field-usage/fieldUsageTypes.js';
+import { FieldSkippedInfo, FieldUsageStats, SObjectAnalysisResult } from '../../../../field-usage/fieldUsageTypes.js';
 import FieldUsageMultiStageOutput, {
   DESCRIBE_STAGE,
   FIELD_STAGE,
@@ -15,12 +14,20 @@ import { resultFormatFlag, ResultFormats } from '../../../../common/jscSfCommand
 import HumanResultsReporter from '../../../../common/reporters/humanResultsReporter.js';
 import ResultsReporter from '../../../../common/reporters/resultsReporter.js';
 import MarkdownResultsReporter from '../../../../common/reporters/markdownResultsReporter.js';
+import CsvResultsReporter from '../../../../common/reporters/csvResultsReporter.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');
 
 export type JscMaintainFieldUsageAnalyseResult = {
-  sobjects: Record<string, FieldUsageTable>;
+  [sobjectName: string]: SObjectAnalysisResult;
+};
+
+type FlagOptions = {
+  'check-defaults': boolean;
+  verbose: boolean;
+  'result-format': ResultFormats;
+  'segment-record-types': boolean;
 };
 
 export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainFieldUsageAnalyseResult> {
@@ -57,6 +64,10 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
       summary: messages.getMessage('flags.check-history.summary'),
       description: messages.getMessage('flags.check-history.description'),
     }),
+    'segment-record-types': Flags.boolean({
+      summary: messages.getMessage('flags.segment-record-types.summary'),
+      description: messages.getMessage('flags.segment-record-types.description'),
+    }),
     verbose: Flags.boolean({
       summary: messages.getMessage('flags.verbose.summary'),
       description: messages.getMessage('flags.verbose.description'),
@@ -70,26 +81,30 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
   public async run(): Promise<JscMaintainFieldUsageAnalyseResult> {
     const { flags } = await this.parse(JscMaintainFieldUsageAnalyse);
     const targetOrg = flags['target-org'].getConnection(flags['api-version']);
-    const fieldUsageTables: Record<string, FieldUsageTable> = {};
+    const result: JscMaintainFieldUsageAnalyseResult = {};
     for (const sobj of flags.sobject) {
       this.ms = FieldUsageMultiStageOutput.create(sobj, flags.json);
       this.ms.updateData({ analyseDefaults: flags['check-defaults'] });
       this.ms.updateData({ analyseHistory: flags['check-history'] });
+      this.ms.updateData({ segmentRecordTypes: flags['segment-record-types'] });
       try {
         const analyser = await SObjectAnalyser.create(targetOrg, sobj);
         analyser.on(
           'describeSuccess',
-          (data: { fieldCount: number; resolvedName: string; skippedFieldsCount: number }) => {
+          (data: { fieldCount: number; skippedFieldsCount: number; recordTypesCount: number }) => {
             this.ms?.updateData({ describeStatus: 'Success' });
             this.ms?.updateData({
-              fieldsUnderAnalysis: `Running analysis for ${data.fieldCount} fields`,
+              fieldsUnderAnalysis: flags['segment-record-types']
+                ? `Analysing ${data.fieldCount} fields for ${data.recordTypesCount} record types each`
+                : `Analysing ${data.fieldCount} fields`,
               skippedFields: `Ignoring ${data.skippedFieldsCount} fields for analysis`,
+              totalRecordTypes: `${data.recordTypesCount}`,
             });
           }
         );
-        analyser.on('totalRecordsRetrieve', (data: { totalCount: number }) => {
-          this.ms?.updateData({ totalRecords: `${data.totalCount}` });
-          if (data.totalCount > 0) {
+        analyser.on('totalRecordsRetrieve', (data: { totalRecords: number }) => {
+          this.ms?.updateData({ totalRecords: `${data.totalRecords}` });
+          if (data.totalRecords > 0) {
             this.ms?.goto(FIELD_STAGE);
           } else {
             this.ms?.skipTo(OUTPUT_STAGE);
@@ -101,22 +116,38 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           excludeFormulaFields: flags['exclude-formulas'],
           checkDefaultValues: flags['check-defaults'],
           checkHistory: flags['check-history'],
+          segmentRecordTypes: flags['segment-record-types'],
         });
         this.ms.goto(OUTPUT_STAGE);
-        fieldUsageTables[sobj] = sobjectUsageResult;
+        result[sobj] = sobjectUsageResult;
         this.ms.stop('completed');
-        if (sobjectUsageResult.analysedFields.length > 0) {
-          this.printResults(sobjectUsageResult.analysedFields, flags['result-format']);
-        }
-        if (flags.verbose && sobjectUsageResult.skippedFields.length > 0) {
-          this.printIgnoredFields(sobjectUsageResult.skippedFields, flags['result-format']);
-        }
+        // also print record types summary?
+        this.print(sobjectUsageResult, flags);
       } catch (err) {
         this.ms.error();
         this.error(String(err));
       }
     }
-    return { sobjects: fieldUsageTables };
+    return result;
+  }
+
+  private print(analyseResult: SObjectAnalysisResult, options: FlagOptions): void {
+    if (options['segment-record-types']) {
+      printSummary(analyseResult, options['result-format'], this.jsonEnabled());
+    }
+    for (const [recordType, result] of Object.entries(analyseResult.recordTypes)) {
+      if (result.totalRecords === 0 && !options.verbose) {
+        continue;
+      }
+      // if --segment-record-types is false, we'll have all records in "Master" anyway
+      if (options['segment-record-types']) {
+        this.log(`====== ${recordType} (${result.totalRecords} records) ======\n`);
+      }
+      this.printResults(result.analysedFields, options['result-format']);
+      if (options.verbose && result.skippedFields.length > 0) {
+        this.printIgnoredFields(result.skippedFields, options['result-format']);
+      }
+    }
   }
 
   private printResults(data: FieldUsageStats[], resultFormat: ResultFormats): void {
@@ -138,7 +169,6 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           title: 'Analysed Fields',
           jsonEnabled: this.jsonEnabled(),
         });
-        reporter.print();
         break;
       case ResultFormats.markdown: {
         reporter = new MarkdownResultsReporter<FieldUsageStats>(dataFormatted, {
@@ -148,15 +178,17 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           excludeColumns: ['percentagePopulated'],
           jsonEnabled: this.jsonEnabled(),
         });
-        reporter.print();
         break;
       }
       case ResultFormats.csv: {
-        const csvOutput = json2csv(dataFormatted);
-        this.log(csvOutput);
+        reporter = new CsvResultsReporter<FieldUsageStats>(dataFormatted, {
+          jsonEnabled: this.jsonEnabled(),
+          excludeColumns: ['percentagePopulated'],
+        });
         break;
       }
     }
+    reporter.print();
   }
 
   private printIgnoredFields(data: FieldSkippedInfo[], resultFormat: ResultFormats): void {
@@ -167,7 +199,6 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           title: 'Skipped Fields',
           jsonEnabled: this.jsonEnabled(),
         });
-        reporter.print();
         break;
       case ResultFormats.markdown: {
         reporter = new MarkdownResultsReporter<FieldSkippedInfo>(data, {
@@ -176,14 +207,54 @@ export default class JscMaintainFieldUsageAnalyse extends SfCommand<JscMaintainF
           title: 'Skipped Fields',
           jsonEnabled: this.jsonEnabled(),
         });
-        reporter.print();
         break;
       }
       case ResultFormats.csv: {
-        const csvOutput = json2csv(data);
-        this.log(csvOutput);
+        reporter = new CsvResultsReporter<FieldSkippedInfo>(data, {
+          jsonEnabled: this.jsonEnabled(),
+        });
         break;
       }
     }
+    reporter.print();
   }
 }
+
+function printSummary(analyseResult: SObjectAnalysisResult, resultFormat: ResultFormats, jsonEnabled: boolean): void {
+  const rtSummary = new Array<RecordTypeSummary>();
+  for (const [recordType, result] of Object.entries(analyseResult.recordTypes)) {
+    rtSummary.push({ developerName: recordType, totalRecords: result.totalRecords, isActive: result.isActive });
+  }
+  rtSummary.sort((a, b) => a.totalRecords - b.totalRecords);
+  let reporter: ResultsReporter<RecordTypeSummary>;
+  switch (resultFormat) {
+    case ResultFormats.human:
+      reporter = new HumanResultsReporter<RecordTypeSummary>(rtSummary, {
+        title: 'Record Types',
+        jsonEnabled,
+      });
+      break;
+    case ResultFormats.markdown: {
+      reporter = new MarkdownResultsReporter<RecordTypeSummary>(rtSummary, {
+        formattings: { name: { style: 'code' } },
+        capitalizeHeaders: true,
+        title: 'Record Types',
+        jsonEnabled,
+      });
+      break;
+    }
+    case ResultFormats.csv: {
+      reporter = new CsvResultsReporter<RecordTypeSummary>(rtSummary, {
+        jsonEnabled,
+      });
+      break;
+    }
+  }
+  reporter.print();
+}
+
+type RecordTypeSummary = {
+  developerName: string;
+  totalRecords: number;
+  isActive: boolean;
+};

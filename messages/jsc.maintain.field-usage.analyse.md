@@ -68,6 +68,16 @@ Run additional checks with field history (if enabled)
 Analyses history tracking for this field and checks total number of changes and the date time of the last change. If history
 tracking is not enabled for the SObject, this flag has no effect.
 
+# flags.segment-record-types.summary
+
+Segments the analysis by Record Types.
+
+# flags.segment-record-types.description
+
+Segmentation will run all checks per record type of the sobject. If the sobject does not have record types enabled, it will have
+no effect. All records are returned as "Master". The analysis (output tables and JSON result) is grouped by record type developer name.
+Segmentation significantly increases the number of API calls.
+
 # examples
 
 - Analyse all fields for Account and MyCustomObject__c object
@@ -89,3 +99,7 @@ Fields are only considered populated, if the value is different from configured 
 # infos.check-history-enabled
 
 Retrieving additional infos about total number of field changes and last update timestamp.
+
+# infos.segment-record-types-enabled
+
+Results are organized by record types of the sobjects, defaults are evaluated per record type.

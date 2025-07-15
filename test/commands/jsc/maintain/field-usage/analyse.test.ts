@@ -17,7 +17,7 @@ describe('jsc maintain field-usage analyse', () => {
   let multiStageStub: ReturnType<typeof stubMultiStageUx>;
 
   beforeEach(async () => {
-    await $$.init();
+    $$.init();
     sfCommandStubs = stubSfCommandUx($$.coreContext.SANDBOX);
     multiStageStub = stubMultiStageUx($$.coreContext.SANDBOX);
     uxStub = stubUx($$.coreContext.SANDBOX);
@@ -43,7 +43,7 @@ describe('jsc maintain field-usage analyse', () => {
     // Assert
     expect(uxStub.table.callCount).to.equal(2);
     // 5 per object: post stages blocks, records and describe
-    expect(multiStageStub.updateData.callCount).to.equal(10);
+    expect(multiStageStub.updateData.callCount).to.equal(12);
     expect(multiStageStub.error.callCount).to.equal(0);
     // 3 updates per object
     expect(multiStageStub.goto.callCount).to.equal(6);
@@ -110,11 +110,8 @@ describe('jsc maintain field-usage analyse', () => {
 
     // Assert
     expect(sfCommandStubs.table.callCount).to.equal(0);
-    expect(sfCommandStubs.log.callCount).to.equal(1);
-    // need to extract markdown output to dedicated formatter
-    // for easier stubbing and testing. For now, just assert basic
-    // markdown formatting in output -> first table column header
-    expect(sfCommandStubs.log.args.flat()[0]).to.contain('name,type,absolutePopulated');
+    expect(sfCommandStubs.log.callCount).to.equal(0);
+    expect(uxStub.log.args.flat()[0]).to.contain('name,type,absolutePopulated');
   });
 
   it('prints no table and completes early, if no records are found', async () => {
@@ -143,11 +140,14 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account', 'Order']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    expect(result.sobjects.Account.analysedFields.length).to.equal($$.getFilterableFields());
-    expect(result.sobjects.Order.name).to.equal('Order');
-    expect(result.sobjects.Order.analysedFields.length).to.equal($$.getFilterableFields());
+    expect(Object.keys(result)).to.deep.equal(['Account', 'Order']);
+    expect(Object.keys(result.Account.recordTypes)).to.deep.equal(['Master']);
+    expect(result.Account.totalRecords).to.equal(100);
+    expect(result.Account.recordTypes.Master.analysedFields.length).to.equal($$.getFilterableFields('Account'));
+    expect(result.Order).not.to.be.undefined;
+    expect(Object.keys(result.Order.recordTypes)).to.deep.equal(['Master']);
+    expect(result.Order.totalRecords).to.equal(100);
+    expect(result.Order.recordTypes.Master.analysedFields.length).to.equal($$.getFilterableFields('Order'));
   });
 
   ['markdown', 'human', 'csv'].forEach((reporter) => {
@@ -177,14 +177,11 @@ describe('jsc maintain field-usage analyse', () => {
       // expect(jsonResult.status).to.equal(0);
       expect(stderr).to.be.empty;
       expect(result).is.not.undefined;
-      expect(result.sobjects['Account']).is.not.undefined;
+      expect(result['Account']).is.not.undefined;
     });
   });
 
   it('throws an error when invalid sobject name is provided', async () => {
-    // Arrange
-    $$.coreContext.fakeConnectionRequest = $$.mockDescribeFailure;
-
     // Act
     try {
       await JscMaintainFieldUsageAnalyse.run([
@@ -205,7 +202,7 @@ describe('jsc maintain field-usage analyse', () => {
 
   it('ignores history analysis when flag is set and object has history not enabled', async () => {
     // Arrange
-    $$.sobjectDescribe.childRelationships = [];
+    $$.describes['Account'].childRelationships = [];
 
     // Act
     const result = await JscMaintainFieldUsageAnalyse.run([
@@ -217,9 +214,8 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
+    expect(Object.keys(result)).to.deep.equal(['Account']);
+    result.Account.recordTypes.Master.analysedFields.forEach((fieldStats) => {
       expect(Object.keys(fieldStats)).to.deep.equal(['name', 'type', 'absolutePopulated', 'percentagePopulated']);
     });
   });
@@ -235,10 +231,9 @@ describe('jsc maintain field-usage analyse', () => {
     ]);
 
     // Assert
-    expect(Object.keys(result.sobjects)).to.deep.equal(['Account']);
-    expect(result.sobjects.Account.name).to.equal('Account');
-    result.sobjects.Account.analysedFields.forEach((fieldStats) => {
-      expect(Object.keys(fieldStats)).to.deep.equal([
+    expect(Object.keys(result)).to.deep.equal(['Account']);
+    result.Account.recordTypes.Master.analysedFields.forEach((fieldStats) => {
+      expect(Object.keys(fieldStats)).to.have.deep.members([
         'name',
         'type',
         'absolutePopulated',
@@ -246,7 +241,7 @@ describe('jsc maintain field-usage analyse', () => {
         'histories',
         'lastUpdated',
       ]);
-      expect(fieldStats.histories).to.equal(0);
+      expect(fieldStats.histories).to.equal(1);
       expect(fieldStats.lastUpdated).to.equal('2025-07-05');
     });
   });

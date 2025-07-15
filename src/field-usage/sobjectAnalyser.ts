@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
 import { Connection, Messages } from '@salesforce/core';
-import { DescribeSObjectResult, Field, Optional } from '@jsforce/jsforce-node';
+import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import DescribeApi from '../common/metadata/describeApi.js';
-import { FieldSkippedInfo, FieldUsageStats, FieldUsageTable } from './fieldUsageTypes.js';
+import { DescribeRecordTypeResult, RecordTypeInfo, DescribeHistoryResult } from '../types/platformTypes.js';
+import { FieldSkippedInfo, FieldUsageTable, SObjectAnalysisResult } from './fieldUsageTypes.js';
+import FieldUsageAnalyser, { formatFieldType } from './fieldUsageAnalyser.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'sobjectanalyser');
@@ -13,6 +15,7 @@ export type FieldUsageOptions = {
   excludeFormulaFields?: boolean;
   checkDefaultValues?: boolean;
   checkHistory?: boolean;
+  segmentRecordTypes?: boolean;
 };
 
 export const INCLUDED_FIELD_TYPES = [
@@ -35,113 +38,91 @@ export const INCLUDED_FIELD_TYPES = [
   'percent',
 ];
 
-export default class SObjectAnalyser extends EventEmitter {
-  private historyRelationship?: ChildRelationship;
-  private historyEnabled: boolean;
+export type SObjectAnalyserOptions = {
+  targetOrgConnection: Connection;
+  describeResult: DescribeSObjectResult;
+  recordTypeDescribes: Record<string, DescribeRecordTypeResult>;
+  historyDescribeResult?: DescribeHistoryResult;
+};
 
-  private constructor(
-    private readonly targetOrgConnection: Connection,
-    private readonly describeResult: DescribeSObjectResult
-  ) {
+export default class SObjectAnalyser extends EventEmitter {
+  private readonly fields: { [fieldName: string]: Field };
+  private readonly hasRecordTypes: boolean;
+  private readonly targetOrgConnection: Connection;
+  private readonly describeResult: DescribeSObjectResult;
+  private readonly recordTypeDescribes: Record<string, DescribeRecordTypeResult>;
+  private readonly historyDescribeResult?: DescribeHistoryResult;
+
+  private constructor(options: SObjectAnalyserOptions) {
     super();
-    this.historyRelationship = getHistoryRelationship(this.describeResult);
-    this.historyEnabled = this.historyRelationship !== undefined;
+    this.targetOrgConnection = options.targetOrgConnection;
+    this.describeResult = options.describeResult;
+    this.historyDescribeResult = options.historyDescribeResult;
+    this.fields = mapFields(options.describeResult);
+    this.hasRecordTypes = options.describeResult.recordTypeInfos?.length > 0 && this.fields.RecordTypeId !== undefined;
+    this.recordTypeDescribes = options.recordTypeDescribes;
   }
 
   public static async create(targetOrgConnection: Connection, sobjectName: string): Promise<SObjectAnalyser> {
     const describeApi = new DescribeApi(targetOrgConnection);
     const describeResult = await describeApi.describeSObject(sobjectName);
-    const newObj = new SObjectAnalyser(targetOrgConnection, describeResult);
-    return newObj;
+    const recordTypeDescribes = await describeApi.resolveRecordTypes(describeResult);
+    const historyDescribeResult = await describeApi.resolveHistoryRelationship(describeResult);
+    return new SObjectAnalyser({ targetOrgConnection, describeResult, historyDescribeResult, recordTypeDescribes });
   }
 
-  public async analyseFieldUsage(options?: FieldUsageOptions): Promise<FieldUsageTable> {
+  // PUBLIC API
+
+  public async analyseFieldUsage(options?: FieldUsageOptions): Promise<SObjectAnalysisResult> {
     const { analysedFields, ignoredFields } = filterFields(this.describeResult.fields, options);
-    this.emit('describeSuccess', { fieldCount: analysedFields.length, skippedFieldsCount: ignoredFields.length });
-    const totalCount = await this.getTotalCount();
-    this.emit('totalRecordsRetrieve', { totalCount });
-    const usageTable: FieldUsageTable = {
-      name: this.describeResult.name,
-      totalRecords: totalCount,
-      analysedFields: [],
-      skippedFields: [],
+    this.emit('describeSuccess', {
+      fieldCount: analysedFields.length,
+      skippedFieldsCount: ignoredFields.length,
+      recordTypesCount: this.describeResult.recordTypeInfos?.length ?? 1,
+    });
+    const totalRecords = await this.getTotalCount();
+    this.emit('totalRecordsRetrieve', { totalRecords });
+    const recordTypesResult: SObjectAnalysisResult = { recordTypes: {}, totalRecords };
+    const fieldAnalyserConfig = {
+      targetOrgConnection: this.targetOrgConnection,
+      fields: analysedFields,
+      describeResult: this.describeResult,
+      historyDescribe: this.historyDescribeResult,
     };
-    if (!totalCount || totalCount === 0) {
-      return usageTable;
+    if (options?.segmentRecordTypes && this.hasRecordTypes) {
+      for (const recordType of this.describeResult.recordTypeInfos as RecordTypeInfo[]) {
+        const fsAnalyser = new FieldUsageAnalyser({
+          ...fieldAnalyserConfig,
+          recordType,
+          recordTypeDescribe: this.recordTypeDescribes[recordType.recordTypeId],
+        });
+        // eslint-disable-next-line no-await-in-loop
+        const table = await fsAnalyser.run({
+          checkDefaults: options?.checkDefaultValues ?? false,
+          checkHistory: options?.checkHistory ?? false,
+        });
+        table.skippedFields = ignoredFields;
+        recordTypesResult.recordTypes[recordType.developerName] = table as FieldUsageTable;
+      }
+    } else {
+      const fsAnalyser = new FieldUsageAnalyser(fieldAnalyserConfig);
+      const table = await fsAnalyser.run({
+        checkDefaults: options?.checkDefaultValues ?? false,
+        checkHistory: options?.checkHistory ?? false,
+      });
+      table.skippedFields = ignoredFields;
+      recordTypesResult.recordTypes.Master = table as FieldUsageTable;
     }
-    const fieldStats: Array<Promise<FieldUsageStats>> = [];
-    for (const field of analysedFields) {
-      fieldStats.push(this.getFieldUsageStats(totalCount, field, options));
-    }
-    usageTable.analysedFields = await Promise.all(fieldStats);
-    usageTable.skippedFields = ignoredFields;
-    return formatTable(usageTable);
+    return recordTypesResult;
   }
+
+  // PRIVATE ZONE
 
   private async getTotalCount(): Promise<number> {
-    const queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name}`;
+    const queryString = `SELECT COUNT() FROM ${this.describeResult.name}`;
     const result = await this.targetOrgConnection.query(queryString);
-    return result.records[0]['expr0'] as number;
+    return result.totalSize;
   }
-
-  private async getPopulatedFieldCount(field: Field, checkDefaults?: boolean): Promise<number> {
-    let queryString = `SELECT COUNT(Id) FROM ${this.describeResult.name} WHERE ${field.name} != NULL`;
-    if (checkDefaults && field.defaultValue != null) {
-      queryString +=
-        field.type === 'boolean'
-          ? ` AND ${field.name} != ${field.defaultValue}`
-          : ` AND ${field.name} != '${field.defaultValue}'`;
-    }
-    const result = await this.targetOrgConnection.query(queryString);
-    return result.records[0]['expr0'] as number;
-  }
-
-  private async getFieldUsageStats(
-    totalCount: number,
-    field: Field,
-    options?: FieldUsageOptions
-  ): Promise<FieldUsageStats> {
-    const fieldsPopulatedCount = await this.getPopulatedFieldCount(field, options?.checkDefaultValues);
-    const baseStats = {
-      name: field.name,
-      type: formatFieldType(field),
-      absolutePopulated: fieldsPopulatedCount,
-      percentagePopulated: fieldsPopulatedCount / totalCount,
-      ...(options?.checkDefaultValues && { defaultValue: field.defaultValue }),
-    };
-    if (options?.checkHistory && this.historyEnabled) {
-      const fieldHistoryStats = await this.getFieldHistoryStats(field);
-      return {
-        ...baseStats,
-        ...fieldHistoryStats,
-      };
-    }
-    return baseStats;
-  }
-
-  private async getFieldHistoryStats(field: Field): Promise<{ histories?: number; lastUpdated?: string }> {
-    const queryString = `SELECT COUNT(Id),MAX(CreatedDate) FROM ${
-      this.historyRelationship!.childSObject
-    } WHERE Field = '${field.name}'`;
-    const result = await this.targetOrgConnection.query(queryString);
-    return { histories: result.records[0]['expr0'] as number, lastUpdated: result.records[0]['expr1'] as string };
-  }
-}
-
-type ChildRelationship = {
-  cascadeDelete: boolean;
-  childSObject: string;
-  deprecatedAndHidden: boolean;
-  field: string;
-  junctionIdListNames: string[];
-  junctionReferenceTo: string[];
-  relationshipName: Optional<string>;
-  restrictedDelete: boolean;
-};
-
-function formatTable(table: FieldUsageTable): FieldUsageTable {
-  table.analysedFields.sort((a, b) => a.percentagePopulated - b.percentagePopulated);
-  return table;
 }
 
 function filterFields(
@@ -188,17 +169,8 @@ function filterFields(
   return { analysedFields, ignoredFields };
 }
 
-function formatFieldType(field: Field): string {
-  return field.calculated ? `formula (${field.type})` : field.type;
-}
-
-function getHistoryRelationship(describeResult: DescribeSObjectResult): ChildRelationship | undefined {
-  if (describeResult.childRelationships?.length > 0) {
-    for (const cr of describeResult.childRelationships) {
-      if (cr.relationshipName === 'Histories') {
-        return cr;
-      }
-    }
-  }
-  return undefined;
+function mapFields(describeResult: DescribeSObjectResult): Record<string, Field> {
+  const result: Record<string, Field> = {};
+  describeResult.fields.forEach((f) => (result[f.name] = f));
+  return result;
 }
