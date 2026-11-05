@@ -73,7 +73,7 @@ EXAMPLES
     $ sf jsc apex schedule export -j "Auto" -d tmp/dev
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/export.ts)_
 
 ## `sf jsc apex schedule manage`
 
@@ -120,7 +120,7 @@ FLAG DESCRIPTIONS
     the command may still fail, when run without this flag.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/apex/schedule/manage.ts)_
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -184,7 +184,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -249,7 +249,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -283,7 +283,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain field-usage analyse`
 
@@ -385,7 +385,7 @@ FLAG DESCRIPTIONS
     some fields are ignored during analysis. For more information on those fields, use this flag.
 ```
 
-_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
+_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/field-usage/analyse.ts)_
 
 ## `sf jsc maintain flow-export obsolete`
 
@@ -442,7 +442,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/flow-export/obsolete.ts)_
 
 ## `sf jsc maintain flow-export unused`
 
@@ -498,7 +498,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/maintain/flow-export/unused.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/flow-export/unused.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -574,7 +574,7 @@ FLAG DESCRIPTIONS
     needed, if you specify at least one package flag.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/garbage/collect.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -608,7 +608,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -640,7 +640,7 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.18.0/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->
 
