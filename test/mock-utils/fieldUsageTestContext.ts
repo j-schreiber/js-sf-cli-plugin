@@ -1,4 +1,3 @@
-/* eslint-disable class-methods-use-this */
 import fs from 'node:fs';
 import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';
 import { AnyJson, isObject, isString } from '@salesforce/ts-types';

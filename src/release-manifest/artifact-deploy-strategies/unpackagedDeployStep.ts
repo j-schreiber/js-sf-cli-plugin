@@ -18,8 +18,8 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
 
   public constructor(private artifact: ZUnpackagedSourceArtifact, private manifest: OrgManifest) {
     this.internalState = {
-      status: DeployStatus.Enum.Pending,
-      deployStrategy: DeployStrategies.Enum.SourceDeploy,
+      status: DeployStatus.enum.Pending,
+      deployStrategy: DeployStrategies.enum.SourceDeploy,
     };
   }
 
@@ -28,7 +28,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
   }
 
   public async deploy(): Promise<ZSourceDeployResultType> {
-    if (this.internalState.status === DeployStatus.Enum.Skipped) {
+    if (this.internalState.status === DeployStatus.enum.Skipped) {
       this.internalState.displayMessage = 'Skipped. Resolves to empty path.';
       return this.internalState;
     }
@@ -39,7 +39,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
     ]);
     projectDeployCmd.parseFlags(this.artifact.flags);
     const result = await OclifUtils.execCoreCommand(projectDeployCmd.buildConfig());
-    this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
+    this.internalState.status = result.status === 0 ? DeployStatus.enum.Success : DeployStatus.enum.Failed;
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
     }
@@ -50,7 +50,7 @@ export default class UnpackagedDeployStep implements ArtifactDeployStrategy {
   public async resolve(targetOrg: Connection): Promise<ZSourceDeployResultType> {
     this.internalState.targetUsername = targetOrg.getUsername();
     this.internalState.sourcePath = this.resolveDeployPath(this.artifact.path, targetOrg.getUsername());
-    this.internalState.status = this.internalState.sourcePath ? DeployStatus.Enum.Resolved : DeployStatus.Enum.Skipped;
+    this.internalState.status = this.internalState.sourcePath ? DeployStatus.enum.Resolved : DeployStatus.enum.Skipped;
     this.internalState.displayMessage = `Deploying ${this.internalState.sourcePath}`;
     return Promise.resolve(this.internalState);
   }

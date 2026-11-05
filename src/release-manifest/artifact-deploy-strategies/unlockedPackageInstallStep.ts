@@ -23,9 +23,9 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
 
   public constructor(public artifact: ZUnlockedPackageArtifact, private globalOptions: ZManifestOptionsType) {
     this.internalState = {
-      status: DeployStatus.Enum.Pending,
+      status: DeployStatus.enum.Pending,
       requestedVersion: this.artifact.version,
-      deployStrategy: DeployStrategies.Enum.PackageInstall,
+      deployStrategy: DeployStrategies.enum.PackageInstall,
       shouldSkipIfInstalled: artifact.skip_if_installed ?? this.globalOptions.skip_if_installed,
     };
   }
@@ -35,7 +35,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
   }
 
   public async deploy(): Promise<ZPackageInstallResultType> {
-    if (this.internalState.status === DeployStatus.Enum.Skipped) {
+    if (this.internalState.status === DeployStatus.enum.Skipped) {
       this.internalState.displayMessage = `Skipped. ${this.internalState.requestedVersion} (${this.internalState.requestedVersionId}) already installed.`;
       return this.internalState as ZPackageInstallResultType;
     }
@@ -50,7 +50,7 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     }
     packageInstallCmd.parseFlags(this.artifact.flags);
     const result = await OclifUtils.execCoreCommand(packageInstallCmd.buildConfig());
-    this.internalState.status = result.status === 0 ? DeployStatus.Enum.Success : DeployStatus.Enum.Failed;
+    this.internalState.status = result.status === 0 ? DeployStatus.enum.Success : DeployStatus.enum.Failed;
     if (result.status !== 0) {
       this.internalState.errorDetails = result.result;
     }
@@ -71,14 +71,14 @@ export default class UnlockedPackageInstallStep implements ArtifactDeployStrateg
     this.internalState.installedVersionId = installedVersionDetails.id;
     this.internalState.installedVersion = installedVersionDetails.versionName;
     if (this.isResolved()) {
-      this.internalState.status = DeployStatus.Enum.Resolved;
+      this.internalState.status = DeployStatus.enum.Resolved;
       if (this.internalState.installedVersion) {
         this.internalState.displayMessage = `Installing ${this.internalState.requestedVersion} over ${this.internalState.installedVersion}`;
       } else {
         this.internalState.displayMessage = `Package not installed. Installing ${this.internalState.requestedVersion}`;
       }
     } else {
-      this.internalState.status = DeployStatus.Enum.Skipped;
+      this.internalState.status = DeployStatus.enum.Skipped;
       this.internalState.displayMessage = `Installed version matches requested version (${this.internalState.installedVersion})`;
     }
     return this.internalState as ZPackageInstallResultType;

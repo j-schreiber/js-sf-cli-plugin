@@ -76,7 +76,8 @@ export default class QueryBuilder {
     } catch (err) {
       const queryApiErr: QueryError = err as QueryError;
       throw new Error(
-        `Invalid query syntax: ${this.toSOQL()} (${queryApiErr.errorCode}: ${queryApiErr.data?.message})`
+        `Invalid query syntax: ${this.toSOQL()} (${queryApiErr.errorCode}: ${queryApiErr.data?.message})`,
+        { cause: err }
       );
     }
   }

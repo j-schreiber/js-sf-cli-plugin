@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 import { SfError } from '@salesforce/core';
@@ -222,7 +221,7 @@ describe('jsc manifest rollout', () => {
     expect(result.deployedArtifacts['basic_happy_soup']).to.not.be.undefined;
     expect(result.deployedArtifacts['basic_happy_soup'].length).to.equal(1, 'steps in basic_happy_soup');
     const happySoupResult = result.deployedArtifacts['basic_happy_soup'][0] as unknown as ZSourceDeployResultType;
-    expect(happySoupResult.status).to.equal(DeployStatus.Enum.Failed);
+    expect(happySoupResult.status).to.equal(DeployStatus.enum.Failed);
     expect(happySoupResult.errorDetails).to.equal(subCommandError);
   });
 
@@ -253,10 +252,10 @@ describe('jsc manifest rollout', () => {
     expect(result.deployedArtifacts['basic_happy_soup'].length).to.equal(1, 'steps in basic_happy_soup');
     expect(result.deployedArtifacts['apex_utils'].length).to.equal(1, 'steps in apex_utils');
     const apexUtilsResult = result.deployedArtifacts['basic_happy_soup'][0] as unknown as ZSourceDeployResultType;
-    expect(apexUtilsResult.status).to.equal(DeployStatus.Enum.Failed);
+    expect(apexUtilsResult.status).to.equal(DeployStatus.enum.Failed);
     expect(apexUtilsResult.errorDetails).to.equal(subCommandError);
     const lwcUtilsResult = result.deployedArtifacts['apex_utils'][0] as unknown as ZPackageInstallResultType;
-    expect(lwcUtilsResult.status).to.equal(DeployStatus.Enum.Skipped);
+    expect(lwcUtilsResult.status).to.equal(DeployStatus.enum.Skipped);
     expect(lwcUtilsResult.displayMessage).to.equal('Skipped, because a previous artifact failed.');
   });
 
@@ -323,7 +322,7 @@ describe('jsc manifest rollout', () => {
     expect(process.exitCode).to.equal(0);
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
     expect(oclifWrapperStub.callCount).to.equal(0);
-    expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.Enum.Resolved);
+    expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.enum.Resolved);
   });
 
   it('reads flags overrides from manifest and passes them to core commands', async () => {

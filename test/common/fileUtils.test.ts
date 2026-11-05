@@ -32,7 +32,7 @@ describe('file utils', () => {
       // Assert
       expect(parseYamlTest).to.throw(SfError);
       // zod error message, if content is a not a valid object
-      expect(parseYamlTest).to.throw('Expected object, received string');
+      expect(parseYamlTest).to.throw('expected object, received string');
     });
 
     it('throws descriptive error with empty file', () => {
@@ -42,7 +42,7 @@ describe('file utils', () => {
       // Assert
       expect(parseYamlTest).to.throw(SfError);
       // zod error message, if content is empty
-      expect(parseYamlTest).to.throw('Required');
+      expect(parseYamlTest).to.throw('expected object, received undefined');
     });
 
     it('throws descriptive error with yaml file with unparseable contents', () => {
@@ -52,7 +52,7 @@ describe('file utils', () => {
       // Assert
       expect(parseYamlTest).to.throw(SfError);
       // zod error message for the invalid key due to strict parsing
-      expect(parseYamlTest).to.throw("Unrecognized key(s) in object: 'invalidProperty'");
+      expect(parseYamlTest).to.throw('Unrecognized key: "invalidProperty"');
     });
 
     it('throws descriptive error with yaml file with missing contents', () => {
@@ -62,24 +62,25 @@ describe('file utils', () => {
       // Assert
       expect(parseYamlTest).to.throw(SfError);
       // zod error message for the type mismatches
-      expect(parseYamlTest).to.throw('options: Expected boolean, received string');
-      expect(parseYamlTest).to.throw('Expected string, received number');
+      expect(parseYamlTest).to.throw('options: Invalid input: expected boolean, received string');
+      expect(parseYamlTest).to.throw('expected string, received number');
     });
   });
 });
 
-const TestSubSchema = z
-  .object({
+const TestSubSchema = z.strictObject(
+  {
     boolProp: z.boolean().default(false),
     stringProp: z.string().nonempty(),
-  })
-  .strict('Valid options are: boolProp,stringProp');
+  },
+  { error: (issue) => (issue.code === 'unrecognized_keys' ? 'Valid options are: boolProp,stringProp' : undefined) }
+);
 
 const TestRecordSchema = z.object({ prop1: z.string().optional(), prop2: z.string().nonempty() }).strict();
 
 const TestYamlSchema = z
   .object({
     options: TestSubSchema,
-    record: z.record(TestRecordSchema).default({}),
+    record: z.record(z.string(), TestRecordSchema).default({}),
   })
   .strict();

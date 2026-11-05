@@ -4,7 +4,7 @@ import { Connection } from '@salesforce/core';
 import { MigrationPlanObjectQueryResult, ZMigrationPlanType } from '../types/migrationPlanObjectData.js';
 import MigrationPlanObject from './migrationPlanObject.js';
 import { eventBus } from './comms/eventBus.js';
-import { CommandStatusEvent, PlanObjectValidationEvent, ProcessingStatus } from './comms/processingEvents.js';
+import { ProcessingStatus } from './comms/processingEvents.js';
 
 export default class MigrationPlan {
   private objects: MigrationPlanObject[] = [];
@@ -24,19 +24,19 @@ export default class MigrationPlan {
       status: ProcessingStatus.Started,
       planName: this.getName(),
       message: `Initialized plan with ${this.objects.length} objects.`,
-    } as PlanObjectValidationEvent);
+    });
     for (const planObject of this.getObjects()) {
       eventBus.emit('planValidationEvent', {
         status: ProcessingStatus.InProgress,
         message: planObject.getObjectName(),
-      } as PlanObjectValidationEvent);
+      });
       await planObject.load();
     }
     eventBus.emit('planValidationEvent', {
       status: ProcessingStatus.Completed,
       planName: this.getName(),
       message: 'Successfully completed validation.',
-    } as PlanObjectValidationEvent);
+    });
     return this;
   }
 
@@ -51,7 +51,7 @@ export default class MigrationPlan {
       eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Started,
         message: `Starting ${planObject.getObjectName()}`,
-      } as CommandStatusEvent);
+      });
       let objectResults: MigrationPlanObjectQueryResult;
       if (validateOnly) {
         objectResults = await planObject.getResult();
@@ -61,7 +61,7 @@ export default class MigrationPlan {
       eventBus.emit('planObjectStatus', {
         status: ProcessingStatus.Completed,
         message: `Retrieved ${objectResults.totalSize} records in ${objectResults.executedFullQueryStrings.length} batches.`,
-      } as CommandStatusEvent);
+      });
       results.push(objectResults);
     }
     return results;

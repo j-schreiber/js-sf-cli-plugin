@@ -6,14 +6,14 @@ import { ScheduledJobConfig } from './scheduledApexTypes.js';
 
 /** All schema are YAML input - therefore snake_case */
 
-const ZEnvironments = z.record(z.string());
+const ZEnvironments = z.record(z.string(), z.string());
 
 const ZArtifactBase = z.object({
   flags: z.string().optional(),
 });
 
 const ZUnlockedPackage = ZArtifactBase.extend({
-  type: z.literal(ArtifactTypes.Enum.UnlockedPackage),
+  type: z.literal(ArtifactTypes.enum.UnlockedPackage),
   package_id: z.string(),
   installation_key: z.string().optional(),
   skip_if_installed: z.boolean().optional(),
@@ -21,13 +21,13 @@ const ZUnlockedPackage = ZArtifactBase.extend({
 });
 
 const ZUnpackagedSource = ZArtifactBase.extend({
-  type: z.literal(ArtifactTypes.Enum.Unpackaged),
-  path: z.string().or(z.record(z.string())),
+  type: z.literal(ArtifactTypes.enum.Unpackaged),
+  path: z.string().or(z.record(z.string(), z.string())),
 });
 
 const ZCronJob = ZArtifactBase.extend({
   ...ScheduledJobConfig.shape,
-  type: z.literal(ArtifactTypes.Enum.CronJob),
+  type: z.literal(ArtifactTypes.enum.CronJob),
 });
 
 const ZManifestOptions = z
@@ -37,14 +37,16 @@ const ZManifestOptions = z
     strict_environments: z.boolean().default(false),
     pipefail: z.boolean().default(true),
   })
-  .default({});
+  .prefault({});
 
 const ZArtifact = z.discriminatedUnion('type', [ZUnlockedPackage, ZUnpackagedSource, ZCronJob]);
 
 export const ZReleaseManifest = z
   .object({
     environments: ZEnvironments.optional(),
-    artifacts: z.record(ZArtifact, { required_error: 'At least one artifact is required' }),
+    artifacts: z.record(z.string(), ZArtifact, {
+      error: (issue) => (issue.input === undefined ? 'At least one artifact is required' : undefined),
+    }),
     options: ZManifestOptions,
   })
   .strict();

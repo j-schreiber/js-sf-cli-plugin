@@ -37,11 +37,13 @@ export type ApexClass = {
 };
 
 const ScheduledJobConfigOptions = z
-  .object({
-    stop_other_jobs: z.boolean().default(false),
-  })
-  .strict('Valid options are: stop_other_jobs')
-  .default({});
+  .strictObject(
+    {
+      stop_other_jobs: z.boolean().default(false),
+    },
+    { error: (issue) => (issue.code === 'unrecognized_keys' ? 'Valid options are: stop_other_jobs' : undefined) }
+  )
+  .prefault({});
 
 const SingleScheduledJobConfig = z
   .object({ class: z.string().optional(), expression: z.string().nonempty('A valid cron expression is required') })
@@ -50,7 +52,7 @@ const SingleScheduledJobConfig = z
 export const ScheduledJobConfig = z
   .object({
     options: ScheduledJobConfigOptions,
-    jobs: z.record(SingleScheduledJobConfig).default({}),
+    jobs: z.record(z.string(), SingleScheduledJobConfig).default({}),
   })
   .strict();
 

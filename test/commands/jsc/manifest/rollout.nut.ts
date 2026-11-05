@@ -44,9 +44,9 @@ describe('jsc manifest rollout NUTs*', () => {
       expect(result!.result.targetOrgUsername).to.equal(scratchOrgUsername);
       expect(result!.result.devhubOrgUsername).to.equal(devhubUsername);
       expect(result!.result.deployedArtifacts['apex_utils']).to.not.be.undefined;
-      expect(result!.result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.Enum.Success);
+      expect(result!.result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.enum.Success);
       expect(result!.result.deployedArtifacts['unpackaged']).to.not.be.undefined;
-      expect(result!.result.deployedArtifacts['unpackaged'][0].status).to.equal(DeployStatus.Enum.Success);
+      expect(result!.result.deployedArtifacts['unpackaged'][0].status).to.equal(DeployStatus.enum.Success);
     });
   });
 });

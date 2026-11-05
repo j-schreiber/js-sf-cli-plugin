@@ -19,8 +19,8 @@ export function mockQueryResponseWithQueryMore(request: AnyJson): Promise<AnyJso
 }
 
 export function mockAnySObjectDescribe(request: AnyJson): Promise<AnyJson> {
-  if (request?.toString().endsWith('/describe')) {
-    const requestUrl = String(request).split('/');
+  if (typeof request === 'string' && request.endsWith('/describe')) {
+    const requestUrl = request.split('/');
     const sobjectName = requestUrl[requestUrl.length - 2];
     const describe = { ...MockAnyObjectResult, name: sobjectName };
     return Promise.resolve(describe as AnyJson);

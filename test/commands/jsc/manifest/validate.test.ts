@@ -39,7 +39,7 @@ describe('jsc manifest validate', () => {
     expect(process.exitCode).to.equal(0);
     expect(Object.keys(result.deployedArtifacts)).to.deep.equal(['basic_happy_soup']);
     expect(oclifWrapperStub.callCount).to.equal(0);
-    expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.Enum.Resolved);
+    expect(result.deployedArtifacts['basic_happy_soup'][0].status).to.equal(DeployStatus.enum.Resolved);
     expect(result.targetOrgUsername).to.equal($$.testTargetOrg.username);
     expect(result.devhubOrgUsername).to.equal($$.testDevHub.username);
   });
@@ -86,7 +86,7 @@ describe('jsc manifest validate', () => {
     ]);
 
     // Assert
-    expect(result.deployedArtifacts['org_shape_settings'][0].status).to.equal(DeployStatus.Enum.Resolved);
-    expect(result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.Enum.Resolved);
+    expect(result.deployedArtifacts['org_shape_settings'][0].status).to.equal(DeployStatus.enum.Resolved);
+    expect(result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.enum.Resolved);
   });
 });

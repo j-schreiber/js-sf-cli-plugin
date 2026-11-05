@@ -8,23 +8,23 @@ const ArtifactDeployResult = z.object({
   status: DeployStatus,
   targetUsername: z.string().optional(),
   displayMessage: z.string().optional(),
-  errorDetails: z.unknown(),
+  errorDetails: z.unknown().optional(),
 });
 
-const AggregatedArtifactResult = z.object({
+export const AggregatedArtifactResult = z.object({
   status: DeployStatus,
   message: z.string().optional(),
 });
 
-const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));
+export const ManifestDeployResult = z.record(z.string(), z.array(ArtifactDeployResult));
 
 const SourceDeployResult = ArtifactDeployResult.extend({
-  deployStrategy: z.literal(DeployStrategies.Enum.SourceDeploy),
+  deployStrategy: z.literal(DeployStrategies.enum.SourceDeploy),
   sourcePath: z.string().optional(),
 });
 
 const PackageInstallResult = ArtifactDeployResult.extend({
-  deployStrategy: z.literal(DeployStrategies.Enum.PackageInstall),
+  deployStrategy: z.literal(DeployStrategies.enum.PackageInstall),
   shouldSkipIfInstalled: z.boolean(),
   requestedVersion: z.string(),
   requestedVersionId: z.string(),
@@ -35,11 +35,11 @@ const PackageInstallResult = ArtifactDeployResult.extend({
 });
 
 const CronJobScheduleResult = ArtifactDeployResult.extend({
-  deployStrategy: z.literal(DeployStrategies.Enum.CronJobSchedule),
+  deployStrategy: z.literal(DeployStrategies.enum.CronJobSchedule),
   jobName: z.string(),
 });
 
-const ZArtifactDeployResult = z.discriminatedUnion('deployStrategy', [
+export const ZArtifactDeployResult = z.discriminatedUnion('deployStrategy', [
   SourceDeployResult,
   PackageInstallResult,
   CronJobScheduleResult,

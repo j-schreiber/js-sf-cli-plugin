@@ -17,7 +17,7 @@ export type MigrationPlanObjectQueryResult = {
 };
 
 const ZParentBind = z.object({ field: z.string(), variable: z.string() });
-const ZIdExports = z.record(z.string());
+const ZIdExports = z.record(z.string(), z.string());
 
 const ZQueryObject = z.object({
   fetchAllFields: z.boolean(),

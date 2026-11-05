@@ -1,11 +1,10 @@
-/* eslint-disable camelcase */
 import EventEmitter from 'node:events';
 import { Connection } from '@salesforce/core';
 import { ZAggregatedArtifactResult, ZArtifactDeployResultType } from '../../types/orgManifestOutputSchema.js';
 import { ZArtifactType } from '../../types/orgManifestInputSchema.js';
 import OrgManifest from '../OrgManifest.js';
 import { eventBus } from '../../common/comms/eventBus.js';
-import { CommandStatusEvent, ProcessingStatus } from '../../common/comms/processingEvents.js';
+import { ProcessingStatus } from '../../common/comms/processingEvents.js';
 import { DeployStatus } from '../../types/orgManifestGlobalConstants.js';
 import UnpackagedDeployStep from './unpackagedDeployStep.js';
 import { ArtifactDeployStrategy } from './artifactDeployStrategy.js';
@@ -67,13 +66,13 @@ export default class ArtifactDeployJob extends EventEmitter {
       if (!isFailing && !this.skipAll) {
         // eslint-disable-next-line no-await-in-loop
         const stepResult = await deployStep.deploy();
-        if (stepResult.status === DeployStatus.Enum.Failed) {
+        if (stepResult.status === DeployStatus.enum.Failed) {
           isFailing = true;
           failDetails = stepResult.errorDetails;
         }
         results.push(stepResult);
       } else {
-        stepStatus.status = DeployStatus.Enum.Skipped;
+        stepStatus.status = DeployStatus.enum.Skipped;
         stepStatus.displayMessage =
           isFailing && !this.skipAll
             ? 'Skipped, because the previous step failed'
@@ -146,16 +145,16 @@ export default class ArtifactDeployJob extends EventEmitter {
     eventBus.emit('manifestRollout', {
       status: ProcessingStatus.InProgress,
       message,
-    } as CommandStatusEvent);
-    this.emit('artifactStatus', { status: ProcessingStatus.InProgress, message } as CommandStatusEvent);
+    });
+    this.emit('artifactStatus', { status: ProcessingStatus.InProgress, message });
   }
 
   private emitDeployStart(message: string): void {
-    this.emit('artifactDeployStart', { status: ProcessingStatus.Started, message } as CommandStatusEvent);
+    this.emit('artifactDeployStart', { status: ProcessingStatus.Started, message });
   }
 
   private emitDeployProgress(message: string): void {
-    this.emit('artifactDeployProgress', { status: ProcessingStatus.InProgress, message } as CommandStatusEvent);
+    this.emit('artifactDeployProgress', { status: ProcessingStatus.InProgress, message });
   }
 
   private emitDeployCompleted(message: string): void {
@@ -163,7 +162,7 @@ export default class ArtifactDeployJob extends EventEmitter {
       status: ProcessingStatus.Completed,
       message,
       exitCode: 0,
-    } as CommandStatusEvent);
+    });
   }
 
   private emitDeployFailed(failDetails: unknown): void {
@@ -172,6 +171,6 @@ export default class ArtifactDeployJob extends EventEmitter {
       message: 'Failed with errors',
       exitDetails: failDetails,
       exitCode: 2,
-    } as CommandStatusEvent);
+    });
   }
 }

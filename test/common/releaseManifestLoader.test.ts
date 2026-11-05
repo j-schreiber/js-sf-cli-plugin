@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-base-to-string */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-underscore-dangle */
+
 /* eslint-disable camelcase */
 import fs from 'node:fs';
 import { expect } from 'chai';
@@ -11,7 +9,6 @@ import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/ty
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
 import {
   ZArtifactType,
-  ZReleaseManifestType,
   ZUnlockedPackageArtifact,
   ZUnpackagedSourceArtifact,
 } from '../../src/types/orgManifestInputSchema.js';
@@ -39,7 +36,7 @@ const TEST_MANIFEST = new OrgManifest({
   options: DEFAULT_MANIFEST_OPTIONS,
   environments: TEST_ENVS,
   artifacts: {},
-} as ZReleaseManifestType);
+});
 
 describe('org manifest', () => {
   describe('loading', () => {
@@ -500,7 +497,7 @@ describe('org manifest', () => {
       // Assert
       expect(jobResults.length).to.equal(1);
       for (const res of jobResults) {
-        expect(res.status).to.equal(DeployStatus.Enum.Success);
+        expect(res.status).to.equal(DeployStatus.enum.Success);
       }
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'package:install',
@@ -532,7 +529,7 @@ describe('org manifest', () => {
       // Assert
       expect(jobResults.length).to.equal(1);
       for (const res of jobResults) {
-        expect(res.status).to.equal(DeployStatus.Enum.Success);
+        expect(res.status).to.equal(DeployStatus.enum.Success);
       }
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'package:install',
@@ -561,7 +558,7 @@ describe('org manifest', () => {
 
       // Assert
       expect(oclifWrapperStub.called).to.be.false;
-      expect(installResult.status).to.equal(DeployStatus.Enum.Skipped);
+      expect(installResult.status).to.equal(DeployStatus.enum.Skipped);
     });
   });
 
@@ -754,7 +751,7 @@ describe('org manifest', () => {
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(deployResult.status).to.equal(DeployStatus.enum.Success);
       expect(oclifWrapperStub.args[0][0]).to.deep.equal({
         name: 'project:deploy:start',
         args: [
@@ -786,7 +783,7 @@ describe('org manifest', () => {
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(deployResult.status).to.equal(DeployStatus.Enum.Skipped);
+      expect(deployResult.status).to.equal(DeployStatus.enum.Skipped);
       expect(oclifWrapperStub.called).to.be.false;
     });
 
@@ -805,7 +802,7 @@ describe('org manifest', () => {
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(deployResult.status).to.equal(DeployStatus.enum.Success);
       expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
         name: 'project:deploy:start',
         args: ['--target-org', $$.testTargetOrg.username, '--source-dir', testUnpackagedArtifact.path, '--wait', '10'],
@@ -827,7 +824,7 @@ describe('org manifest', () => {
       const deployResult = await sourceJob.getSteps()[0].deploy();
 
       // Assert
-      expect(deployResult.status).to.equal(DeployStatus.Enum.Success);
+      expect(deployResult.status).to.equal(DeployStatus.enum.Success);
       expect(oclifWrapperStub.args.flat()[0]).to.deep.equal({
         name: 'project:deploy:start',
         args: [

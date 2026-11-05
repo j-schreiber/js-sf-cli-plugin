@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { EventEmitter } from 'node:events';
 import { Connection, Messages } from '@salesforce/core';
 import { DescribeSObjectResult, Field } from '@jsforce/jsforce-node';

@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 import { z } from 'zod';
 import { Messages } from '@salesforce/core';
 
@@ -18,16 +18,20 @@ export function pathHasNoFiles(path: string): boolean {
 export function parseYaml<T extends z.ZodType>(path: string, schema: T): z.infer<typeof schema> {
   let fileContent;
   try {
-    fileContent = yaml.load(fs.readFileSync(path, 'utf8'));
-  } catch (error) {
+    const rawContent = fs.readFileSync(path, 'utf8');
+    // js-yaml 5 throws on empty documents, v4 returned undefined. Keep v4 behaviour,
+    // so empty files are reported as schema violations, not as unreadable files.
+    fileContent = rawContent.trim() === '' ? undefined : load(rawContent);
+  } catch {
     throw messages.createError('InvalidFilePath', [path]);
   }
   const parseResult = schema.safeParse(fileContent);
   if (parseResult.success) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return parseResult.data as z.infer<T>;
+    return parseResult.data;
   } else {
-    const errsFlat = parseResult.error.flatten();
+    const errsFlat: { formErrors: string[]; fieldErrors: Record<string, string[] | undefined> } = z.flattenError(
+      parseResult.error
+    );
     const formErrors = errsFlat.formErrors.join(',');
     const fieldErrors = Object.entries(errsFlat.fieldErrors)
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

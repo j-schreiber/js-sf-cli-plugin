@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import EventEmitter from 'node:events';
 import { Connection, Messages, SfError } from '@salesforce/core';
 import QueryRunner from '../common/utils/queryRunner.js';
@@ -63,13 +62,13 @@ export default class GarbageCollector extends EventEmitter {
       this.emit('resolveMemberStatus', {
         status: ProcessingStatus.InProgress,
         message: messages.getMessage('infos.packages-filter-active', [filter.packages.join(',')]),
-      } as CommandStatusEvent);
+      });
     }
     if (filter?.includeOnly && filter.includeOnly.length > 0) {
       this.emit('resolveMemberStatus', {
         status: ProcessingStatus.InProgress,
         message: messages.getMessage('infos.metadata-filter-active', [filter.includeOnly.join(',')]),
-      } as CommandStatusEvent);
+      });
     }
   }
 
@@ -129,7 +128,7 @@ export default class GarbageCollector extends EventEmitter {
     this.emit('resolveMemberStatus', {
       status: ProcessingStatus.InProgress,
       message,
-    } as CommandStatusEvent);
+    });
   }
 }
 

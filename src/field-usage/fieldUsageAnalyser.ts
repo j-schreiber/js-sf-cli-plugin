@@ -158,7 +158,7 @@ export default class FieldUsageAnalyser {
 
   private historyQuery(field: Field): string {
     const baseQuery = `${this.COUNT_HISTORY_BASE_QUERY!} WHERE Field = '${field.name}'`;
-    if (this.recordType && this.recordType.infos.developerName.toLocaleLowerCase() === 'master') {
+    if (this.recordType?.infos.developerName.toLocaleLowerCase() === 'master') {
       return `${baseQuery} AND (${this.historyRecordTypeId!} = '${this.recordType.infos.recordTypeId}' OR ${this
         .historyRecordTypeId!} = NULL)`;
     }

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { DynamicallyNamedEntity, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionHandler, buildSubjectIdFilter } from '../entityDefinitionHandler.js';
