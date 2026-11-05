@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import { SinonStub } from 'sinon';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestValidate from '../../../../src/commands/jsc/manifest/validate.js';
-import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 import ManifestTestContext from '../../../mock-utils/manifestTestContext.js';
+import { DeployStatus } from '../../../../src/release-manifest/index.js';
 
 describe('jsc manifest validate', () => {
   const $$ = new ManifestTestContext();

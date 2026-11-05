@@ -2,11 +2,10 @@
 import { Config } from '@oclif/core';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
-import { ZManifestDeployResultType } from '../../../types/orgManifestOutputSchema.js';
 import { eventBus } from '../../../common/comms/eventBus.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../common/comms/processingEvents.js';
-import OrgManifest from '../../../release-manifest/OrgManifest.js';
+import { OrgManifest, ReleaseManifestLoader } from '../../../release-manifest/index.js';
+import type { ZManifestDeployResultType } from '../../../release-manifest/types.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.manifest.rollout');

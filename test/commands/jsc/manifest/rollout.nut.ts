@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { env } from '@salesforce/kit';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscManifestRolloutResult } from '../../../../src/commands/jsc/manifest/rollout.js';
-import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
+import { DeployStatus } from '../../../../src/release-manifest/index.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const devhubUsername = env.getString('TESTKIT_HUB_USERNAME');

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import FieldUsageTestContext from '../mock-utils/fieldUsageTestContext.js';
-import SObjectAnalyser from '../../src/field-usage/sobjectAnalyser.js';
-import { FieldUsageStats, SObjectAnalysisResult } from '../../src/field-usage/fieldUsageTypes.js';
+import { SObjectAnalyser } from '../../src/field-usage/index.js';
+import type { FieldUsageStats, SObjectAnalysisResult } from '../../src/field-usage/types.js';
 
 const EXPECTED_STRING_FIELD_OUTPUT = {
   name: 'MyCustomField__c',

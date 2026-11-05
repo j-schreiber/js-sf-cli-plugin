@@ -1,6 +1,6 @@
 import { SfCommand } from '@salesforce/sf-plugins-core';
-import { PackageGarbageResult } from '../../garbage-collection/packageGarbageTypes.js';
-import { GarbageDisposeFailure } from '../../types/garbageDisposeTypes.js';
+import { PackageGarbageResult } from './packageGarbageTypes.js';
+import { GarbageDisposeFailure } from './garbageDisposeTypes.js';
 
 type TableOutputRow = {
   metadataType: string;

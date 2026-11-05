@@ -3,13 +3,10 @@ import path from 'node:path';
 import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
-import {
-  PackageGarbageContainer,
-  PackageGarbageResult,
-} from '../../../../../src/garbage-collection/packageGarbageTypes.js';
-import { GarbageDisposeResult } from '../../../../../src/types/garbageDisposeTypes.js';
-import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
 import { EXPECTED_E2E_GARBAGE } from '../../../../mock-utils/garbageCollectionMocks.js';
+import type { PackageGarbageContainer, PackageGarbageResult } from '../../../../../src/garbage-collection/types.js';
+import type { GarbageDisposeResult } from '../../../../../src/garbage-collection/types.js';
+import type { PackageManifestObject } from '../../../../../src/garbage-collection/types.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';

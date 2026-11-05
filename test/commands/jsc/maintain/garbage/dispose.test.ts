@@ -9,8 +9,8 @@ import {
   MetadataApiDeploy,
 } from '@salesforce/source-deploy-retrieve';
 import JscMaintainGarbageDispose from '../../../../../src/commands/jsc/maintain/garbage/dispose.js';
-import GarbageCollector from '../../../../../src/garbage-collection/garbageCollector.js';
-import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
+import { GarbageCollector } from '../../../../../src/garbage-collection/index.js';
+import type { PackageGarbageResult } from '../../../../../src/garbage-collection/types.js';
 
 function mockGarbage(): PackageGarbageResult {
   return {

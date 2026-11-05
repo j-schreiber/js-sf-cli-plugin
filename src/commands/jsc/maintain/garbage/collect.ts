@@ -1,13 +1,16 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
-import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
-import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
 import { manifestOutputDirFlag, outputFormatFlag, OutputFormats } from '../../../../common/jscSfCommandFlags.js';
 import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
 import PackageManifestDirectory from '../../../../common/packageManifestDirectory.js';
-import GarbageCollectionUx from '../../../../common/ux/garbageCollectionUx.js';
-import { resolveDevhub, resolvePackageIds } from '../../../../common/utils/garbageFilterResolver.js';
+import type { PackageGarbageResult } from '../../../../garbage-collection/types.js';
+import {
+  GarbageCollectionUx,
+  GarbageCollector,
+  resolveDevhub,
+  resolvePackageIds,
+} from '../../../../garbage-collection/index.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');

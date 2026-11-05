@@ -10,16 +10,20 @@ import {
   RegistryAccess,
   SourceComponent,
 } from '@salesforce/source-deploy-retrieve';
-import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import {
+  GarbageCollectionUx,
+  GarbageCollector,
+  resolveDevhub,
+  resolvePackageIds,
+} from '../../../../garbage-collection/index.js';
+import type {
+  GarbageDisposeFailure,
+  GarbageDisposeResult,
   PackageGarbage,
   PackageGarbageContainer,
   PackageGarbageResult,
-} from '../../../../garbage-collection/packageGarbageTypes.js';
-import GarbageCollectionUx from '../../../../common/ux/garbageCollectionUx.js';
-import { resolveDevhub, resolvePackageIds } from '../../../../common/utils/garbageFilterResolver.js';
-import { GarbageDisposeFailure, GarbageDisposeResult } from '../../../../types/garbageDisposeTypes.js';
+} from '../../../../garbage-collection/types.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.dispose');

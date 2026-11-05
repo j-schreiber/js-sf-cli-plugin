@@ -4,9 +4,9 @@ import { SfError } from '@salesforce/core';
 import { stubSfCommandUx, stubSpinner } from '@salesforce/sf-plugins-core';
 import JscManifestRollout from '../../../../src/commands/jsc/manifest/rollout.js';
 import OclifUtils from '../../../../src/common/utils/wrapChildprocess.js';
-import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../src/types/orgManifestOutputSchema.js';
-import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
 import ManifestTestContext from '../../../mock-utils/manifestTestContext.js';
+import type { ZPackageInstallResultType, ZSourceDeployResultType } from '../../../../src/release-manifest/types.js';
+import { DeployStatus } from '../../../../src/release-manifest/index.js';
 
 describe('jsc manifest rollout', () => {
   const $$ = new ManifestTestContext();

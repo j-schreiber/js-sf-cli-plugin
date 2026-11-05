@@ -6,8 +6,8 @@ import { AnyJson, Dictionary, ensureJsonMap, ensureString, entriesOf } from '@sa
 import { eventBus } from '../../src/common/comms/eventBus.js';
 import { InstalledSubscriberPackage, Package2Version } from '../../src/types/sfToolingApiTypes.js';
 import OclifUtils, { CommandResult } from '../../src/common/utils/wrapChildprocess.js';
-import { ZReleaseManifestType } from '../../src/types/orgManifestInputSchema.js';
-import OrgManifest from '../../src/release-manifest/OrgManifest.js';
+import type { ZReleaseManifestType } from '../../src/release-manifest/types.js';
+import { OrgManifest } from '../../src/release-manifest/index.js';
 
 export const RESOLVED_PACKAGE_VERSIONS = [
   {

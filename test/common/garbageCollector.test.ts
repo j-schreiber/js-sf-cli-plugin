@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import { Messages } from '@salesforce/core';
-import GarbageCollector from '../../src/garbage-collection/garbageCollector.js';
 import {
   ALL_CUSTOM_OBJECTS,
   ENTITY_DEFINITION_QUERY,
@@ -10,6 +9,7 @@ import { EntityDefinition, Package2Member } from '../../src/types/sfToolingApiTy
 import { loadSupportedMetadataTypes } from '../../src/garbage-collection/entity-handlers/index.js';
 import GarbageCollectionTestContext from '../mock-utils/garbageCollectionTestContext.js';
 import { parseMockResult } from '../mock-utils/garbageCollectionMocks.js';
+import { GarbageCollector } from '../../src/garbage-collection/index.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');

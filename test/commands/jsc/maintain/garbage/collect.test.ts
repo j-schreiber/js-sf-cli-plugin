@@ -5,10 +5,10 @@ import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import { XMLParser } from 'fast-xml-parser';
 import JscMaintainGarbageCollect from '../../../../../src/commands/jsc/maintain/garbage/collect.js';
-import GarbageCollector from '../../../../../src/garbage-collection/garbageCollector.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../../../src/common/comms/processingEvents.js';
-import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
-import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
+import { GarbageCollector } from '../../../../../src/garbage-collection/index.js';
+import type { PackageManifestObject } from '../../../../../src/garbage-collection/types.js';
+import type { PackageGarbageResult } from '../../../../../src/garbage-collection/types.js';
 
 const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {

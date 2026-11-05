@@ -4,19 +4,19 @@
 import fs from 'node:fs';
 import { expect } from 'chai';
 import { SfError } from '@salesforce/core';
-import ReleaseManifestLoader from '../../src/release-manifest/releaseManifestLoader.js';
-import { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/types/orgManifestOutputSchema.js';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
-import {
-  ZArtifactType,
-  ZUnlockedPackageArtifact,
-  ZUnpackagedSourceArtifact,
-} from '../../src/types/orgManifestInputSchema.js';
-import OrgManifest from '../../src/release-manifest/OrgManifest.js';
-import { DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 import { ProcessingStatus } from '../../src/common/comms/processingEvents.js';
 import { ScheduledJobConfigType } from '../../src/types/scheduledApexTypes.js';
 import ManifestTestContext from '../mock-utils/manifestTestContext.js';
+import { ReleaseManifestLoader } from '../../src/release-manifest/index.js';
+import type { ZPackageInstallResultType, ZSourceDeployResultType } from '../../src/release-manifest/types.js';
+import type {
+  ZArtifactType,
+  ZUnlockedPackageArtifact,
+  ZUnpackagedSourceArtifact,
+} from '../../src/release-manifest/types.js';
+import { OrgManifest } from '../../src/release-manifest/index.js';
+import { DeployStatus } from '../../src/release-manifest/index.js';
 
 const DEFAULT_MANIFEST_OPTIONS = {
   skip_if_installed: true,

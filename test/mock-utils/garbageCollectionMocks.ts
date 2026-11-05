@@ -11,7 +11,7 @@ import {
   SubscriberPackage,
   WorkflowAlertEntity,
 } from '../../src/types/sfToolingApiTypes.js';
-import { PackageGarbageResult } from '../../src/garbage-collection/packageGarbageTypes.js';
+import type { PackageGarbageResult } from '../../src/garbage-collection/types.js';
 
 const testDataPath = path.join('test', 'data', 'garbage-collection');
 

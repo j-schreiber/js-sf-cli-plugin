@@ -1,4 +1,4 @@
-import { PackageGarbageContainer, PackageGarbageResult } from '../garbage-collection/packageGarbageTypes.js';
+import { PackageGarbageContainer, PackageGarbageResult } from './packageGarbageTypes.js';
 
 /**
  * - `Success`: all garbage was deleted
