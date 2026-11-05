@@ -1,6 +1,5 @@
 import { SfCommand } from '@salesforce/sf-plugins-core';
 import { PackageGarbageResult } from './packageGarbageTypes.js';
-import { GarbageDisposeFailure } from './garbageDisposeTypes.js';
 
 type TableOutputRow = {
   metadataType: string;
@@ -35,24 +34,6 @@ export default class GarbageCollectionUx {
     });
     if (data.length > 0) {
       this.cmd.table({ data, title });
-    }
-  }
-
-  /**
-   * Prints all components that could not be deleted with their reason.
-   * Prints nothing, if there are no failures.
-   */
-  public printFailures(failures: GarbageDisposeFailure[], title?: string): void {
-    if (failures.length > 0) {
-      this.cmd.table({
-        data: failures,
-        title,
-        columns: [
-          { key: 'metadataType', name: 'Metadata Type' },
-          { key: 'fullName', name: 'Full Name' },
-          { key: 'problem', name: 'Problem' },
-        ],
-      });
     }
   }
 }

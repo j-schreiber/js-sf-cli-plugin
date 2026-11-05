@@ -4,9 +4,12 @@ import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { EXPECTED_E2E_GARBAGE } from '../../../../mock-utils/garbageCollectionMocks.js';
-import type { PackageGarbageContainer, PackageGarbageResult } from '../../../../../src/garbage-collection/types.js';
-import type { GarbageDisposeResult } from '../../../../../src/garbage-collection/types.js';
-import type { PackageManifestObject } from '../../../../../src/garbage-collection/types.js';
+import type {
+  PackageGarbageContainer,
+  PackageGarbageResult,
+  PackageManifestObject,
+} from '../../../../../src/garbage-collection/types.js';
+import type { GarbageDisposeResult } from '../../../../../src/garbage-disposal/types.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
@@ -192,17 +195,10 @@ describe('jsc maintain garbage NUTs*', () => {
       expect(result.status).to.be.oneOf(['Success', 'PartialSuccess'], JSON.stringify(result.failed));
       expect(result.deployId).to.be.a('string');
       assertDisposeResultIsConsistent(result);
-      const remaining = execCmd<PackageGarbageResult>(
-        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
-        { ensureExitCode: 0 }
-      ).jsonOutput?.result;
-      assert.isDefined(remaining);
-      // garbage that was disposed is gone, only garbage that failed can be left. Compare by
-      // id, because names can change (children of deleted objects are named with the object id)
-      expect(result.failed.map((f) => f.subjectId)).to.include.members(
-        garbageIds(remaining.deprecatedMembers),
-        JSON.stringify({ failed: result.failed, remaining: remaining.deprecatedMembers })
-      );
+      // Not asserted: that `collect` afterwards only finds failed garbage. Disposed garbage is
+      // derived from the (atomic) deploy result. The org may keep components that were deployed
+      // successfully (e.g. a global value set still referenced by a field of a deleted object).
+      // Those are found again by the next `collect`/`dispose`.
     });
 
     it('dispose again only processes leftover garbage', () => {

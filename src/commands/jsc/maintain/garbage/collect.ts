@@ -2,7 +2,6 @@ import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { manifestOutputDirFlag, outputFormatFlag, OutputFormats } from '../../../../common/jscSfCommandFlags.js';
-import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
 import PackageManifestDirectory from '../../../../common/packageManifestDirectory.js';
 import type { PackageGarbageResult } from '../../../../garbage-collection/types.js';
 import {
@@ -11,6 +10,7 @@ import {
   resolveDevhub,
   resolvePackageIds,
 } from '../../../../garbage-collection/index.js';
+import { GarbageDisposer } from '../../../../garbage-disposal/index.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
@@ -62,13 +62,19 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       includeOnly: flags['metadata-type'],
       packages: await resolvePackageIds(orgConnection, (msg) => this.info(msg), flags.package),
     });
-    this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
+    this.writePackageXml(
+      GarbageDisposer.newInstance(orgConnection),
+      deprecatedPackageMembers,
+      flags['output-dir'],
+      flags['output-format']
+    );
     new GarbageCollectionUx(this).printTable(deprecatedPackageMembers);
     process.exitCode = 0;
     return deprecatedPackageMembers;
   }
 
   private writePackageXml(
+    disposer: GarbageDisposer,
     collectedGarbage: PackageGarbageResult,
     outputPath?: string,
     outputFormat?: OutputFormats
@@ -77,16 +83,6 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
       return;
     }
     this.info(`Writing output to: ${outputPath}`);
-    const outputDir = new PackageManifestDirectory(outputPath, outputFormat);
-    addGarbageToManifest(outputDir.getBuilder(), collectedGarbage);
-    outputDir.write();
+    new PackageManifestDirectory(outputPath, outputFormat, disposer.manifestFrom(collectedGarbage)).write();
   }
-}
-
-function addGarbageToManifest(builder: PackageManifestBuilder, garbage: PackageGarbageResult): void {
-  Object.keys(garbage.deprecatedMembers).forEach((key) => {
-    garbage.deprecatedMembers[key].components.forEach((cmp) => {
-      builder.addMember(garbage.deprecatedMembers[key].metadataType, cmp.fullyQualifiedName);
-    });
-  });
 }

@@ -80,7 +80,6 @@ describe('jsc maintain garbage dispose', () => {
   let uxStubs: ReturnType<typeof stubSfCommandUx>;
   let prompterStubs: ReturnType<typeof stubPrompter>;
   let deployCalls: DeployCall[];
-  let deployRecentValidationCalls: number;
 
   /**
    * Each call to `ComponentSet.deploy` (validation or deploy) returns
@@ -94,10 +93,6 @@ describe('jsc maintain garbage dispose', () => {
         id: response.id,
         onUpdate: () => {},
         pollStatus: () => Promise.resolve({ response }),
-        deployRecentValidation: () => {
-          deployRecentValidationCalls++;
-          return Promise.resolve('0Af0000000000QD');
-        },
       } as unknown as MetadataApiDeploy);
     });
   }
@@ -126,7 +121,6 @@ describe('jsc maintain garbage dispose', () => {
     prompterStubs = stubPrompter($$.SANDBOX);
     stubSpinner($$.SANDBOX);
     deployCalls = [];
-    deployRecentValidationCalls = 0;
     await $$.stubAuths(testTargetOrg);
   });
 
@@ -180,10 +174,11 @@ describe('jsc maintain garbage dispose', () => {
     expect(deployCalls[1].options.apiOptions?.checkOnly).to.be.true;
     expect(deployedComponents(deployCalls[1])).to.have.members(['CustomLabel:Feedback1', 'CustomLabel:Label_2']);
     expect(deployedComponents(deployCalls[2])).to.have.members(['CustomLabel:Feedback1', 'CustomLabel:Label_2']);
-    // deletable + not deletable, both before prompt
+    // all garbage before prompt, garbage that could not be deleted after disposal
     expect(uxStubs.table.callCount).to.equal(2);
-    expect(uxStubs.table.secondCall.calledBefore(prompterStubs.confirm.firstCall)).to.be.true;
-    expect(uxStubs.table.args[0][0].data.length).to.equal(2);
+    expect(uxStubs.table.firstCall.calledBefore(prompterStubs.confirm.firstCall)).to.be.true;
+    expect(uxStubs.table.args[0][0].data.length).to.equal(3);
+    expect(uxStubs.table.args[1][0].data.length).to.equal(1);
     expect(result.status).to.equal('PartialSuccess');
     expect(Object.keys(result.disposed)).to.deep.equal(['ExternalString']);
     expect(result.disposed.ExternalString.componentCount).to.equal(2);
@@ -307,66 +302,7 @@ describe('jsc maintain garbage dispose', () => {
     ]);
   });
 
-  it('only counts components as disposed that are gone after the deploy', async () => {
-    // Arrange
-    const stillPresent = mockGarbage();
-    stillPresent.deprecatedMembers = { CustomField: stillPresent.deprecatedMembers.CustomField };
-    stubExport(mockGarbage(), stillPresent);
-    stubDeployResponses(SUCCESS, {
-      ...SUCCESS,
-      details: {
-        // the org claims the field was deleted, but it is still present
-        componentSuccesses: { componentType: 'CustomField', fullName: 'TestObject__c.TestField__c', deleted: 'true' },
-      },
-    });
-
-    // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
-
-    // Assert
-    expect(result.status).to.equal('PartialSuccess');
-    expect(Object.keys(result.disposed)).to.deep.equal(['ExternalString']);
-    expect(result.disposed.ExternalString.componentCount).to.equal(2);
-    expect(result.failed.length).to.equal(1);
-    expect(result.failed[0].fullName).to.equal('TestObject__c.TestField__c');
-    expect(result.failed[0].subjectId).to.equal('00N0X000009T5prQAC');
-    expect(result.failed[0].problem).to.be.a('string').and.not.be.empty;
-    expect(process.exitCode).to.equal(0);
-  });
-
-  it('compares remaining garbage by id, not by name', async () => {
-    // Arrange
-    const renamed = mockGarbage();
-    // e.g. children of deleted objects are named with the object id
-    renamed.deprecatedMembers.CustomField.components[0].fullyQualifiedName = '01I000000000001.TestField__c';
-    renamed.deprecatedMembers = { CustomField: renamed.deprecatedMembers.CustomField };
-    stubExport(mockGarbage(), renamed);
-    stubDeployResponses(SUCCESS, SUCCESS);
-
-    // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
-
-    // Assert
-    expect(result.status).to.equal('PartialSuccess');
-    expect(result.failed.map((f) => f.subjectId)).to.deep.equal(['00N0X000009T5prQAC']);
-  });
-
-  it('fails if all deployed components are still present after the deploy', async () => {
-    // Arrange
-    stubExport(mockGarbage(), mockGarbage());
-    stubDeployResponses(SUCCESS, SUCCESS);
-
-    // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
-
-    // Assert
-    expect(result.status).to.equal('Failed');
-    expect(result.disposed).to.deep.equal({});
-    expect(result.failed.length).to.equal(3);
-    expect(process.exitCode).to.equal(1);
-  });
-
-  it('fails without prompt and deploy, if no component can be deleted', async () => {
+  it('fails without deploy, if no component can be deleted', async () => {
     // Arrange
     const garbage = mockGarbage();
     garbage.deprecatedMembers = { CustomField: garbage.deprecatedMembers.CustomField };
@@ -375,11 +311,10 @@ describe('jsc maintain garbage dispose', () => {
     stubDeployResponses(FIELD_FAILURE);
 
     // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username]);
+    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
 
     // Assert
     expect(deployCalls.length).to.equal(1);
-    expect(prompterStubs.confirm.called).to.be.false;
     expect(result.status).to.equal('Failed');
     expect(result.failed.length).to.equal(1);
     expect(process.exitCode).to.equal(1);
@@ -391,11 +326,10 @@ describe('jsc maintain garbage dispose', () => {
     stubDeployResponses({ success: false, status: 'Failed', errorMessage: 'Org is locked', details: {} });
 
     // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username]);
+    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
 
     // Assert
     expect(deployCalls.length).to.equal(1);
-    expect(prompterStubs.confirm.called).to.be.false;
     expect(result.status).to.equal('Failed');
     expect(result.failed.length).to.equal(3);
     result.failed.forEach((failure) => expect(failure.problem).to.equal('Org is locked'));
@@ -408,7 +342,7 @@ describe('jsc maintain garbage dispose', () => {
     stubDeployResponses({ success: false, status: 'Failed', details: {} });
 
     // Act
-    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username]);
+    const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username, '--no-prompt']);
 
     // Assert
     expect(result.status).to.equal('Failed');
@@ -416,7 +350,7 @@ describe('jsc maintain garbage dispose', () => {
     result.failed.forEach((failure) => expect(failure.problem).to.be.a('string').and.not.be.empty);
   });
 
-  it('does not deploy if user declines prompt', async () => {
+  it('neither validates nor deploys if user declines prompt', async () => {
     // Arrange
     stubExport(mockGarbage());
     prompterStubs.confirm.resolves(false);
@@ -426,8 +360,8 @@ describe('jsc maintain garbage dispose', () => {
     const result = await JscMaintainGarbageDispose.run(['--target-org', testTargetOrg.username]);
 
     // Assert
-    expect(deployCalls.length).to.equal(1);
-    expect(deployCalls[0].options.apiOptions?.checkOnly).to.be.true;
+    expect(uxStubs.table.calledBefore(prompterStubs.confirm)).to.be.true;
+    expect(deployCalls.length).to.equal(0);
     expect(result.status).to.equal('Skipped');
     expect(result.disposed).to.deep.equal({});
   });
@@ -484,6 +418,9 @@ describe('jsc maintain garbage dispose', () => {
     // Arrange
     stubExport(mockGarbage());
     stubDeployResponses({ ...SUCCESS, runTestsEnabled: true });
+    const quickDeploy = $$.SANDBOX.stub(MetadataApiDeploy.prototype, 'deployRecentValidation').resolves(
+      '0Af0000000000QD'
+    );
     const quickDeployPoll = $$.SANDBOX.stub(MetadataApiDeploy.prototype, 'pollStatus').resolves({
       response: { ...SUCCESS, id: '0Af0000000000QD' },
     } as unknown as Awaited<ReturnType<MetadataApiDeploy['pollStatus']>>);
@@ -493,7 +430,7 @@ describe('jsc maintain garbage dispose', () => {
 
     // Assert
     expect(deployCalls.length).to.equal(1);
-    expect(deployRecentValidationCalls).to.equal(1);
+    expect(quickDeploy.calledOnce).to.be.true;
     expect(quickDeployPoll.calledOnce).to.be.true;
     expect(result.status).to.equal('Success');
     expect(result.deployId).to.equal('0Af0000000000QD');
