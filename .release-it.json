@@ -6,11 +6,16 @@
   },
   "git": {
     "commitMessage": "admin: release v${version}",
+    "commitArgs": ["--no-verify"],
+    "pushArgs": ["--no-verify"],
     "push": true,
-    "tag": true
+    "tag": true,
+    "tagName": "v${version}",
+    "requireCleanWorkingDir": false
   },
   "npm": {
-    "publish": true
+    "publish": true,
+    "skipChecks": true
   },
   "plugins": {
     "@release-it/conventional-changelog": {
@@ -18,5 +23,9 @@
         "name": "angular"
       }
     }
+  },
+  "hooks": {
+    "after:bump": "yarn install",
+    "before:npm:release": "yarn readme && git add README.md"
   }
 }
