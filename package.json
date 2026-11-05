@@ -112,11 +112,11 @@
     "postpack": "sf-clean --ignore-signing-artifacts",
     "prepack": "sf-prepack",
     "test": "wireit",
-    "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:garbage": "nyc mocha \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:apex": "nyc mocha \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:maintain": "nyc mocha \"**/maintain/maintain.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+    "test:nuts": "wireit",
+    "test:nuts:garbage": "wireit",
+    "test:nuts:data": "wireit",
+    "test:nuts:apex": "wireit",
+    "test:nuts:maintain": "wireit",
     "test:only": "wireit",
     "readme": "wireit",
     "prepare": "husky",
@@ -245,6 +245,36 @@
         "build"
       ],
       "command": "oclif readme && pretty-quick"
+    },
+    "test:nuts": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:garbage": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:data": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:apex": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:maintain": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/maintain/maintain.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
     }
   },
   "exports": "./lib/index.js",

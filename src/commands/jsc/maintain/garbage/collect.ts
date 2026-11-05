@@ -1,16 +1,16 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
-import { Connection, Messages, Org, SfError, SfProject } from '@salesforce/core';
-import { Package } from '@salesforce/packaging';
+import { Messages } from '@salesforce/core';
 import GarbageCollector from '../../../../garbage-collection/garbageCollector.js';
 import { CommandStatusEvent } from '../../../../common/comms/processingEvents.js';
 import { PackageGarbageResult } from '../../../../garbage-collection/packageGarbageTypes.js';
 import { manifestOutputDirFlag, outputFormatFlag, OutputFormats } from '../../../../common/jscSfCommandFlags.js';
 import PackageManifestBuilder from '../../../../common/packageManifestBuilder.js';
 import PackageManifestDirectory from '../../../../common/packageManifestDirectory.js';
+import GarbageCollectionUx from '../../../../common/ux/garbageCollectionUx.js';
+import { resolveDevhub, resolvePackageIds } from '../../../../common/utils/garbageFilterResolver.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.garbage.collect');
-const genericMessages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageResult> {
   public static readonly summary = messages.getMessage('summary');
@@ -57,31 +57,12 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     });
     const deprecatedPackageMembers = await collector.export({
       includeOnly: flags['metadata-type'],
-      packages: await this.resolvePackageIds(orgConnection, flags.package),
+      packages: await resolvePackageIds(orgConnection, (msg) => this.info(msg), flags.package),
     });
     this.writePackageXml(deprecatedPackageMembers, flags['output-dir'], flags['output-format']);
-    this.printTable(deprecatedPackageMembers);
+    new GarbageCollectionUx(this).printTable(deprecatedPackageMembers);
     process.exitCode = 0;
     return deprecatedPackageMembers;
-  }
-
-  private printTable(collectedGarbage: PackageGarbageResult): void {
-    const tableData: TableOutputRow[] = [];
-    Object.keys(collectedGarbage.deprecatedMembers).forEach((memberType) => {
-      const members = collectedGarbage.deprecatedMembers[memberType];
-      members.components.forEach((member) => {
-        tableData.push({
-          subjectId: member.subjectId,
-          metadataType: members.metadataType,
-          fullyQualifiedApiName: member.fullyQualifiedName,
-          packageName: member.packageName,
-          deprecatedSinceVersion: member.deprecatedSinceVersion,
-        });
-      });
-    });
-    if (tableData.length > 0) {
-      this.table({ data: tableData });
-    }
   }
 
   private writePackageXml(
@@ -97,43 +78,6 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     addGarbageToManifest(outputDir.getBuilder(), collectedGarbage);
     outputDir.write();
   }
-
-  private async resolvePackageIds(connection: Connection, idsOrAliase?: string[]): Promise<string[] | undefined> {
-    if (idsOrAliase === undefined) {
-      return undefined;
-    }
-    const ids: string[] = [];
-    const project = await this.resolveProject();
-    idsOrAliase.forEach((idOrAlias) => {
-      const pgk = new Package({ packageAliasOrId: idOrAlias, connection, project });
-      ids.push(pgk.getId());
-    });
-    return ids;
-  }
-
-  private async resolveProject(): Promise<SfProject | undefined> {
-    try {
-      return await SfProject.resolve();
-    } catch (err) {
-      if (err instanceof SfError) {
-        this.info(genericMessages.getMessage('infos.not-a-sfdx-project', [err.name]));
-      } else {
-        this.info(genericMessages.getMessage('infos.unknown-error-initialising-project'));
-      }
-      this.info(genericMessages.getMessage('infos.package-aliases-not-supported'));
-    }
-    return undefined;
-  }
-}
-
-function resolveDevhub(targetOrg: Org, devhubOrg?: Org, apiVersion?: string): Connection | undefined {
-  if (devhubOrg && !devhubOrg.isDevHubOrg()) {
-    throw new SfError(`Not a devhub org: ${devhubOrg.getUsername()!}`, 'NoValidDevhub');
-  }
-  if (targetOrg.isDevHubOrg() && !devhubOrg) {
-    return targetOrg.getConnection(apiVersion);
-  }
-  return devhubOrg?.getConnection(apiVersion);
 }
 
 function addGarbageToManifest(builder: PackageManifestBuilder, garbage: PackageGarbageResult): void {
@@ -143,11 +87,3 @@ function addGarbageToManifest(builder: PackageManifestBuilder, garbage: PackageG
     });
   });
 }
-
-type TableOutputRow = {
-  metadataType: string;
-  subjectId: string;
-  fullyQualifiedApiName: string;
-  deprecatedSinceVersion?: string;
-  packageName?: string;
-};

@@ -3,7 +3,11 @@ import path from 'node:path';
 import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
-import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
+import {
+  PackageGarbageContainer,
+  PackageGarbageResult,
+} from '../../../../../src/garbage-collection/packageGarbageTypes.js';
+import { GarbageDisposeResult } from '../../../../../src/types/garbageDisposeTypes.js';
 import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
 import { EXPECTED_E2E_GARBAGE } from '../../../../mock-utils/garbageCollectionMocks.js';
 
@@ -149,5 +153,123 @@ describe('jsc maintain garbage NUTs*', () => {
         EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
       );
     });
+
+    it('dispose garbage with metadata type filter deletes only filtered garbage', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --metadata-type ExternalString --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.status).to.equal('Success', JSON.stringify(result.failed));
+      expect(Object.keys(result.deprecatedMembers)).to.deep.equal(['ExternalString']);
+      expect(Object.keys(result.disposed)).to.deep.equal(['ExternalString']);
+      expect(result.totalDeprecatedComponentCount).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
+      );
+      const remaining = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(remaining);
+      expect(remaining.deprecatedMembers.ExternalString).to.be.undefined;
+      expect(remaining.deprecatedMembers.CustomField.componentCount).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.CustomField.componentCount
+      );
+    });
+
+    it('dispose all remaining garbage deletes everything that can be deleted', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      // the test package contains components that cannot be deleted (e.g. an active
+      // approval process), but which ones depends on the package contents and on
+      // cascading deletes in the org. Only assert invariants of the result.
+      assert.isDefined(result);
+      expect(result.status).to.be.oneOf(['Success', 'PartialSuccess'], JSON.stringify(result.failed));
+      expect(result.deployId).to.be.a('string');
+      assertDisposeResultIsConsistent(result);
+      const remaining = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(remaining);
+      // garbage that was disposed is gone, only garbage that failed can be left. Compare by
+      // id, because names can change (children of deleted objects are named with the object id)
+      expect(result.failed.map((f) => f.subjectId)).to.include.members(
+        garbageIds(remaining.deprecatedMembers),
+        JSON.stringify({ failed: result.failed, remaining: remaining.deprecatedMembers })
+      );
+    });
+
+    it('dispose again only processes leftover garbage', () => {
+      // Arrange
+      const leftovers = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(leftovers);
+
+      // Act
+      const cmd = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --no-prompt --json`
+      );
+      const result = cmd.jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(garbageIds(result.deprecatedMembers)).to.have.members(garbageIds(leftovers.deprecatedMembers));
+      assertDisposeResultIsConsistent(result);
+      expect(cmd.jsonOutput?.status).to.equal(result.status === 'Failed' ? 1 : 0);
+    });
+
+    it('dispose without garbage skips deploy', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --metadata-type ExternalString --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.status).to.equal('Skipped');
+      expect(result.deployId).to.be.undefined;
+    });
   });
 });
+
+function garbageIds(containers: { [x: string]: PackageGarbageContainer }): string[] {
+  return Object.values(containers).flatMap((container) => container.components.map((cmp) => cmp.subjectId));
+}
+
+/**
+ * Every garbage component that was found is either disposed or failed, never both
+ * (compared by id, names are not stable). Failures always have a problem. The status
+ * matches disposed and failed garbage.
+ */
+function assertDisposeResultIsConsistent(result: GarbageDisposeResult): void {
+  const disposed = garbageIds(result.disposed);
+  const failed = result.failed.map((f) => f.subjectId);
+  expect([...disposed, ...failed]).to.have.members(garbageIds(result.deprecatedMembers), JSON.stringify(result));
+  result.failed.forEach((failure) => expect(failure.problem).to.be.a('string').and.not.be.empty);
+  switch (result.status) {
+    case 'Success':
+      expect(failed).to.deep.equal([]);
+      break;
+    case 'PartialSuccess':
+      expect(disposed).to.not.be.empty;
+      expect(failed).to.not.be.empty;
+      break;
+    case 'Failed':
+      expect(disposed).to.deep.equal([]);
+      break;
+    default:
+      expect(result.status).to.equal('Skipped');
+  }
+}
