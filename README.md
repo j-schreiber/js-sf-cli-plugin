@@ -31,6 +31,7 @@ Check out the [GitHub Wiki](https://github.com/j-schreiber/js-sf-cli-plugin/wiki
 - [`sf jsc maintain flow-export obsolete`](#sf-jsc-maintain-flow-export-obsolete)
 - [`sf jsc maintain flow-export unused`](#sf-jsc-maintain-flow-export-unused)
 - [`sf jsc maintain garbage collect`](#sf-jsc-maintain-garbage-collect)
+- [`sf jsc maintain garbage dispose`](#sf-jsc-maintain-garbage-dispose)
 - [`sf jsc manifest rollout`](#sf-jsc-manifest-rollout)
 - [`sf jsc manifest validate`](#sf-jsc-manifest-validate)
 
@@ -73,7 +74,7 @@ EXAMPLES
     $ sf jsc apex schedule export -j "Auto" -d tmp/dev
 ```
 
-_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/export.ts)_
+_See code: [src/commands/jsc/apex/schedule/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/apex/schedule/export.ts)_
 
 ## `sf jsc apex schedule manage`
 
@@ -120,7 +121,7 @@ FLAG DESCRIPTIONS
     the command may still fail, when run without this flag.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/manage.ts)_
+_See code: [src/commands/jsc/apex/schedule/manage.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/apex/schedule/manage.ts)_
 
 ## `sf jsc apex schedule start`
 
@@ -184,7 +185,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/start.ts)_
+_See code: [src/commands/jsc/apex/schedule/start.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/apex/schedule/start.ts)_
 
 ## `sf jsc apex schedule stop`
 
@@ -249,7 +250,7 @@ FLAG DESCRIPTIONS
     messages. If this doesn't help, use the --trace flag to output full debug logs from the execution.
 ```
 
-_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/apex/schedule/stop.ts)_
+_See code: [src/commands/jsc/apex/schedule/stop.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/apex/schedule/stop.ts)_
 
 ## `sf jsc data export`
 
@@ -283,7 +284,7 @@ EXAMPLES
   $ sf jsc data export
 ```
 
-_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/data/export.ts)_
+_See code: [src/commands/jsc/data/export.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/data/export.ts)_
 
 ## `sf jsc maintain field-usage analyse`
 
@@ -385,7 +386,7 @@ FLAG DESCRIPTIONS
     some fields are ignored during analysis. For more information on those fields, use this flag.
 ```
 
-_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/field-usage/analyse.ts)_
+_See code: [src/commands/jsc/maintain/field-usage/analyse.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/maintain/field-usage/analyse.ts)_
 
 ## `sf jsc maintain flow-export obsolete`
 
@@ -442,7 +443,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/flow-export/obsolete.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/obsolete.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/maintain/flow-export/obsolete.ts)_
 
 ## `sf jsc maintain flow-export unused`
 
@@ -498,7 +499,7 @@ FLAG DESCRIPTIONS
     number of versions. Only modifies the formatted output table, not the JSON output or generated package manifests.
 ```
 
-_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/flow-export/unused.ts)_
+_See code: [src/commands/jsc/maintain/flow-export/unused.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/maintain/flow-export/unused.ts)_
 
 ## `sf jsc maintain garbage collect`
 
@@ -516,7 +517,8 @@ FLAGS
   -m, --metadata-type=<value>...  Only include specific metadata types in the result.
   -o, --target-org=<value>        (required) Target org to analyse.
   -p, --package=<value>...        Only include metadata from specific packages.
-  -v, --devhub-org=<value>        Used to resolve package ids when garbage must be filtered by package (--package).
+  -v, --devhub-org=<value>        Used to resolve package ids (0Ho) and aliases when garbage is filtered by package
+                                  (--package).
       --api-version=<value>       Override the api version used for api requests made by this command
 
 GLOBAL FLAGS
@@ -564,17 +566,104 @@ FLAG DESCRIPTIONS
 
   -p, --package=<value>...  Only include metadata from specific packages.
 
-    You can specify the package id (0Ho) or a local package alias from your sfdx-project.json to narrow down package
-    members only from a specific package. You can specify this flag multiple times.
+    Narrow down package members to specific packages. Use the name or namespace of an installed package, or its
+    subscriber package id (033): these work without a DevHub and outside of a project. You can also use the package id
+    (0Ho, requires a DevHub) or a package alias from your sfdx-project.json (requires a project and a DevHub). Names and
+    namespaces are case-insensitive. You can specify this flag multiple times. If none of the packages can be resolved,
+    the command fails.
 
-  -v, --devhub-org=<value>  Used to resolve package ids when garbage must be filtered by package (--package).
+  -v, --devhub-org=<value>
 
-    Package filters are set with the "0Ho"-Id of the Package2 container. The DevHub is needed to resolve these ids to
-    the canonical "033" Ids. If your target org is a devhub, it will automatically be used. This parameter is only
-    needed, if you specify at least one package flag.
+    Used to resolve package ids (0Ho) and aliases when garbage is filtered by package (--package).
+
+    Package filters with package ids (0Ho) or aliases need the DevHub to resolve the package id to the subscriber
+    package id (033), which package members reference. If your target org is a devhub, it will automatically be used.
+    Package names, namespaces and subscriber package ids (033) don't need a DevHub.
 ```
 
-_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/maintain/garbage/collect.ts)_
+_See code: [src/commands/jsc/maintain/garbage/collect.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/maintain/garbage/collect.ts)_
+
+## `sf jsc maintain garbage dispose`
+
+Delete deprecated package components (garbage) from your org.
+
+```
+USAGE
+  $ sf jsc maintain garbage dispose -o <value> [--json] [--flags-dir <value>] [-v <value>] [-m <value>...] [-p <value>...]
+    [--no-prompt] [--api-version <value>]
+
+FLAGS
+  -m, --metadata-type=<value>...  Only delete specific metadata types.
+  -o, --target-org=<value>        (required) Target org to purge garbage from.
+  -p, --package=<value>...        Only delete metadata from specific packages.
+  -v, --devhub-org=<value>        Used to resolve package ids (0Ho) and aliases when garbage is filtered by package
+                                  (--package).
+      --api-version=<value>       Override the api version used for api requests made by this command
+      --no-prompt                 Don't prompt before deleting components.
+
+GLOBAL FLAGS
+  --flags-dir=<value>  Import flag values from a directory.
+  --json               Format output as json.
+
+DESCRIPTION
+  Delete deprecated package components (garbage) from your org.
+
+  Collects the same garbage as "jsc maintain garbage collect" and deletes it from the target org with a destructive
+  deploy. Before anything is deleted, the command validates the deletion (check-only deploy). Components that cannot be
+  deleted (e.g. an active approval process or an activated Lightning page) are removed from the deletion and reported
+  with their reason, the rest is validated again. The command prints all garbage that was found and asks for
+  confirmation before anything is validated or deleted. Afterwards, it prints all garbage that could not be deleted with
+  the reason. Unsupported components (e.g. record types or list views) are never deleted. Garbage that could not be
+  deleted is found again on the next run.
+
+EXAMPLES
+  Collect all garbage and delete it after confirmation
+
+    $ sf jsc maintain garbage dispose -o Production
+
+  Delete deprecated custom labels and custom objects without prompt (CI)
+
+    $ sf jsc maintain garbage dispose -o Production -m ExternalString -m CustomObject --no-prompt
+
+  Only delete garbage from a specific package (alias from sfdx-project.json)
+
+    $ sf jsc maintain garbage dispose -o Production -p SalesCRM -v MyDevHub
+
+FLAG DESCRIPTIONS
+  -m, --metadata-type=<value>...  Only delete specific metadata types.
+
+    Only provided metadata types are collected and deleted. All other will be ignored. You can specify this flag
+    multiple times. Use the developer name of the entity definition (e.g. ExternalString instead of CustomLabel). Values
+    are case insensitive.
+
+  -o, --target-org=<value>  Target org to purge garbage from.
+
+    The org that is queried for deprecated package members and outdated flow versions. All garbage that is found is
+    deleted from this org.
+
+  -p, --package=<value>...  Only delete metadata from specific packages.
+
+    Narrow down package members to specific packages. Use the name or namespace of an installed package, or its
+    subscriber package id (033): these work without a DevHub and outside of a project. You can also use the package id
+    (0Ho, requires a DevHub) or a package alias from your sfdx-project.json (requires a project and a DevHub). Names and
+    namespaces are case-insensitive. You can specify this flag multiple times. If none of the packages can be resolved,
+    the command fails.
+
+  -v, --devhub-org=<value>
+
+    Used to resolve package ids (0Ho) and aliases when garbage is filtered by package (--package).
+
+    Package filters with package ids (0Ho) or aliases need the DevHub to resolve the package id to the subscriber
+    package id (033), which package members reference. If your target org is a devhub, it will automatically be used.
+    Package names, namespaces and subscriber package ids (033) don't need a DevHub.
+
+  --no-prompt  Don't prompt before deleting components.
+
+    Without this flag, the command prints all garbage and asks for confirmation before deleting it. Use this flag in CI
+    pipelines.
+```
+
+_See code: [src/commands/jsc/maintain/garbage/dispose.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/maintain/garbage/dispose.ts)_
 
 ## `sf jsc manifest rollout`
 
@@ -608,7 +697,7 @@ EXAMPLES
   $ sf jsc manifest rollout
 ```
 
-_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/manifest/rollout.ts)_
+_See code: [src/commands/jsc/manifest/rollout.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/manifest/rollout.ts)_
 
 ## `sf jsc manifest validate`
 
@@ -640,7 +729,7 @@ EXAMPLES
   $ sf jsc manifest validate
 ```
 
-_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.19.1/src/commands/jsc/manifest/validate.ts)_
+_See code: [src/commands/jsc/manifest/validate.ts](https://github.com/j-schreiber/js-sf-cli-plugin/blob/v0.20.0/src/commands/jsc/manifest/validate.ts)_
 
 <!-- commandsstop -->
 
