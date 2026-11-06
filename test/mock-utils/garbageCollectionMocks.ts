@@ -8,6 +8,7 @@ import {
   NamedRecord,
   Package2,
   Package2Member,
+  InstalledSubscriberPackage,
   SubscriberPackage,
   WorkflowAlertEntity,
 } from '../../src/types/sfToolingApiTypes.js';
@@ -32,6 +33,9 @@ export default class GarbageCollectionMocks {
   public WORKFLOW_ALERTS = parseMockResult<WorkflowAlertEntity>('workflow-alert-definitions.json');
   public WORKFLOW_FIELD_UPDATES = parseMockResult<WorkflowAlertEntity>('workflow-field-update-defs.json');
   public SUBSCRIBER_PACKAGE = parseMockResult<SubscriberPackage>('subscriber-package.json');
+  public INSTALLED_SUBSCRIBER_PACKAGES = parseMockResult<InstalledSubscriberPackage>(
+    'installed-subscriber-packages.json'
+  );
 }
 
 export const EXPECTED_E2E_GARBAGE = JSON.parse(

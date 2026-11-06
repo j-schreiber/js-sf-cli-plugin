@@ -1,12 +1,16 @@
-import { EntityDefinition, Package2, Package2Member } from '../types/sfToolingApiTypes.js';
+import { EntityDefinition, Package2Member } from '../types/sfToolingApiTypes.js';
 
 export default class PackageMemberFilter {
   private readonly allowedSubscriberPackages?: string[];
   private readonly allowedKeyPrefixes?: string[];
 
-  public constructor(packages: Package2[], entities: EntityDefinition[]) {
-    if (packages && packages.length > 0) {
-      this.allowedSubscriberPackages = packages.map((pgk) => pgk.SubscriberPackageId);
+  /**
+   * @param subscriberPackageIds Allowed subscriber packages (033). Empty: all packages are allowed.
+   * @param entities Allowed entity definitions. Empty: all entities are allowed.
+   */
+  public constructor(subscriberPackageIds: string[], entities: EntityDefinition[]) {
+    if (subscriberPackageIds.length > 0) {
+      this.allowedSubscriberPackages = subscriberPackageIds;
     }
     if (entities && entities.length > 0) {
       this.allowedKeyPrefixes = entities.map((entity) => entity.KeyPrefix);

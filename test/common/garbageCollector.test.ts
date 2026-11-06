@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { SfError } from '@salesforce/core';
 import { Messages } from '@salesforce/core';
 import {
   ALL_CUSTOM_OBJECTS,
@@ -141,27 +142,27 @@ describe('garbage collector', () => {
       expect(result.totalDeprecatedComponentCount).to.equal(0);
     });
 
-    it('does not filter package members if the filtered package id cannot be resolved', async () => {
+    it('throws if none of the filtered packages can be resolved', async () => {
       // Arrange
+      // an unresolved filter must never widen to all packages (dispose would delete everything)
       $$.apiMocks.PACKAGE_2 = { records: [], totalSize: 0, done: true };
-      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
-      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
       $$.apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
       const collector = new GarbageCollector(await $$.targetOrg.getConnection(), await $$.devHub.getConnection());
 
-      // Act
-      const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
-
-      // Assert
-      expect(result.totalDeprecatedComponentCount).to.equal(2);
+      // Act & Assert
+      try {
+        await collector.export({ packages: ['0Ho000000000001AAA', 'Not Installed Package'] });
+        expect.fail('Expected NoPackageResolved error');
+      } catch (err) {
+        expect((err as SfError).name).to.equal('NoPackageResolved');
+      }
     });
 
     it('shows warning to user if package id is filtered that does not exist on the dev hub', async () => {
       // Arrange
       // package members on a subscriber org only know their SubscriberPackageId (033), not the 0Ho.
-      // As a result, package filters only work, when the available DevHub owns the package.
-      // If it doesn't, the 0Ho id from filter cannot resolve to a 033 and therefore the
-      // package member cannot be filtered.
+      // The 0Ho id resolves on the devhub, if it owns the package. Unresolved ids are ignored,
+      // as long as at least one package of the filter resolves.
       $$.apiMocks.PACKAGE_2 = { records: [], totalSize: 0, done: true };
       $$.apiMocks.PACKAGE_2_MEMBERS = { records: [], totalSize: 0, done: true };
       $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
@@ -171,21 +172,63 @@ describe('garbage collector', () => {
       collector.addListener('resolveMemberStatus', resolveListener);
 
       // Act
-      const result = await collector.export({ packages: ['0Ho000000000001AAA'] });
+      const result = await collector.export({ packages: ['0Ho000000000001AAA', '0330X0000000000AAA'] });
 
       // Assert
       expect(result.totalDeprecatedComponentCount).to.equal(0);
-      expect(resolveListener.callCount).to.equal(2);
-      expect(resolveListener.args.flat()).to.deep.equal([
-        { message: messages.getMessage('infos.packages-filter-active', ['0Ho000000000001AAA']), status: 1 },
-        {
-          message: messages.getMessage('warnings.failed-to-resolved-package-id', [
-            '0Ho000000000001AAA',
-            $$.devHub.username,
-          ]),
-          status: 1,
-        },
-      ]);
+      expect(resolveListener.args.flat()).to.deep.include({
+        message: messages.getMessage('warnings.failed-to-resolved-package-id', [
+          '0Ho000000000001AAA',
+          $$.devHub.username,
+        ]),
+        status: 1,
+      });
+    });
+
+    it('filters package members by package name without a devhub', async () => {
+      // Arrange
+      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+      const collector = new GarbageCollector(await $$.targetOrg.getConnection());
+
+      // Act
+      // members belong to 0330X0000000000AAA ("My Test Package"), names are case-insensitive
+      const matching = await collector.export({ packages: ['my test package'] });
+      const other = await collector.export({ packages: ['Other Package'] });
+
+      // Assert
+      expect(matching.totalDeprecatedComponentCount).to.equal(2);
+      expect(other.totalDeprecatedComponentCount).to.equal(0);
+    });
+
+    it('filters package members by namespace and subscriber package id without a devhub', async () => {
+      // Arrange
+      $$.apiMocks.PACKAGED_FLOWS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.OBSOLETE_FLOW_VERSIONS = { records: [], totalSize: 0, done: true };
+      $$.apiMocks.PACKAGE_2_MEMBERS = parseMockResult<Package2Member>('package-members/mixed-with-package-infos.json');
+      const collector = new GarbageCollector(await $$.targetOrg.getConnection());
+
+      // Act
+      const byNamespace = await collector.export({ packages: ['OTHER_NS'] });
+      const bySubscriberId = await collector.export({ packages: ['0330X0000000000AAA'] });
+
+      // Assert
+      expect(byNamespace.totalDeprecatedComponentCount).to.equal(0);
+      expect(bySubscriberId.totalDeprecatedComponentCount).to.equal(2);
+    });
+
+    it('requires a devhub only for package ids (0Ho)', async () => {
+      // Arrange
+      const collector = new GarbageCollector(await $$.targetOrg.getConnection());
+
+      // Act & Assert
+      try {
+        await collector.export({ packages: ['My Test Package', '0Ho000000000001AAA'] });
+        expect.fail('Expected DevhubRequiredForPackages error');
+      } catch (err) {
+        expect((err as SfError).name).to.equal('DevhubRequiredForPackages');
+      }
     });
   });
 

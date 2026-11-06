@@ -36,6 +36,7 @@ export type InstalledSubscriberPackage = {
   SubscriberPackageId?: string;
   SubscriberPackageVersionId: string;
   SubscriberPackageVersion: SubscriberPackageVersion;
+  SubscriberPackage?: Pick<SubscriberPackage, 'Name' | 'NamespacePrefix'>;
 };
 
 export type SubscriberPackage = {

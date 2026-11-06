@@ -154,6 +154,40 @@ describe('jsc maintain garbage NUTs*', () => {
       );
     });
 
+    it('filters garbage by package name without devhub', () => {
+      // Arrange
+      const unfiltered = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(unfiltered);
+      const packageName = Object.values(unfiltered.deprecatedMembers)[0].components[0].packageName;
+      assert.isDefined(packageName);
+
+      // Act
+      // the scratch org is no devhub and no --devhub-org is passed
+      const result = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --package "${packageName.toUpperCase()}" --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.totalDeprecatedComponentCount).to.equal(unfiltered.totalDeprecatedComponentCount);
+    });
+
+    it('fails with package filter that cannot be resolved', () => {
+      // Act
+      const output = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --package "Not An Installed Package" --json`,
+        { ensureExitCode: 1 }
+      ).jsonOutput;
+
+      // Assert
+      // an unresolved filter must never widen to all packages
+      expect(output?.name).to.equal('NoPackageResolved');
+    });
+
     it('dispose garbage with metadata type filter deletes only filtered garbage', () => {
       // Act
       const result = execCmd<GarbageDisposeResult>(

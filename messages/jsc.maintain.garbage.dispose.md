@@ -16,11 +16,11 @@ The org that is queried for deprecated package members and outdated flow version
 
 # flags.devhub-org.summary
 
-Used to resolve package ids when garbage must be filtered by package (--package).
+Used to resolve package ids (0Ho) and aliases when garbage is filtered by package (--package).
 
 # flags.devhub-org.description
 
-Package filters are set with the "0Ho"-Id of the Package2 container. The DevHub is needed to resolve these ids to the canonical "033" Ids. If your target org is a devhub, it will automatically be used. This parameter is only needed, if you specify at least one package flag.
+Package filters with package ids (0Ho) or aliases need the DevHub to resolve the package id to the subscriber package id (033), which package members reference. If your target org is a devhub, it will automatically be used. Package names, namespaces and subscriber package ids (033) don't need a DevHub.
 
 # flags.metadata-type.summary
 
@@ -36,7 +36,7 @@ Only delete metadata from specific packages.
 
 # flags.package.description
 
-You can specify the package id (0Ho) or a local package alias from your sfdx-project.json to narrow down package members only from a specific package. You can specify this flag multiple times.
+Narrow down package members to specific packages. Use the name or namespace of an installed package, or its subscriber package id (033): these work without a DevHub and outside of a project. You can also use the package id (0Ho, requires a DevHub) or a package alias from your sfdx-project.json (requires a project and a DevHub). Names and namespaces are case-insensitive. You can specify this flag multiple times. If none of the packages can be resolved, the command fails.
 
 # flags.no-prompt.summary
 

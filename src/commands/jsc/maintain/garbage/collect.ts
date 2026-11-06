@@ -60,7 +60,7 @@ export default class JscMaintainGarbageCollect extends SfCommand<PackageGarbageR
     });
     const deprecatedPackageMembers = await collector.export({
       includeOnly: flags['metadata-type'],
-      packages: await resolvePackageIds(orgConnection, (msg) => this.info(msg), flags.package),
+      packages: await resolvePackageIds((msg) => this.info(msg), flags.package),
     });
     this.writePackageXml(
       GarbageDisposer.newInstance(orgConnection),

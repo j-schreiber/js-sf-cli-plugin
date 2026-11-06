@@ -60,7 +60,7 @@ export default class JscMaintainGarbageDispose extends SfCommand<GarbageDisposeR
     });
     const garbage = await collector.export({
       includeOnly: flags['metadata-type'],
-      packages: await resolvePackageIds(orgConnection, (msg) => this.info(msg), flags.package),
+      packages: await resolvePackageIds((msg) => this.info(msg), flags.package),
     });
     process.exitCode = 0;
     if (garbage.totalDeprecatedComponentCount === 0) {

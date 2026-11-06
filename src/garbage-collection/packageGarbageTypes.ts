@@ -64,5 +64,9 @@ export type PackageGarbageResult = {
 
 export type GarbageFilter = {
   includeOnly?: string[];
+  /**
+   * Package ids (0Ho, requires a devhub), subscriber package ids (033),
+   * or names / namespaces of packages installed on the target org.
+   */
   packages?: string[];
 };

@@ -1,24 +1,33 @@
 import { Connection, Messages, Org, SfError, SfProject } from '@salesforce/core';
-import { Package } from '@salesforce/packaging';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const genericMessages = Messages.loadMessages('@j-schreiber/sf-plugin', 'garbagecollection');
 
 type InfoLogger = (message: string) => void;
 
+const PACKAGE_ID_PREFIXES = ['0Ho', '033'];
+
 /**
- * Resolves package ids or aliases (from sfdx-project.json) to Package2 ids (0Ho).
+ * Resolves aliases from sfdx-project.json to package ids (0Ho). Package ids (0Ho),
+ * subscriber package ids (033) and all values that are not an alias (e.g. package
+ * names) are returned unchanged and resolved by the garbage collector.
  */
-export async function resolvePackageIds(
-  connection: Connection,
-  info: InfoLogger,
-  idsOrAliase?: string[]
-): Promise<string[] | undefined> {
-  if (idsOrAliase === undefined) {
+export async function resolvePackageIds(info: InfoLogger, packages?: string[]): Promise<string[] | undefined> {
+  if (packages === undefined) {
     return undefined;
   }
+  const isId = (pkg: string): boolean => PACKAGE_ID_PREFIXES.some((prefix) => pkg.startsWith(prefix));
+  if (packages.every(isId)) {
+    return packages;
+  }
   const project = await resolveProject(info);
-  return idsOrAliase.map((idOrAlias) => new Package({ packageAliasOrId: idOrAlias, connection, project }).getId());
+  return packages.map((pkg) => {
+    if (isId(pkg)) {
+      return pkg;
+    }
+    const aliasedId = project?.getPackageIdFromAlias(pkg);
+    return aliasedId?.startsWith('0Ho') ? aliasedId : pkg;
+  });
 }
 
 /**
