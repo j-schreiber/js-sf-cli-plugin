@@ -33,11 +33,15 @@
     "eslint": "^10",
     "eslint-plugin-sf-plugin": "^3",
     "husky": "^9.1.7",
+    "nyc": "^17",
     "oclif": "^6",
+    "prettier": "^2.8.8",
+    "pretty-quick": "^3.3.1",
     "release-it": "^21",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "^6"
+    "typescript": "^6",
+    "wireit": "^0.14.13"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -281,9 +285,7 @@
   "type": "module",
   "author": "Jannis Schreiber",
   "main": "index.js",
-  "bin": {
-    "sf-plugin": "bin/dev.js"
-  },
+  "bin": "bin/dev.js",
   "directories": {
     "lib": "lib",
     "test": "test"
