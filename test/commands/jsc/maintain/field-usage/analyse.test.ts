@@ -8,7 +8,8 @@ import JscMaintainFieldUsageAnalyse, {
   JscMaintainFieldUsageAnalyseResult,
 } from '../../../../../src/commands/jsc/maintain/field-usage/analyse.js';
 import FieldUsageTestContext from '../../../../mock-utils/fieldUsageTestContext.js';
-import FieldUsageMultiStageOutput, { MultiStageData } from '../../../../../src/field-usage/fieldUsageMultiStage.js';
+import { FieldUsageMultiStageOutput } from '../../../../../src/field-usage/index.js';
+import type { MultiStageData } from '../../../../../src/field-usage/types.js';
 
 describe('jsc maintain field-usage analyse', () => {
   const $$ = new FieldUsageTestContext();

@@ -1,4 +1,3 @@
-/* eslint-disable class-methods-use-this */
 /* eslint-disable no-await-in-loop */
 import fs from 'node:fs';
 import { DescribeSObjectResult, QueryResult, Record } from '@jsforce/jsforce-node';
@@ -7,7 +6,7 @@ import { ZMigrationPlanObjectDataType, MigrationPlanObjectQueryResult } from '..
 import DescribeApi from './metadata/describeApi.js';
 import QueryBuilder from './utils/queryBuilder.js';
 import { eventBus } from './comms/eventBus.js';
-import { ProcessingStatus, CommandStatusEvent } from './comms/processingEvents.js';
+import { ProcessingStatus } from './comms/processingEvents.js';
 import PlanCache from './planCache.js';
 
 export default class MigrationPlanObject {
@@ -70,7 +69,7 @@ export default class MigrationPlanObject {
       eventBus.emit('planObjectStatus', {
         message: `Processing chunk ${queries.indexOf(queryString) + 1} of ${queries.length}: 1st request`,
         status: ProcessingStatus.InProgress,
-      } as CommandStatusEvent);
+      });
       totalRequestCount++;
       this.queryResult.executedFullQueryStrings.push(queryString);
       const queryResult = await this.runQuery(queryString);
@@ -90,7 +89,7 @@ export default class MigrationPlanObject {
             queries.length
           }: ${thisChunkRequestsCount}/${totalBatches} requests`,
           status: ProcessingStatus.InProgress,
-        } as CommandStatusEvent);
+        });
         const moreResults = await this.conn.queryMore(nextRecordsUrl as string);
         isDone = moreResults.done;
         nextRecordsUrl = moreResults.nextRecordsUrl;
@@ -205,7 +204,7 @@ export default class MigrationPlanObject {
       eventBus.emit('planObjectStatus', {
         message: `Fetching records in ${chunks.length} chunks of ${PlanCache.CHUNK_SIZE} parent ids each`,
         status: ProcessingStatus.InProgress,
-      } as CommandStatusEvent);
+      });
       chunks.forEach((parentIdsChunk) => chunkedParentQueries.push(this.queryBuilder!.toSOQL(parentIdsChunk)));
       return chunkedParentQueries;
     }

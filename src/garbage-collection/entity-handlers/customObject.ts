@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionHandler } from '../entityDefinitionHandler.js';

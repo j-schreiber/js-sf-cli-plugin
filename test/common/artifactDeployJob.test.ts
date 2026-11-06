@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import ArtifactDeployJob from '../../src/release-manifest/artifact-deploy-strategies/artifactDeployJob.js';
 import { newOrgManifest } from '../mock-utils/manifestTestContext.js';
-import { ArtifactTypes, DeployStatus } from '../../src/types/orgManifestGlobalConstants.js';
 import UnpackagedDeployStep from '../../src/release-manifest/artifact-deploy-strategies/unpackagedDeployStep.js';
+import { ArtifactTypes, DeployStatus } from '../../src/release-manifest/index.js';
 
 describe('deploy job', () => {
   it('has only pending steps > aggregate status is pending', () => {
@@ -15,7 +15,7 @@ describe('deploy job', () => {
     );
 
     // Assert
-    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Pending);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.enum.Pending);
   });
 
   it('has only skipped steps > aggregate status is skipped', () => {
@@ -30,11 +30,11 @@ describe('deploy job', () => {
     // Act
     deployJob.getSteps().forEach((jobStep) => {
       const stepStatus = jobStep.getStatus();
-      stepStatus.status = DeployStatus.Enum.Skipped;
+      stepStatus.status = DeployStatus.enum.Skipped;
     });
 
     // Assert
-    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Skipped);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.enum.Skipped);
   });
 
   it('has only resolved steps > aggregate status is resolved', () => {
@@ -42,24 +42,24 @@ describe('deploy job', () => {
     const mockManifest = newOrgManifest();
     const deployJob = new ArtifactDeployJob(
       'my_happy_soup',
-      { type: ArtifactTypes.Enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' },
+      { type: ArtifactTypes.enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' },
       mockManifest
     );
 
     // Act
     deployJob.getSteps().forEach((jobStep) => {
       const stepStatus = jobStep.getStatus();
-      stepStatus.status = DeployStatus.Enum.Resolved;
+      stepStatus.status = DeployStatus.enum.Resolved;
     });
 
     // Assert
-    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Resolved);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.enum.Resolved);
   });
 
   it('has skipped and one success step > aggregate status is success', () => {
     // Arrange
     const mockManifest = newOrgManifest();
-    const artifactDef = { type: ArtifactTypes.Enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' };
+    const artifactDef = { type: ArtifactTypes.enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' };
     const deployJob = new ArtifactDeployJob('my_happy_soup', artifactDef, mockManifest);
     const secondDeployStep = new UnpackagedDeployStep(artifactDef, mockManifest);
     deployJob.getSteps().push(secondDeployStep);
@@ -67,18 +67,18 @@ describe('deploy job', () => {
     // Act
     deployJob.getSteps().forEach((jobStep) => {
       const stepStatus = jobStep.getStatus();
-      stepStatus.status = DeployStatus.Enum.Skipped;
+      stepStatus.status = DeployStatus.enum.Skipped;
     });
-    deployJob.getSteps()[deployJob.getSteps().length - 1].getStatus().status = DeployStatus.Enum.Success;
+    deployJob.getSteps()[deployJob.getSteps().length - 1].getStatus().status = DeployStatus.enum.Success;
 
     // Assert
-    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Success);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.enum.Success);
   });
 
   it('has success and one failed step > aggregate status is failed', () => {
     // Arrange
     const mockManifest = newOrgManifest();
-    const artifactDef = { type: ArtifactTypes.Enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' };
+    const artifactDef = { type: ArtifactTypes.enum.Unpackaged, path: 'test/data/mock-src/unpackaged/my-happy-soup' };
     const deployJob = new ArtifactDeployJob('my_happy_soup', artifactDef, mockManifest);
     const secondDeployStep = new UnpackagedDeployStep(artifactDef, mockManifest);
     deployJob.getSteps().push(secondDeployStep);
@@ -86,11 +86,11 @@ describe('deploy job', () => {
     // Act
     deployJob.getSteps().forEach((jobStep) => {
       const stepStatus = jobStep.getStatus();
-      stepStatus.status = DeployStatus.Enum.Success;
+      stepStatus.status = DeployStatus.enum.Success;
     });
-    deployJob.getSteps()[0].getStatus().status = DeployStatus.Enum.Failed;
+    deployJob.getSteps()[0].getStatus().status = DeployStatus.enum.Failed;
 
     // Assert
-    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.Enum.Failed);
+    expect(deployJob.getAggregatedStatus().status).to.equal(DeployStatus.enum.Failed);
   });
 });

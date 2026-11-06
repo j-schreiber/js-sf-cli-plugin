@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/consistent-type-definitions */
 import QueryBuilder from '../common/utils/queryBuilder.js';
 import { Package2Member } from '../types/sfToolingApiTypes.js';
 import { PackageGarbageContainer } from './packageGarbageTypes.js';

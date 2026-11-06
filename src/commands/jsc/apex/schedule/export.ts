@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { dump } from 'js-yaml';
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import ApexScheduleService from '../../../../common/apex-scheduler/apexScheduleService.js';
@@ -64,7 +64,7 @@ export default class JscApexScheduleExport extends SfCommand<AsyncApexJobFlat[]>
           expression: apexJob.CronExpression!,
         })
     );
-    const fileContent = yaml.dump(jobsConfig);
+    const fileContent = dump(jobsConfig);
     fs.mkdirSync(filePath, { recursive: true });
     fs.writeFileSync(outputPath, fileContent);
     this.info(messages.getMessage('info.wrote-output-to-file', [outputPath]));

@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { env } from '@salesforce/kit';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
 import { JscManifestRolloutResult } from '../../../../src/commands/jsc/manifest/rollout.js';
-import { DeployStatus } from '../../../../src/types/orgManifestGlobalConstants.js';
+import { DeployStatus } from '../../../../src/release-manifest/index.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const devhubUsername = env.getString('TESTKIT_HUB_USERNAME');
@@ -44,9 +44,9 @@ describe('jsc manifest rollout NUTs*', () => {
       expect(result!.result.targetOrgUsername).to.equal(scratchOrgUsername);
       expect(result!.result.devhubOrgUsername).to.equal(devhubUsername);
       expect(result!.result.deployedArtifacts['apex_utils']).to.not.be.undefined;
-      expect(result!.result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.Enum.Success);
+      expect(result!.result.deployedArtifacts['apex_utils'][0].status).to.equal(DeployStatus.enum.Success);
       expect(result!.result.deployedArtifacts['unpackaged']).to.not.be.undefined;
-      expect(result!.result.deployedArtifacts['unpackaged'][0].status).to.equal(DeployStatus.Enum.Success);
+      expect(result!.result.deployedArtifacts['unpackaged'][0].status).to.equal(DeployStatus.enum.Success);
     });
   });
 });

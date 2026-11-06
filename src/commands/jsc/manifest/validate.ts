@@ -3,7 +3,7 @@ import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { eventBus } from '../../../common/comms/eventBus.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../common/comms/processingEvents.js';
-import ReleaseManifestLoader from '../../../release-manifest/releaseManifestLoader.js';
+import { ReleaseManifestLoader } from '../../../release-manifest/index.js';
 import { JscManifestRolloutResult } from './rollout.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);

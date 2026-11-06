@@ -1,0 +1,32 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "InstalledSubscriberPackage"
+      },
+      "SubscriberPackageId": "0330X0000000000AAA",
+      "SubscriberPackage": {
+        "attributes": {
+          "type": "SubscriberPackage"
+        },
+        "Name": "My Test Package",
+        "NamespacePrefix": null
+      }
+    },
+    {
+      "attributes": {
+        "type": "InstalledSubscriberPackage"
+      },
+      "SubscriberPackageId": "0330X0000000002AAA",
+      "SubscriberPackage": {
+        "attributes": {
+          "type": "SubscriberPackage"
+        },
+        "Name": "Other Package",
+        "NamespacePrefix": "other_ns"
+      }
+    }
+  ],
+  "totalSize": 2,
+  "done": true
+}

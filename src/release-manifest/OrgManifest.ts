@@ -2,7 +2,7 @@ import { Connection, Messages, SfError, SfProject } from '@salesforce/core';
 import { ZReleaseManifestType } from '../types/orgManifestInputSchema.js';
 import { ZManifestDeployResultType } from '../types/orgManifestOutputSchema.js';
 import { eventBus } from '../common/comms/eventBus.js';
-import { CommandStatusEvent, ProcessingStatus } from '../common/comms/processingEvents.js';
+import { ProcessingStatus } from '../common/comms/processingEvents.js';
 import ArtifactDeployJob from './artifact-deploy-strategies/artifactDeployJob.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
@@ -73,7 +73,7 @@ export default class OrgManifest {
     eventBus.emit('manifestRollout', {
       status: ProcessingStatus.Started,
       message: `Resolving manifest: ${this.deployJobs.length} artifacts found`,
-    } as CommandStatusEvent);
+    });
     const result: ZManifestDeployResultType = {};
     for (const element of this.getDeployJobs()) {
       // need to check if we can go async here and await Promise.all() after loop
@@ -83,7 +83,7 @@ export default class OrgManifest {
     eventBus.emit('manifestRollout', {
       status: ProcessingStatus.Completed,
       message: 'Success! All artifacts resolved.',
-    } as CommandStatusEvent);
+    });
     process.exitCode = 0;
     return result;
   }

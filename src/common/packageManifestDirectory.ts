@@ -4,19 +4,25 @@ import PackageManifestBuilder from './packageManifestBuilder.js';
 import { OutputFormats } from './jscSfCommandFlags.js';
 
 /**
- * Initialise an empty manifest directory at the path. The directory
- * writes manifest XMLs (package.xml and destructiveChanges.xml) when
- * closed.
+ * Initialise a manifest directory at the path. The directory writes
+ * manifest XMLs (package.xml and destructiveChanges.xml) when closed.
+ * Optionally pass the contents, otherwise the directory starts empty.
  */
 export default class PackageManifestDirectory {
   private packageXml: PackageManifestBuilder;
   private destructiveChangesXml?: PackageManifestBuilder;
 
-  public constructor(public readonly directoryPath: string, public readonly outputFormat?: OutputFormats) {
+  public constructor(
+    public readonly directoryPath: string,
+    public readonly outputFormat?: OutputFormats,
+    contents?: PackageManifestBuilder
+  ) {
     fs.mkdirSync(this.directoryPath, { recursive: true });
-    this.packageXml = new PackageManifestBuilder();
     if (this.outputFormat === OutputFormats.DestructiveChangesXML) {
-      this.destructiveChangesXml = new PackageManifestBuilder();
+      this.packageXml = new PackageManifestBuilder();
+      this.destructiveChangesXml = contents ?? new PackageManifestBuilder();
+    } else {
+      this.packageXml = contents ?? new PackageManifestBuilder();
     }
   }
 

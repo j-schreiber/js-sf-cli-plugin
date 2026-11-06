@@ -2,19 +2,25 @@
 import { SfCommand, Flags } from '@salesforce/sf-plugins-core';
 import { Messages } from '@salesforce/core';
 import { MultiStageOutput } from '@oclif/multi-stage-output';
-import SObjectAnalyser, { INCLUDED_FIELD_TYPES } from '../../../../field-usage/sobjectAnalyser.js';
-import { FieldSkippedInfo, FieldUsageStats, SObjectAnalysisResult } from '../../../../field-usage/fieldUsageTypes.js';
-import FieldUsageMultiStageOutput, {
-  DESCRIBE_STAGE,
-  FIELD_STAGE,
-  MultiStageData,
-  OUTPUT_STAGE,
-} from '../../../../field-usage/fieldUsageMultiStage.js';
 import { resultFormatFlag, ResultFormats } from '../../../../common/jscSfCommandFlags.js';
 import HumanResultsReporter from '../../../../common/reporters/humanResultsReporter.js';
 import ResultsReporter from '../../../../common/reporters/resultsReporter.js';
 import MarkdownResultsReporter from '../../../../common/reporters/markdownResultsReporter.js';
 import CsvResultsReporter from '../../../../common/reporters/csvResultsReporter.js';
+import type {
+  FieldSkippedInfo,
+  FieldUsageStats,
+  MultiStageData,
+  SObjectAnalysisResult,
+} from '../../../../field-usage/types.js';
+import {
+  DESCRIBE_STAGE,
+  FIELD_STAGE,
+  FieldUsageMultiStageOutput,
+  INCLUDED_FIELD_TYPES,
+  OUTPUT_STAGE,
+  SObjectAnalyser,
+} from '../../../../field-usage/index.js';
 
 Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 const messages = Messages.loadMessages('@j-schreiber/sf-plugin', 'jsc.maintain.field-usage.analyse');

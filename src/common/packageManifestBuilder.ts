@@ -33,12 +33,10 @@ export default class PackageManifestBuilder {
    * @param memberName
    */
   public addMember(type: string, memberName: string): void {
-    if (this.types[type] === undefined) {
-      this.types[type] = {
-        name: type,
-        members: [],
-      };
-    }
+    this.types[type] ??= {
+      name: type,
+      members: [],
+    };
     this.types[type].members.push(memberName);
   }
 

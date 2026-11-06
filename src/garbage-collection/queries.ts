@@ -70,3 +70,6 @@ FROM
   Package2`);
 
 export const SUBSCRIBER_PACKAGE_FIELDS = ['Id', 'Name', 'Description', 'IsPackageValid', 'NamespacePrefix'];
+
+export const INSTALLED_SUBSCRIBER_PACKAGES =
+  'SELECT SubscriberPackageId, SubscriberPackage.Name, SubscriberPackage.NamespacePrefix FROM InstalledSubscriberPackage';

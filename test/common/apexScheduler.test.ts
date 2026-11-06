@@ -131,7 +131,7 @@ describe('apex scheduler', () => {
           jobName: 'My Test Job',
           cronExpression: '0 0 0 1 ? * * *',
         });
-      } catch (err) {
+      } catch {
         // we're good, only interested in events
       }
 
@@ -158,7 +158,7 @@ describe('apex scheduler', () => {
       // Act
       try {
         await scheduler.stopJobs(['08e9b00000Kz6hmAAB']);
-      } catch (err) {
+      } catch {
         // we're good, only interested in events
       }
 

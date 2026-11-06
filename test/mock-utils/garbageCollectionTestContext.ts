@@ -82,6 +82,9 @@ export default class GarbageCollectionTestContext {
     if (url.includes(encodeURIComponent("FROM WorkflowFieldUpdate WHERE Id = '04Y0X0000000gb0UAA'"))) {
       return Promise.resolve(this.apiMocks.WORKFLOW_FIELD_UPDATES);
     }
+    if (url.includes(encodeURIComponent('FROM InstalledSubscriberPackage'))) {
+      return Promise.resolve(this.apiMocks.INSTALLED_SUBSCRIBER_PACKAGES);
+    }
     if (url.includes(encodeURIComponent('FROM SubscriberPackage WHERE Id ='))) {
       return Promise.resolve(this.apiMocks.SUBSCRIBER_PACKAGE);
     }

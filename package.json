@@ -9,38 +9,42 @@
   "homepage": "https://github.com/j-schreiber/js-sf-cli-plugin/wiki",
   "dependencies": {
     "@jsforce/jsforce-node": "^3.4.2",
-    "@oclif/core": "^4",
-    "@oclif/multi-stage-output": "^0.8.16",
-    "@salesforce/apex-node": "^8.1.19",
-    "@salesforce/core": "^8.5.7",
-    "@salesforce/kit": "^3.2.3",
-    "@salesforce/packaging": "^4.2.15",
-    "@salesforce/sf-plugins-core": "^12.0.8",
+    "@oclif/core": "^5",
+    "@oclif/multi-stage-output": "^1",
+    "@salesforce/apex-node": "^9",
+    "@salesforce/core": "^9",
+    "@salesforce/kit": "^4",
+    "@salesforce/sf-plugins-core": "^13",
+    "@salesforce/source-deploy-retrieve": "^13",
     "ansis": "4",
     "change-case": "^5.4.4",
     "fast-xml-parser": "5",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^5",
     "json-2-csv": "^5.5.9",
     "markdown-table": "^3.0.4",
-    "zod": "^3.23.8"
+    "zod": "^4"
   },
   "devDependencies": {
-    "@oclif/plugin-command-snapshot": "^5.1.9",
-    "@oclif/test": "^4.1.13",
-    "@release-it/conventional-changelog": "^10.0.1",
+    "@oclif/plugin-command-snapshot": "^6",
+    "@oclif/test": "^5",
+    "@release-it/conventional-changelog": "^12",
     "@salesforce/cli-plugins-testkit": "^5.3.10",
-    "@salesforce/dev-scripts": "11",
-    "@types/js-yaml": "^4.0.9",
-    "eslint-plugin-sf-plugin": "^1.18.6",
+    "@salesforce/dev-scripts": "^15",
+    "eslint": "^10",
+    "eslint-plugin-sf-plugin": "^3",
     "husky": "^9.1.7",
-    "oclif": "^4.14.0",
-    "release-it": "^19.0.3",
+    "nyc": "^17",
+    "oclif": "^6",
+    "prettier": "^2.8.8",
+    "pretty-quick": "^3.3.1",
+    "release-it": "^21",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.4.5"
+    "typescript": "^6",
+    "wireit": "^0.14.13"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "files": [
     "/lib",
@@ -112,11 +116,11 @@
     "postpack": "sf-clean --ignore-signing-artifacts",
     "prepack": "sf-prepack",
     "test": "wireit",
-    "test:nuts": "nyc mocha \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:garbage": "nyc mocha \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:data": "nyc mocha \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:apex": "nyc mocha \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
-    "test:nuts:maintain": "nyc mocha \"**/maintain/maintain.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+    "test:nuts": "wireit",
+    "test:nuts:garbage": "wireit",
+    "test:nuts:data": "wireit",
+    "test:nuts:apex": "wireit",
+    "test:nuts:maintain": "wireit",
     "test:only": "wireit",
     "readme": "wireit",
     "prepare": "husky",
@@ -245,15 +249,43 @@
         "build"
       ],
       "command": "oclif readme && pretty-quick"
+    },
+    "test:nuts": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:garbage": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/maintain/garbage/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:data": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/data/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:apex": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/apex/*.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "test:nuts:maintain": {
+      "command": "nyc mocha --require ./test/nutHubAuth.ts \"**/maintain/maintain.nut.ts\" --slow 4500 --timeout 600000 --parallel",
+      "dependencies": [
+        "compile"
+      ]
     }
   },
   "exports": "./lib/index.js",
   "type": "module",
   "author": "Jannis Schreiber",
   "main": "index.js",
-  "bin": {
-    "sf-plugin": "bin/dev.js"
-  },
+  "bin": "bin/dev.js",
   "directories": {
     "lib": "lib",
     "test": "test"

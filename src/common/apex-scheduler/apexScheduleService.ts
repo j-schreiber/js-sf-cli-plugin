@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { ExecuteAnonymousResponse } from '@salesforce/apex-node';
 import { Connection, Messages, SfError } from '@salesforce/core';
-import { CommandStatusEvent, ProcessingStatus } from '../comms/processingEvents.js';
+import { ProcessingStatus } from '../comms/processingEvents.js';
 import { AsyncApexJob, AsyncApexJobFlat, ScheduledJobConfigType } from '../../types/scheduledApexTypes.js';
 import QueryRunner from '../utils/queryRunner.js';
 import StopSingleJobTask, { StopScheduledApexResult } from './stopSingleJobTask.js';
@@ -127,12 +127,12 @@ export default class ApexScheduleService extends EventEmitter {
     this.emit('logOutput', {
       message: result.logs,
       status: ProcessingStatus.InProgress,
-    } as CommandStatusEvent);
+    });
     if (result.diagnostic) {
       this.emit('diagnostics', {
         message: JSON.stringify(result.diagnostic, null, 2),
         status: ProcessingStatus.InProgress,
-      } as CommandStatusEvent);
+      });
     }
   }
 

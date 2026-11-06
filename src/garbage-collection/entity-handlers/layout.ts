@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Connection } from '@salesforce/core';
 import { NamedSObjectChildType, Package2Member } from '../../types/sfToolingApiTypes.js';
 import { EntityDefinitionHandler, extractSubjectIds } from '../entityDefinitionHandler.js';

@@ -5,10 +5,10 @@ import { stubSfCommandUx } from '@salesforce/sf-plugins-core';
 import { SfError } from '@salesforce/core';
 import { XMLParser } from 'fast-xml-parser';
 import JscMaintainGarbageCollect from '../../../../../src/commands/jsc/maintain/garbage/collect.js';
-import GarbageCollector from '../../../../../src/garbage-collection/garbageCollector.js';
 import { CommandStatusEvent, ProcessingStatus } from '../../../../../src/common/comms/processingEvents.js';
-import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
-import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
+import { GarbageCollector } from '../../../../../src/garbage-collection/index.js';
+import type { PackageManifestObject } from '../../../../../src/garbage-collection/types.js';
+import type { PackageGarbageResult } from '../../../../../src/garbage-collection/types.js';
 
 const MOCK_GARBAGE_RESULT: PackageGarbageResult = {
   deprecatedMembers: {
@@ -259,16 +259,26 @@ describe('jsc maintain garbage collect', () => {
   });
 
   it('with direct package id filter > target org is devhub > passes target org to collector', async () => {
+    // Act & Assert
+    // the devhub is accepted (no DevhubRequiredForPackages), but the mocked devhub owns
+    // no package: an unresolved package filter fails instead of collecting all garbage
+    try {
+      await JscMaintainGarbageCollect.run(['--target-org', testDevhubOrg.username, '--package', '0Ho6f000000TN1eCAG']);
+      expect.fail('Should throw exception');
+    } catch (error) {
+      expect((error as SfError).name).to.equal('NoPackageResolved');
+    }
+  });
+
+  it('with package name filter > target org is no devhub > passes name to collector', async () => {
+    // Arrange
+    const exportMock = $$.SANDBOX.stub(GarbageCollector.prototype, 'export').resolves(MOCK_EMPTY_GARBAGE_RESULT);
+
     // Act
-    const result = await JscMaintainGarbageCollect.run([
-      '--target-org',
-      testDevhubOrg.username,
-      '--package',
-      '0Ho6f000000TN1eCAG',
-    ]);
+    await JscMaintainGarbageCollect.run(['--target-org', testTargetOrg.username, '--package', 'My Test Package']);
 
     // Assert
-    expect(result.deprecatedMembers).to.deep.equal({});
+    expect(exportMock.args.flat()).to.deep.equal([{ includeOnly: undefined, packages: ['My Test Package'] }]);
   });
 
   it('with package filter > target org is no devhub > throws error', async () => {
@@ -283,17 +293,21 @@ describe('jsc maintain garbage collect', () => {
   });
 
   it('with package filter > target org is no devhub and supplies devhub > passes devhub to garbage collector', async () => {
-    // Act
-    const result = await JscMaintainGarbageCollect.run([
-      '--target-org',
-      testTargetOrg.username,
-      '--devhub-org',
-      testDevhubOrg.username,
-      '--package',
-      '0Ho6f000000TN1eCAG',
-    ]);
-
-    // Assert
-    expect(result.deprecatedMembers).to.deep.equal({});
+    // Act & Assert
+    // the devhub is accepted (no DevhubRequiredForPackages), but the mocked devhub owns
+    // no package: an unresolved package filter fails instead of collecting all garbage
+    try {
+      await JscMaintainGarbageCollect.run([
+        '--target-org',
+        testTargetOrg.username,
+        '--devhub-org',
+        testDevhubOrg.username,
+        '--package',
+        '0Ho6f000000TN1eCAG',
+      ]);
+      expect.fail('Should throw exception');
+    } catch (error) {
+      expect((error as SfError).name).to.equal('NoPackageResolved');
+    }
   });
 });

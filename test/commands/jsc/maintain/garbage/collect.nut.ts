@@ -3,9 +3,13 @@ import path from 'node:path';
 import { expect, assert } from 'chai';
 import { XMLParser } from 'fast-xml-parser';
 import { execCmd, TestSession } from '@salesforce/cli-plugins-testkit';
-import { PackageGarbageResult } from '../../../../../src/garbage-collection/packageGarbageTypes.js';
-import { PackageManifestObject } from '../../../../../src/garbage-collection/packageManifestTypes.js';
 import { EXPECTED_E2E_GARBAGE } from '../../../../mock-utils/garbageCollectionMocks.js';
+import type {
+  PackageGarbageContainer,
+  PackageGarbageResult,
+  PackageManifestObject,
+} from '../../../../../src/garbage-collection/types.js';
+import type { GarbageDisposeResult } from '../../../../../src/garbage-disposal/types.js';
 
 const scratchOrgAlias = 'TestTargetOrg';
 const projectName = 'test-sfdx-project';
@@ -149,5 +153,150 @@ describe('jsc maintain garbage NUTs*', () => {
         EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
       );
     });
+
+    it('filters garbage by package name without devhub', () => {
+      // Arrange
+      const unfiltered = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(unfiltered);
+      const packageName = Object.values(unfiltered.deprecatedMembers)[0].components[0].packageName;
+      assert.isDefined(packageName);
+
+      // Act
+      // the scratch org is no devhub and no --devhub-org is passed
+      const result = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --package "${packageName.toUpperCase()}" --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.totalDeprecatedComponentCount).to.equal(unfiltered.totalDeprecatedComponentCount);
+    });
+
+    it('fails with package filter that cannot be resolved', () => {
+      // Act
+      const output = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --package "Not An Installed Package" --json`,
+        { ensureExitCode: 1 }
+      ).jsonOutput;
+
+      // Assert
+      // an unresolved filter must never widen to all packages
+      expect(output?.name).to.equal('NoPackageResolved');
+    });
+
+    it('dispose garbage with metadata type filter deletes only filtered garbage', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --metadata-type ExternalString --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.status).to.equal('Success', JSON.stringify(result.failed));
+      expect(Object.keys(result.deprecatedMembers)).to.deep.equal(['ExternalString']);
+      expect(Object.keys(result.disposed)).to.deep.equal(['ExternalString']);
+      expect(result.totalDeprecatedComponentCount).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.ExternalString.componentCount
+      );
+      const remaining = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(remaining);
+      expect(remaining.deprecatedMembers.ExternalString).to.be.undefined;
+      expect(remaining.deprecatedMembers.CustomField.componentCount).to.equal(
+        EXPECTED_E2E_GARBAGE.deprecatedMembers.CustomField.componentCount
+      );
+    });
+
+    it('dispose all remaining garbage deletes everything that can be deleted', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      // the test package contains components that cannot be deleted (e.g. an active
+      // approval process), but which ones depends on the package contents and on
+      // cascading deletes in the org. Only assert invariants of the result.
+      assert.isDefined(result);
+      expect(result.status).to.be.oneOf(['Success', 'PartialSuccess'], JSON.stringify(result.failed));
+      expect(result.deployId).to.be.a('string');
+      assertDisposeResultIsConsistent(result);
+      // Not asserted: that `collect` afterwards only finds failed garbage. Disposed garbage is
+      // derived from the (atomic) deploy result. The org may keep components that were deployed
+      // successfully (e.g. a global value set still referenced by a field of a deleted object).
+      // Those are found again by the next `collect`/`dispose`.
+    });
+
+    it('dispose again only processes leftover garbage', () => {
+      // Arrange
+      const leftovers = execCmd<PackageGarbageResult>(
+        `jsc:maintain:garbage:collect --target-org ${scratchOrgAlias} --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+      assert.isDefined(leftovers);
+
+      // Act
+      const cmd = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --no-prompt --json`
+      );
+      const result = cmd.jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(garbageIds(result.deprecatedMembers)).to.have.members(garbageIds(leftovers.deprecatedMembers));
+      assertDisposeResultIsConsistent(result);
+      expect(cmd.jsonOutput?.status).to.equal(result.status === 'Failed' ? 1 : 0);
+    });
+
+    it('dispose without garbage skips deploy', () => {
+      // Act
+      const result = execCmd<GarbageDisposeResult>(
+        `jsc:maintain:garbage:dispose --target-org ${scratchOrgAlias} --metadata-type ExternalString --no-prompt --json`,
+        { ensureExitCode: 0 }
+      ).jsonOutput?.result;
+
+      // Assert
+      assert.isDefined(result);
+      expect(result.status).to.equal('Skipped');
+      expect(result.deployId).to.be.undefined;
+    });
   });
 });
+
+function garbageIds(containers: { [x: string]: PackageGarbageContainer }): string[] {
+  return Object.values(containers).flatMap((container) => container.components.map((cmp) => cmp.subjectId));
+}
+
+/**
+ * Every garbage component that was found is either disposed or failed, never both
+ * (compared by id, names are not stable). Failures always have a problem. The status
+ * matches disposed and failed garbage.
+ */
+function assertDisposeResultIsConsistent(result: GarbageDisposeResult): void {
+  const disposed = garbageIds(result.disposed);
+  const failed = result.failed.map((f) => f.subjectId);
+  expect([...disposed, ...failed]).to.have.members(garbageIds(result.deprecatedMembers), JSON.stringify(result));
+  result.failed.forEach((failure) => expect(failure.problem).to.be.a('string').and.not.be.empty);
+  switch (result.status) {
+    case 'Success':
+      expect(failed).to.deep.equal([]);
+      break;
+    case 'PartialSuccess':
+      expect(disposed).to.not.be.empty;
+      expect(failed).to.not.be.empty;
+      break;
+    case 'Failed':
+      expect(disposed).to.deep.equal([]);
+      break;
+    default:
+      expect(result.status).to.equal('Skipped');
+  }
+}

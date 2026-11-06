@@ -50,9 +50,7 @@ export function writeFlowsToXml(flowVersions: FlowClutter[], outputPath: string,
 export function summarize(flowVersions: FlowClutter[]): FlowClutterSummary[] {
   const summary: Record<string, number> = {};
   flowVersions.forEach((ver) => {
-    if (summary[ver.DeveloperName] === undefined) {
-      summary[ver.DeveloperName] = 0;
-    }
+    summary[ver.DeveloperName] ??= 0;
     summary[ver.DeveloperName]++;
   });
   const result = new Array<FlowClutterSummary>();
@@ -64,7 +62,6 @@ export function summarize(flowVersions: FlowClutter[]): FlowClutterSummary[] {
 }
 
 function flatten(flowVersions: FlowVersionDefinition[]): FlowClutter[] {
-  // eslint-disable-next-line arrow-body-style
   return flowVersions.map((version) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { Definition, DefinitionId, attributes, ...expandedVersion } = version;

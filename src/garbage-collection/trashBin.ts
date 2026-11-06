@@ -80,13 +80,11 @@ export default class TrashBin extends EventEmitter {
         message: `Resolving ${members.length} ${entity.QualifiedApiName} (${entity.KeyPrefix}) as CustomMetadata records.`,
       });
     }
-    if (this.deprecatedMembers['CustomMetadataRecord'] === undefined) {
-      this.deprecatedMembers['CustomMetadataRecord'] = {
-        metadataType: 'CustomMetadata',
-        componentCount: 0,
-        components: [],
-      };
-    }
+    this.deprecatedMembers['CustomMetadataRecord'] ??= {
+      metadataType: 'CustomMetadata',
+      componentCount: 0,
+      components: [],
+    };
     const newRecords = (await this.supportedTypes['CustomMetadataRecord'].resolve(members)).components;
     this.deprecatedMembers['CustomMetadataRecord'].components.push(...newRecords);
     this.deprecatedMembers['CustomMetadataRecord'].componentCount += newRecords.length;
@@ -141,9 +139,7 @@ function organizeMembersByPrefix(members: Package2Member[]): { [x: string]: Pack
     [x: string]: Package2Member[];
   } = {};
   members.forEach((member) => {
-    if (organizedMembers[member.SubjectKeyPrefix] === undefined) {
-      organizedMembers[member.SubjectKeyPrefix] = [];
-    }
+    organizedMembers[member.SubjectKeyPrefix] ??= [];
     organizedMembers[member.SubjectKeyPrefix].push(member);
   });
   return organizedMembers;
